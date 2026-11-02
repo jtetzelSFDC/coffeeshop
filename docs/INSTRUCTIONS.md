@@ -162,7 +162,7 @@ At the top are **nudges**, each with a link to where to act:
 - **Aim for next:** the top two suggestions from the Promo map.
 - **Big wins without "why it mattered":** medium and large wins with no impact sentence, which the promo case can't use well.
 - **Quiet areas:** a Promo map area with evidence before but nothing in the last 60 days (unless it's already an Aim for next).
-- **Quiet V2MOM methods:** each method of your current V2MOM with nothing linked in the last 30 days, or nothing linked at all. Methods the Doc marks Completed are left out. Each links to the **V2MOM** page.
+- **Quiet V2MOM methods:** each method of your current V2MOM with nothing linked in the last 30 days, or nothing linked at all. Methods the Doc marks Completed are left out, and so are weeks before the V2MOM's fiscal year. Each links to the **V2MOM** page.
 - **The queue:** 25 or more records in the Intake Review Queue not checked yet.
 
 When nothing needs you, it says so. The page is worked out when you open it, from the notebook only: no Claude, nothing stored.
@@ -276,7 +276,7 @@ Below, one row per method, in the Doc's order:
 
 - **A dot:** green when something was linked in the last 30 days, orange when it has gone quiet (work before, nothing in 30 days), grey when nothing is linked yet.
 - **M1 and the name**, then the **status** from the Doc as a chip (green for Completed, orange for At Risk, Off Track or Behind) and its **percent** as a small bar.
-- **The numbers:** wins plus records linked to it **this quarter** (calendar quarters: Jan to Mar, Apr to Jun, Jul to Sep, Oct to Dec) and **in FY27** (Salesforce's fiscal year, Feb 1 to Jan 31; FY27 runs Feb 1, 2026 to Jan 31, 2027), and the date of the latest one. A win made from a linked record counts too, so a record and its win count as two.
+- **The numbers:** wins plus records linked to it **this quarter** (calendar quarters: Jan to Mar, Apr to Jun, Jul to Sep, Oct to Dec) and **in FY27** (Salesforce's fiscal year, Feb 1 to Jan 31; FY27 runs Feb 1, 2026 to Jan 31, 2027), and the date of the latest one. A win made from a linked record counts too, so a record and its win count as two. An open task doesn't count until it's done.
 - **The measures**, each with its own status chip.
 - **About this method** folds open to the description and any obstacles the Doc relates to it. Obstacles that don't name a method are listed at the bottom.
 

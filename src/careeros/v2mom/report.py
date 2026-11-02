@@ -35,7 +35,7 @@ def status_class(status: str) -> str:
 
 def build(s: Session, today: date | None = None) -> dict | None:
     """None when no V2MOM is loaded. Each method's state is "active" (work in the last 30 days), "quiet" (work, but
-    none in 30 days) or "none" (nothing linked yet). Work dated after `today` is left out."""
+    none in 30 days) or "none" (nothing linked yet). Work dated after `today` and open tasks are left out."""
     v = store.current(s)
     if v is None:
         return None
@@ -54,10 +54,12 @@ def build(s: Session, today: date | None = None) -> dict | None:
     rows = []
     for m in methods:
         e = ev.get(m.id, dict(entries=[], wins=[]))
-        days = [x.day for x in e["entries"] + e["wins"] if x.day <= end]
+        entries = [x.day for x in e["entries"] if x.day <= end and x.status != "open"]
+        wins = [x.day for x in e["wins"] if x.day <= end]
+        days = entries + wins
         last = max(days, default="")
         rows.append(dict(
-            m=m, entries=sum(1 for x in e["entries"] if x.day <= end), wins=sum(1 for x in e["wins"] if x.day <= end),
+            m=m, entries=len(entries), wins=len(wins),
             quarter=sum(1 for d in days if q_lo.isoformat() <= d), last=last,
             year=sum(1 for d in days if fy_lo.isoformat() <= d <= fy_hi.isoformat()),
             state="none" if not days else "active" if last >= quiet_since else "quiet",

@@ -59,9 +59,9 @@ def build(s: Session, week_end: date | None = None) -> dict:
                 nudges.append(dict(text=f"Nothing new for {row['topic'].name} in {QUIET_DAYS} days (last: {max(days)}).",
                                    link="/promo", act="Open the Promo map"))
     v2 = v2mom_report.build(s, last)
-    for x in v2["methods"] if v2 else []:
+    for x in v2["methods"] if v2 and last >= v2["fy_lo"] else []:
         m = x["m"]
-        if x["state"] != "active" and m.status.lower() != "completed":
+        if x["state"] != "active" and v2mom_report.status_class(m.status) != "done":
             name = f"V2MOM {m.label} ({m.name})"
             nudges.append(dict(text=f"Nothing new for {name} in {v2mom_report.QUIET_DAYS} days (last: {x['last']})."
                                     if x["last"] else f"Nothing linked to {name} yet.",

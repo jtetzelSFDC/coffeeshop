@@ -4,7 +4,7 @@ import re
 from datetime import date, datetime, timedelta
 
 from careeros import digest
-from careeros.storage.models import V2momLink, Win
+from careeros.storage.models import JournalEntry, V2momLink, Win
 from careeros.v2mom import report
 
 from test_guide import nb, session  # noqa: F401
@@ -21,7 +21,7 @@ def link(s, method_id, *, entry_id=None, win_id=None):
 
 
 def fixture(s, today):
-    """M1 has work this quarter, M2 went quiet, M3 (Completed) and M4 have nothing linked."""
+    """M1 has work this quarter, M2 went quiet, M3 (Completed) has nothing linked, M4 only an open task."""
     m = load_v2mom(s, methods=FOUR)
     d = lambda n: (today - timedelta(days=n)).isoformat()  # noqa: E731
     recent = add(s, "Ran a community session on release trains", day=d(0))
@@ -29,6 +29,9 @@ def fixture(s, today):
         link(s, m["M1"], entry_id=eid)
     link(s, m["M1"], entry_id=add(s, "Planned next month's session", day=d(-10)))  # dated later: left out
     link(s, m["M2"], entry_id=add(s, "Drafted the pipeline template", day=d(100)))
+    todo = add(s, "Write the refresh runbook", kind="task", source="tasks", day=d(0))
+    s.get(JournalEntry, todo).status = "open"  # not done yet: not evidence
+    link(s, m["M4"], entry_id=todo)
     s.add(Win(day=d(0), title="Ran the community session", entry_id=recent, created_at=datetime.now()))
     s.commit()
     return m
@@ -77,6 +80,8 @@ def test_digest_nudges_only_quiet_methods(nb):
         assert not any("V2MOM" in n["text"] for n in digest.build(s, NOV_2)["nudges"])  # no V2MOM yet
         fixture(s, NOV_2)
         got = [n for n in digest.build(s, NOV_2)["nudges"] if "V2MOM" in n["text"]]
+        before_fy27 = digest.build(s, date(2026, 1, 20))["nudges"]
+    assert not any("V2MOM" in n["text"] for n in before_fy27)  # the methods didn't exist yet
     assert [n["text"] for n in got] == [
         "Nothing new for V2MOM M2 (Build Reusable Pipeline Accelerators) in 30 days (last: 2026-07-25).",
         "Nothing linked to V2MOM M4 (Write Down The Runbooks) yet."]
