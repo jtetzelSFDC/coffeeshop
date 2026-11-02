@@ -22,7 +22,8 @@
       {% for k, label in kind_opts %}<button name="kind" value="{{ k }}" class="{{ 'on' if r.kind == k }}" aria-pressed="{{ 'true' if r.kind == k else 'false' }}">{{ label }}</button>{% endfor %}</form>
       {% if r.kind_was %}<br><span class="chip ai">AI, was {{ r.kind_was }}</span>{% endif %}</td>
     <td>{% for l in r.links %}<span class="chip {{ 'ai' if l.ai else 'guide' }}" title="{{ l.name }}">{% if l.ai %}AI: {% endif %}{{ l.label }}<form method="post" action="/sheet/link/{{ l.id }}/delete">{{ hidden() }}<button aria-label="Remove {{ l.label }}">&times;</button></form></span>{% endfor %}
-      {% if guided %}<a href="/guide/link?entry={{ r.id }}&next=/sheet" class="muted">{{ 'edit' if r.links else 'link' }}</a>{% endif %}</td>
+      {% for l in r.v2mom %}<span class="chip {{ 'ai' if l.ai else 'guide' }}" title="V2MOM method: {{ l.name }}{{ '' if l.active else ' (no longer in your V2MOM)' }}">{% if l.ai %}AI: {% endif %}V2MOM {{ l.label }}<form method="post" action="/sheet/v2mom/{{ l.id }}/delete">{{ hidden() }}<button aria-label="Remove V2MOM {{ l.label }}">&times;</button></form></span>{% endfor %}
+      {% if guided %}<a href="/guide/link?entry={{ r.id }}&next=/sheet" class="muted">{{ 'edit' if r.links or r.v2mom else 'link' }}</a>{% endif %}</td>
     <td style="white-space:nowrap"><form method="post" action="/sheet/{{ r.id }}/win">{{ hidden() }}
       {% for k, label in size_label.items() %}<button name="size" value="{{ k }}" class="{{ 'on' if r.win and r.win.size == k }}" aria-label="{{ label }} win">{{ label[0] }}</button>{% endfor %}</form>
       {% if r.win %}<form method="post" action="/sheet/{{ r.id }}/unwin">{{ hidden() }}<button aria-label="Not a win">&times;</button></form>

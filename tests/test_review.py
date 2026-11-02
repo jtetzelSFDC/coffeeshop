@@ -59,7 +59,7 @@ def test_review_links_fixes_kinds_and_drafts_wins(nb):
                 theme="Leadership")),
         }
         r = ai_review.review(s, reader=fake(answers))
-        assert r == dict(read=3, links=3, wins=1, kinds=1, failed=0)
+        assert r == dict(read=3, links=3, wins=1, kinds=1, v2mom=0, failed=0)
         ea, eb = s.get(JournalEntry, a), s.get(JournalEntry, b)
         assert (ea.kind, ea.kind_was, ea.status, ea.ai_read) == ("task", "note", "done", True)
         assert eb.kind == "meeting" and eb.kind_was == ""  # calendar items stay meetings
@@ -69,7 +69,7 @@ def test_review_links_fixes_kinds_and_drafts_wins(nb):
         pm = promo_map(s)
         g7 = [x for row in pm["rows"] for x in row["cells"][7] if x["wins"]]
         assert g7 and g7[0]["status"] == "shown"  # a large win is 4 points, counted once with its entry
-        assert ai_review.review(s, reader=fake({})) == dict(read=0, links=0, wins=0, kinds=0, failed=0)
+        assert ai_review.review(s, reader=fake({})) == dict(read=0, links=0, wins=0, kinds=0, v2mom=0, failed=0)
 
 
 def test_review_keeps_user_links_and_checked_rows(nb):

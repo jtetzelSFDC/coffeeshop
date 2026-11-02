@@ -103,7 +103,7 @@ Colors come from points. A linked entry is worth 1, and a small, medium, or larg
 The **Intake Review Queue** (in the Menu) lists every record (calendar meetings, Google Tasks, Slack items, and what you typed) as rows, newest first, 100 to a page. Each row has one-click buttons:
 
 - **Type**: Meeting, Convo, Doc, Task, or Other. The lit one is the current type.
-- **Leveling guide**: the guide items the record shows. Click &times; to remove one, or **edit**/**link** to pick items yourself.
+- **Leveling guide**: the guide items the record shows, and the V2MOM methods it moves forward (**V2MOM M2**). Click &times; to remove one, or **edit**/**link** to pick them yourself.
 - **Win**: **S**, **M**, or **L** makes the record a small, medium, or large win (or resizes it), and &times; removes the win. Click the win's title to see why it mattered, then **Edit on Wins** to reword it.
 - **Looks right** marks the row checked. Whatever Claude picked for it becomes yours, and the row leaves the **Not checked yet** list, so you can work down the list until it's empty.
 - **Remove** (under Looks right) takes a record out for good, for example a meeting you didn't attend. Its pasted notes, guide links, and any win Claude drafted from it go too; wins you made or edited stay. Calendar, Tasks, and Slack syncs skip removed records so they don't come back. Choose **Removed** in the Show menu to see them and **Restore** one if you change your mind.
@@ -256,6 +256,17 @@ The sync reads the Doc through Claude Code's Google Workspace connector, then Cl
 
 **The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when the Doc was read in the last 31 days, orange when it's older, and grey with a hint when no Doc is connected yet. The Doc's id is kept in `v2mom.doc` in the notebook folder, readable only by you. The Doc's text passes through Claude Code to be read.
 
+**Linking your work to methods.** Once the V2MOM is loaded, Claude's read-through of new records (after every sync, and the queue's **Have Claude read** button) also picks the V2MOM methods each record really moves forward: none for routine meetings and status pings, at most two. It's the same read as the leveling-guide links, so it costs no extra Claude time. In the Intake Review Queue they show as purple **AI: V2MOM M2** chips next to the guide chips (hover for the method's name). **Looks right** makes them yours, **&times;** on a chip removes it for good (Claude won't put it back), and **edit** opens the linking page, which now has a **Which V2MOM methods does this move forward?** list at the top. Once you've changed a record's methods, Claude leaves them alone. A chip that says **V2MOM old** points at a method that's no longer in your current V2MOM (dropped, or last year's); it stays so the history makes sense.
+
+**Linking what's already in the notebook** (once, after the first V2MOM sync). Records Claude read before the V2MOM existed have no methods yet. This reads them in batches of 40 (about 16 batches for 600 records, a few minutes):
+
+```
+uv run careeros v2mom tag --all     # every record
+uv run careeros v2mom tag           # just the last 90 days
+```
+
+It skips records already read against the V2MOM and ones whose methods you set, so running it again only does what's left (for example after a batch failed). Its picks are marked AI too, including on rows you'd already checked. Record text and the V2MOM's methods pass through the AI tool.
+
 ## Year-end exports
 
 At year end, pick the year on the Wins tab and click **Download as Markdown**. The file opens with your large wins as highlights, then lists everything by theme with its date and why it mattered. Paste it into a promotion doc or use it to pick resume bullets. Removing a notebook entry never removes a win made from it.
@@ -299,7 +310,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `171 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `179 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

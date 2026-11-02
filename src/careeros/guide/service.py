@@ -173,7 +173,7 @@ def keeps_entry(s: Session, e: JournalEntry) -> bool:
 
 
 def confirm(s: Session, entry_id: int) -> None:
-    """The user checked this row: Claude's picks for it (links, type, drafted win) become the user's own."""
+    """The user checked this row: Claude's picks for it (links, V2MOM methods, type, drafted win) become the user's own."""
     e = s.get(JournalEntry, entry_id)
     if e is None:
         return
@@ -185,6 +185,8 @@ def confirm(s: Session, entry_id: int) -> None:
     for l in s.scalars(select(GuideLink).where(
             (GuideLink.entry_id == entry_id) | GuideLink.win_id.in_([w.id for w in wins]))):
         l.by_ai = False
+    from ..v2mom.links import confirm as confirm_v2mom
+    confirm_v2mom(s, entry_id, [w.id for w in wins])
     s.commit()
 
 

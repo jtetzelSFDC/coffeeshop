@@ -35,7 +35,7 @@ def _link_new(job: Job, i: int, s) -> int:
         job.done(i, "Nothing new to link.")
         return 0
     job.start(i)
-    r = dict(read=0, links=0, wins=0, failed=0)
+    r = dict(read=0, links=0, wins=0, v2mom=0, failed=0)
     try:
         if pending(s):
             r = review(s, progress=job.sub)
@@ -44,7 +44,8 @@ def _link_new(job: Job, i: int, s) -> int:
     except ClaudeError as exc:
         job.fail(i, str(exc))
         return 0
-    job.done(i, f"{_plural(r['links'], 'guide link')}, {_plural(r['wins'], 'drafted win')}, "
+    job.done(i, f"{_plural(r['links'], 'guide link')}, " + (f"{r['v2mom']} V2MOM, " if r["v2mom"] else "")
+             + f"{_plural(r['wins'], 'drafted win')}, "
              f"{_plural(g['joined'], 'record')} grouped with earlier work, {a['tagged']} counted toward impact"
              + (f"; {r['failed']} couldn't be read" if r["failed"] else ""))
     return r["read"]

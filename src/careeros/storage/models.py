@@ -33,6 +33,8 @@ class JournalEntry(Base):
     activity: Mapped[str] = mapped_column(String, default="")  # one key from guide/activities.py, or "" for none
     activity_read: Mapped[bool] = mapped_column(Boolean, default=False)  # Claude has tagged it
     activity_fixed: Mapped[bool] = mapped_column(Boolean, default=False)  # the user set it; Claude leaves it
+    v2mom_read: Mapped[bool] = mapped_column(Boolean, default=False)  # Claude has read it against the V2MOM
+    v2mom_fixed: Mapped[bool] = mapped_column(Boolean, default=False)  # the user set its methods; Claude leaves them
 
 
 class WorkItem(Base):
@@ -176,6 +178,19 @@ class V2momMethod(Base):
     @property
     def label(self) -> str:
         return f"M{self.position}"
+
+
+class V2momLink(Base):
+    """A win or a notebook entry that advances a V2MOM method. Goes away with the win or entry."""
+    __tablename__ = "v2mom_link"
+    __table_args__ = (UniqueConstraint("method_id", "win_id", "entry_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    method_id: Mapped[int] = mapped_column(ForeignKey("v2mom_method.id"), index=True)
+    win_id: Mapped[int | None] = mapped_column(ForeignKey("win.id", ondelete="CASCADE"), nullable=True, index=True)
+    entry_id: Mapped[int | None] = mapped_column(ForeignKey("journal_entry.id", ondelete="CASCADE"), nullable=True,
+                                                 index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    by_ai: Mapped[bool] = mapped_column(Boolean, default=False)  # picked by Claude, not yet confirmed
 
 
 class GuideLink(Base):
