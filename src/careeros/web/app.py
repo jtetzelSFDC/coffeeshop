@@ -25,6 +25,7 @@ from ..guide.topics import suggest, topic_of
 from ..slack import importer as slack_imp
 from ..storage.removal import remove_entry, restore_entry
 from ..storage.sync_log import status as sync_status
+from ..v2mom import connector as v2mom_conn
 from . import syncs
 from .jobs import Jobs
 from ..storage.db import init_db, make_engine, make_session_factory
@@ -197,7 +198,8 @@ def create_app(dd: DataDir) -> FastAPI:
             dash=dashboard.build(s, today), kinds=KINDS, attach_kinds=ATTACH_KINDS, today=today.isoformat(),
             csrf=csrf_token, msg=msg,
             sync_warning=dd.sync_warning(), theme=theme_of(request), page="/", personal=personal, q="",
-            slack_canvas=slack_imp.load_canvas_id(dd) if personal else None, sync=sync_status(s))
+            slack_canvas=slack_imp.load_canvas_id(dd) if personal else None,
+            v2mom_doc=v2mom_conn.load_doc_id(dd) if personal else None, sync=sync_view(s))
         return HTMLResponse(html)
 
     def tab_page(path: str):
@@ -297,6 +299,8 @@ def create_app(dd: DataDir) -> FastAPI:
             return back("Syncing only works with your personal notebook.", "/")
         if name == "google":
             started = jobs.start("google", syncs.GOOGLE_STEPS, lambda j: syncs.run_google(j, Session_, _write_lock))
+        elif name == "v2mom":
+            started = jobs.start("v2mom", syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, _write_lock, dd))
         else:
             started = jobs.start("slack", syncs.SLACK_STEPS, lambda j: syncs.run_slack(j, Session_, _write_lock, dd))
         if request.headers.get("x-sync") == "1":
@@ -313,6 +317,17 @@ def create_app(dd: DataDir) -> FastAPI:
     def slack_sync(request: Request):
         """Read the Slack tracker canvas, then sort and import its new items, in the background."""
         return start_sync(request, "slack")
+
+    @app.post("/sync/v2mom", dependencies=[Depends(check_csrf)])
+    def v2mom_sync(request: Request):
+        """Re-read the V2MOM Doc (after a check-in, say), in the background."""
+        return start_sync(request, "v2mom")
+
+    def sync_view(s: Session) -> dict[str, dict]:
+        st = sync_status(s)
+        if personal and not v2mom_conn.load_doc_id(dd):
+            st["v2mom"].update(ok=None, hint="Not connected yet. In Terminal run: uv run careeros v2mom connect <doc link>")
+        return st
 
     @app.get("/sync/status")
     def sync_status_json():
@@ -554,7 +569,7 @@ def create_app(dd: DataDir) -> FastAPI:
             **gsvc.ai_counts(s))
         html = env.get_template("sheet.html").render(
             rows=out, f=f, total=total, pages=pages, counts=counts, show_opts=SHEET_SHOW, source_opts=SOURCE_LABEL,
-            msg=msg, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/sheet", personal=personal, q="", wide=True, sync=sync_status(s),
+            msg=msg, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/sheet", personal=personal, q="", wide=True, sync=sync_view(s),
             **sheet_ctx(s, f))
         return HTMLResponse(html)
 

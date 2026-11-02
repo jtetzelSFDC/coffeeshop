@@ -147,6 +147,37 @@ class GuideItem(Base):
     active: Mapped[bool] = mapped_column(default=True)  # False once a re-import no longer has it
 
 
+class V2momVersion(Base):
+    """The user's V2MOM for one fiscal year, as last read from their Google Doc."""
+    __tablename__ = "v2mom_version"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    doc_id: Mapped[str] = mapped_column(String)
+    fiscal_year: Mapped[str] = mapped_column(String, default="")  # e.g. FY27, or "" when the Doc doesn't say
+    published: Mapped[str] = mapped_column(String, default="")  # as the Doc writes it, e.g. "Mar 25, 2026"
+    vision: Mapped[str] = mapped_column(Text, default="")
+    values: Mapped[list] = mapped_column(JSON, default=list)  # [{name, text}]
+    obstacles: Mapped[list] = mapped_column(JSON, default=list)  # [{name, text, related_method}]
+    pulled_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class V2momMethod(Base):
+    """One method of a V2MOM. Rows are kept across pulls (matched by name, then position) so links survive edits."""
+    __tablename__ = "v2mom_method"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("v2mom_version.id"), index=True)
+    position: Mapped[int] = mapped_column(Integer)  # 1-based order in the Doc; shown as M1, M2, …
+    name: Mapped[str] = mapped_column(Text)
+    description: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String, default="")  # as the Doc says: On Track, At Risk, Completed, …
+    progress: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)  # percent, when shown
+    measures: Mapped[list] = mapped_column(JSON, default=list)  # [{text, status}]
+    active: Mapped[bool] = mapped_column(Boolean, default=True)  # False once a pull no longer has it
+
+    @property
+    def label(self) -> str:
+        return f"M{self.position}"
+
+
 class GuideLink(Base):
     """The user's statement that a win or a notebook entry shows a guide item."""
     __tablename__ = "guide_link"

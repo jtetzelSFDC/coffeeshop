@@ -56,11 +56,20 @@
       {{ sync_chips(sync, [("slack", "Slack"), ("kudos", "Kudos")]) }}
       <div class="job" data-job="slack" hidden></div>
     </div>
+    <div class="sync-col">
+      <form method="post" action="/sync/v2mom" data-sync="v2mom">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button data-label="Sync V2MOM" {{ 'disabled' if not v2mom_doc }}>Sync V2MOM</button>
+      </form>
+      {{ sync_chips(sync, [("v2mom", "V2MOM")]) }}
+      <div class="job" data-job="v2mom" hidden></div>
+    </div>
   </div>
   {% call howto() %}
     <p class="help"><b>Sync Google</b> pulls yesterday's and today's meetings, your recently changed Google Tasks and Docs, and summaries of meeting notes, then has Claude link the new records to the leveling guide. Meeting titles, task titles, and document text pass through the AI tool.</p>
     <p class="help">{% if slack_canvas %}<b>Sync Slack tracker</b> reads your Slack Work Activity Tracker canvas and looks for kudos, has Claude sort the new items, then links them to the leveling guide. The canvas text passes through the AI tool.{% else %}Not connected yet. In Terminal run <code>uv run careeros slack connect &lt;canvas link&gt;</code>.{% endif %}</p>
-    <p class="help">Both also run on their own at 8 AM and 6 PM.</p>
+    <p class="help">{% if v2mom_doc %}<b>Sync V2MOM</b> re-reads the Google Doc your V2MOM is pasted in and updates its methods and measures. It runs by itself once a month; press it after a check-in. The Doc's text passes through the AI tool.{% else %}V2MOM: not connected yet. Paste your V2MOM into a Google Doc, then in Terminal run <code>uv run careeros v2mom connect &lt;doc link&gt;</code>.{% endif %}</p>
+    <p class="help">Google and Slack also run on their own at 8 AM and 6 PM.</p>
   {% endcall %}
 </section>
 <script src="/static/sync.js" defer></script>
