@@ -326,7 +326,7 @@ def create_app(dd: DataDir) -> FastAPI:
     def sync_view(s: Session) -> dict[str, dict]:
         st = sync_status(s)
         if personal and not v2mom_conn.load_doc_id(dd):
-            st["v2mom"].update(ok=None, hint="Not connected yet. In Terminal run: uv run careeros v2mom connect <doc link>")
+            st["v2mom"].update(ok=None, hint=syncs.V2MOM_CONNECT)
         return st
 
     @app.get("/sync/status")
