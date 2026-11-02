@@ -47,6 +47,18 @@ def test_the_guide_review_also_picks_v2mom_methods(nb):
         assert s.get(JournalEntry, a).v2mom_read and s.get(JournalEntry, b).v2mom_read
 
 
+def test_the_real_reader_asks_for_v2mom_picks_only_when_a_v2mom_is_loaded(monkeypatch):
+    sent = []
+    monkeypatch.setattr(ai_review, "ask", lambda p, d, timeout=0: sent.append((p, json.loads(d))) or
+                        '{"results": [{"id": "r0", "guide": [], "kind": "note", "win": null, "v2mom": ["M1"]}]}')
+    recs = [dict(id="r0", day="2026-10-01", kind="note", source="typed", text="Ran a community session")]
+    ai_review.read_batch([], [], recs)
+    got = ai_review.read_batch([], [], recs, v2mom=[dict(id="M1", name="Share know-how")])
+    assert '"v2mom"' not in sent[0][0] and "v2mom" not in sent[0][1]
+    assert '4. "v2mom"' in sent[1][0] and sent[1][0].endswith("covering every record.")
+    assert sent[1][1]["v2mom"][0]["id"] == "M1" and got["r0"]["v2mom"] == ["M1"]
+
+
 def test_without_a_v2mom_records_stay_unread_for_the_backfill(nb):
     dd, *_ = nb
     with session(dd) as s:
