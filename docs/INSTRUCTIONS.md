@@ -1,6 +1,6 @@
 # Career Tracker: How to use it
 
-Plain-language notes on running and testing the app. New questions and answers get added at the bottom under **Q&A**. For what the app *is*, see [README.md](README.md).
+Plain-language notes on running and testing the app. New questions and answers get added at the bottom under **Q&A**. For what the app *is*, see [README.md](../README.md).
 
 ## Where things stand
 
@@ -291,7 +291,7 @@ Your personal notebook is connected to Google Calendar, Google Tasks, Google Doc
    - Do the owners of the customer-related channels and repos mind a personal tool keeping titles and short notes from them?
    - Is Claude, through Claude Code, approved for this kind of work content?
    - Is the notebook folder backed up (Time Machine) and kept out of synced folders (iCloud, Dropbox)?
-3. **More sources and automation** are planned in `PLAN.md` and `IMPLEMENTATION_PLAN.md`: daily automatic syncs, grouping duplicate records, impact counts, a Claude-written promo case, GitHub, Google Docs as a source, kudos, and a weekly digest.
+3. **More sources and automation** are planned in [`PLAN.md`](plans/PLAN.md) and [`IMPLEMENTATION_PLAN.md`](plans/IMPLEMENTATION_PLAN.md): daily automatic syncs, grouping duplicate records, impact counts, a Claude-written promo case, GitHub, Google Docs as a source, kudos, and a weekly digest.
 4. **At year end,** download the promo case from the Promo map and your wins from the Wins tab.
 
 Keep real data out of `/tmp/cos-demo`; the practice notebook never syncs with Slack or Google.
