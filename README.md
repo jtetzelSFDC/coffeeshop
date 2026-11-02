@@ -88,9 +88,9 @@ Because nobody ever wrote a good promotion case under fluorescent lights.
 
 ## What's next
 
-**Version 1.0.** Everything in [PLAN.md](PLAN.md) (what and why) and [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (how) is built, ending with a **Friday digest**: at noon a notification tells you what the week added, and the **Weekly digest** page lists the wins, kudos, counts and a few nudges, each with a link to the place to fix it. Think of it as a coworker who remembers what you did this week and doesn't want anything for it. Next up is actually using it, which is the part where the bugs come out.
+**Version 1.0.** Everything in [PLAN.md](docs/plans/PLAN.md) (what and why) and [IMPLEMENTATION_PLAN.md](docs/plans/IMPLEMENTATION_PLAN.md) (how) is built, ending with a **Friday digest**: at noon a notification tells you what the week added, and the **Weekly digest** page lists the wins, kudos, counts and a few nudges, each with a link to the place to fix it. Think of it as a coworker who remembers what you did this week and doesn't want anything for it. Next up is actually using it, which is the part where the bugs come out.
 
-For day-to-day details (every button, every command, every "wait, why did it do that"), see [INSTRUCTIONS.md](INSTRUCTIONS.md).
+For day-to-day details (every button, every command, every "wait, why did it do that"), see [INSTRUCTIONS.md](docs/INSTRUCTIONS.md).
 
 <details>
 <summary><b>Under the hood</b></summary>

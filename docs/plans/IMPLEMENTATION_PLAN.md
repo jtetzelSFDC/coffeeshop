@@ -1,6 +1,6 @@
 # Career OS: implementation plan
 
-Companion to `PLAN.md`. `PLAN.md` says what and why; this says how, file by file. Edit freely. Anything under **Answer first** blocks the work until you answer it (type your answer right after the question).
+Companion to [`PLAN.md`](PLAN.md). `PLAN.md` says what and why; this says how, file by file. Edit freely. Anything under **Answer first** blocks the work until you answer it (type your answer right after the question).
 
 ## How every feature ships
 
@@ -9,8 +9,8 @@ Companion to `PLAN.md`. `PLAN.md` says what and why; this says how, file by file
 - Inside each PR: test first, then the change, then a run on a **copy** of your notebook (`cp -R` the data folder), never the real one. Run `uv run --offline pytest -q` before pushing.
 - PR body: what changed in two or three lines, how it was tested, what is not covered. End with the Claude Code line.
 - When a PR is up, you run `/ponytail:ponytail-review the pr #N`. Fix the findings as extra commits on the same branch, then merge.
-- Each PR adds a short note to `INSTRUCTIONS.md` for anything you'll use by hand.
-- Each PR that adds or changes something you'd notice also updates `README.md`: keep its tone (short, plain, a little funny, about not spending your time justifying your paycheck), keep "What's next" current, and refresh a screenshot in `docs/img/` when a screen changes a lot. Screenshots come from the practice notebook only, never the real one; the repo is public.
+- Each PR adds a short note to [`docs/INSTRUCTIONS.md`](../INSTRUCTIONS.md) for anything you'll use by hand.
+- Each PR that adds or changes something you'd notice also updates [`README.md`](../../README.md): keep its tone (short, plain, a little funny, about not spending your time justifying your paycheck), keep "What's next" current, and refresh a screenshot in `docs/img/` when a screen changes a lot. Screenshots come from the practice notebook only, never the real one; the repo is public.
 - No PRs exist yet. They get opened as each feature is built.
 
 ## Facts about the code that shape the plan
@@ -40,7 +40,7 @@ Dependencies: 2 needs 1. 4 needs 3. 5 needs 3 and 4. 6 needs 5. 9 needs 2 (and u
   - `prune(dd, daily=30, monthly=12)` keeps the newest 30 files plus the first file of each of the last 12 months.
 - `DataDir` gets a `backups` property. `create()` makes the folder with mode `0o700`, like the others.
 - CLI: `careeros backup now` and `careeros backup list`. Item 2's `sync all` calls `make_backup` first.
-- `INSTRUCTIONS.md`: "Restore from a backup" — stop the app, move `careeros.db` and the `-wal` and `-shm` files aside, copy the backup in as `careeros.db`, start the app.
+- `docs/INSTRUCTIONS.md`: "Restore from a backup" — stop the app, move `careeros.db` and the `-wal` and `-shm` files aside, copy the backup in as `careeros.db`, start the app.
 
 **Tests** (`tests/test_backup.py`)
 - Make a notebook with a few rows, back it up, and open the backup: same rows.
