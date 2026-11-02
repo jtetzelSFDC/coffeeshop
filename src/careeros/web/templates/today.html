@@ -20,6 +20,21 @@
   <p class="muted">Load your leveling guide to see how close the promotion is: <code>uv run careeros guide import &lt;file&gt;</code>.</p>
   {% endif %}
 
+  {% if dash.v2mom and dash.v2mom.methods %}{% set v2 = dash.v2mom %}
+  <div class="v2">
+    <a href="/v2mom">V2MOM: <b>{{ v2.active }} of {{ v2.methods|length }}</b> methods active this quarter</a>
+    <div class="ready">
+      {% for x in v2.methods %}
+      <a class="ready-row" href="/v2mom#m{{ x.m.id }}" title="{{ x.m.label }} {{ x.m.name }}: {{ x.quarter }} this quarter">
+        <span class="ready-label">{{ x.m.label }}</span>
+        <span class="bar" role="img" aria-label="{{ x.m.label }}: {{ x.quarter }} this quarter"><span class="{{ 'b-strong' if x.state == 'active' else 'b-started' }}" style="width:{{ x.pct }}%"></span></span>
+        <span class="ready-num"><b>{{ x.quarter }}</b> <span class="muted">this qtr</span></span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <div class="tiles">
     {% if dash.skills %}<a class="tile" href="/promo" title="Leveling-guide skills with evidence"><b>{{ dash.skills.shown }}<span class="of">/{{ dash.skills.total }}</span></b><span>skills shown</span></a>{% endif %}
     <a class="tile" href="/wins" title="Wins dated {{ dash.half }}"><b>{{ dash.wins }}</b><span>wins this half</span></a>

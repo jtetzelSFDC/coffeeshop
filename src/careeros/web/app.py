@@ -25,13 +25,13 @@ from ..guide.topics import suggest, topic_of
 from ..slack import importer as slack_imp
 from ..storage.removal import remove_entry, restore_entry
 from ..storage.sync_log import status as sync_status
-from ..v2mom import connector as v2mom_conn, links as v2mom_links, store as v2mom_store
+from ..v2mom import connector as v2mom_conn, links as v2mom_links, report as v2mom_report, store as v2mom_store
 from . import syncs
 from .jobs import Jobs
 from ..storage.db import init_db, make_engine, make_session_factory
 from ..guide import activities, work
-from ..storage.models import (GuideItem, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, V2momLink, Win,
-                              WorkItem)
+from ..storage.models import (GuideItem, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, V2momLink,
+                              V2momMethod, Win, WorkItem)
 
 ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
 CSP = ("default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self'; "
@@ -60,7 +60,7 @@ TABS = {  # path -> (kind, tab name, heading, what's on it)
     "/recognition": ("recognition", "Kudos", "Kudos", "Recognition from other people: shout-outs and thanks found in public Slack channels, and anything you marked as recognition. Each counts like a medium win on the Promo map."),
     "/other": ("note", "Other", "Something else", "Anything that didn't fit the other tabs."),
 }
-PAGES = {"/", "/search", "/wins", "/promo", "/sheet", "/digest", *TABS}
+PAGES = {"/", "/search", "/wins", "/promo", "/v2mom", "/sheet", "/digest", *TABS}
 SOURCE_LABEL = {"calendar": "Calendar", "tasks": "Google Tasks", "slack": "Slack", "docs": "Google Docs", "github": "GitHub",
                 "kudos": "Slack kudos", "": "Typed"}
 SHEET_KIND = [("meeting", "Meeting"), ("conversation", "Convo"), ("document", "Doc"), ("task", "Task"), ("recognition", "Kudos"),
@@ -122,6 +122,7 @@ def create_app(dd: DataDir) -> FastAPI:
     env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=True)
     env.globals.update(tabs=TABS, sizes=SIZES, themes=THEMES)
     env.filters["short_day"] = short_day
+    env.filters["status_class"] = v2mom_report.status_class
     env.globals["howto"] = env.get_template("_ui.html").module.howto
     app = FastAPI(debug=False, docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -783,6 +784,30 @@ def create_app(dd: DataDir) -> FastAPI:
         html = env.get_template("digest.html").render(
             d=digest.build(s, end), weeks=weeks, size_label=SIZE_LABEL, csrf=csrf_token, msg=None,
             sync_warning=dd.sync_warning(), theme=theme_of(request), page="/digest", personal=personal, q="")
+        return HTMLResponse(html)
+
+    @app.get("/v2mom", response_class=HTMLResponse)
+    def v2mom_page(request: Request, s: Session = Depends(db)):
+        """Each method of the V2MOM with its measures, the work behind it, and whether it has gone quiet."""
+        html = env.get_template("v2mom.html").render(
+            r=v2mom_report.build(s), connected=bool(v2mom_conn.load_doc_id(dd)) if personal else False,
+            csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/v2mom",
+            personal=personal, q="")
+        return HTMLResponse(html)
+
+    @app.get("/v2mom/{mid}", response_class=HTMLResponse)
+    def v2mom_method_page(request: Request, mid: int, s: Session = Depends(db)):
+        """The wins and records linked to one method, newest first."""
+        m = s.get(V2momMethod, mid)
+        if m is None:
+            return HTMLResponse("Not found", status_code=404)
+        cur = v2mom_store.current(s)
+        ev = v2mom_links.evidence(s).get(mid, dict(entries=[], wins=[]))
+        html = env.get_template("v2mom_method.html").render(
+            m=m, current=m.active and cur is not None and m.version_id == cur.id, wins=ev["wins"],
+            entries=ev["entries"], kind_label=dict(SHEET_KIND), source_label=SOURCE_LABEL, size_label=SIZE_LABEL,
+            csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/v2mom",
+            personal=personal, q="")
         return HTMLResponse(html)
 
     @app.get("/impact/{key}", response_class=HTMLResponse)

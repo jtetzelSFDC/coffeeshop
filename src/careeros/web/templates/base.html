@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en" data-theme="{{ theme }}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-{% set main_pages = [("/", "Home"), ("/wins", "Wins"), ("/promo", "Promo map"), ("/sheet", "Intake Review Queue"), ("/digest", "Weekly digest")] %}
+{% set main_pages = [("/", "Home"), ("/wins", "Wins"), ("/promo", "Promo map"), ("/v2mom", "V2MOM"), ("/sheet", "Intake Review Queue"), ("/digest", "Weekly digest")] %}
 {% set ns = namespace(here='Search' if page == '/search' else '') %}
 {% for path, label in main_pages %}{% if path == page %}{% set ns.here = label %}{% endif %}{% endfor %}
 {% for path, tab in tabs.items() %}{% if path == page %}{% set ns.here = tab[1] %}{% endif %}{% endfor %}
@@ -61,6 +61,11 @@ button.icon{width:2rem;height:2rem;padding:0;border-radius:50%;font-size:1rem;li
 .tile.warn-tile{border-color:var(--st-started)}
 .momentum{display:flex;align-items:flex-end;gap:.8rem;margin:.9rem 0 0}.momentum svg{width:15rem;height:2.6rem;flex:none}
 .momentum rect{fill:var(--st-shown)}.momentum rect.now{fill:var(--st-strong)}
+.v2{margin:.9rem 0 0;padding-top:.6rem;border-top:1px dashed var(--line)}.v2>a{color:var(--text);text-decoration:none;font-size:.92rem}
+.v2 .ready{margin-top:.35rem;gap:.2rem 1.6rem;grid-template-columns:1fr 1fr}@media (max-width:680px){.v2 .ready{grid-template-columns:1fr}}
+.v2 .ready-row{grid-template-columns:2rem 1fr 4.5rem}.v2 .ready-row .bar{height:.45rem}.v2 .ready-num{font-size:.8rem}
+.vm-head{display:flex;flex-wrap:wrap;gap:.25rem .5rem;align-items:center}.vm-head .chip{margin-left:0}.vm-pct{display:inline-flex;gap:.4rem;align-items:center;white-space:nowrap}.vm-pct .bar{width:5rem;height:.4rem;margin:0}
+.vm-nums{margin-left:auto;font-size:.82rem;color:var(--muted)}.vm ul{font-size:.86rem;margin:.3rem 0}.vm li .chip{font-size:.7rem}
 p.next{margin:.8rem 0 0;font-size:.9rem;border-top:1px dashed var(--line);padding-top:.6rem}
 .howto{margin:.35rem 0 0}
 .stats .late-stat{border-color:var(--st-started);color:var(--text);text-decoration:none}.stats .ok-stat{border-color:var(--st-strong)}

@@ -162,6 +162,7 @@ At the top are **nudges**, each with a link to where to act:
 - **Aim for next:** the top two suggestions from the Promo map.
 - **Big wins without "why it mattered":** medium and large wins with no impact sentence, which the promo case can't use well.
 - **Quiet areas:** a Promo map area with evidence before but nothing in the last 60 days (unless it's already an Aim for next).
+- **Quiet V2MOM methods:** each method of your current V2MOM with nothing linked in the last 30 days, or nothing linked at all. Methods the Doc marks Completed are left out. Each links to the **V2MOM** page.
 - **The queue:** 25 or more records in the Intake Review Queue not checked yet.
 
 When nothing needs you, it says so. The page is worked out when you open it, from the notebook only: no Claude, nothing stored.
@@ -267,22 +268,39 @@ uv run careeros v2mom tag           # just the last 90 days
 
 It skips records already read against the V2MOM and ones whose methods you set, so running it again only does what's left (for example after a batch failed). Its picks are marked AI too, including on rows you'd already checked. Record text and the V2MOM's methods pass through the AI tool.
 
+### The V2MOM page
+
+**V2MOM** in the Menu shows your current V2MOM. At the top: the fiscal year, how many methods had work this quarter, when it was published, and when the app last read the Doc. **Vision and values** folds open to the Doc's vision and values.
+
+Below, one row per method, in the Doc's order:
+
+- **A dot:** green when something was linked in the last 30 days, orange when it has gone quiet (work before, nothing in 30 days), grey when nothing is linked yet.
+- **M1 and the name**, then the **status** from the Doc as a chip (green for Completed, orange for At Risk, Off Track or Behind) and its **percent** as a small bar.
+- **The numbers:** wins plus records linked to it **this quarter** (calendar quarters: Jan to Mar, Apr to Jun, Jul to Sep, Oct to Dec) and **in FY27** (Salesforce's fiscal year, Feb 1 to Jan 31; FY27 runs Feb 1, 2026 to Jan 31, 2027), and the date of the latest one. A win made from a linked record counts too, so a record and its win count as two.
+- **The measures**, each with its own status chip.
+- **About this method** folds open to the description and any obstacles the Doc relates to it. Obstacles that don't name a method are listed at the bottom.
+
+**see the work** opens that method's page: its wins and linked records, newest first. To change which methods a record moves forward, use **edit** on its row in the Intake Review Queue.
+
+On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active this quarter", with a small bar per method (how many wins and records it has this quarter, longest for the busiest; orange for a method that's gone quiet). Click the line for the V2MOM page, or a bar for that method. The strip is hidden until a V2MOM is loaded. Everything here is worked out when the page opens, from the notebook only: no Claude, nothing stored.
+
 ## Year-end exports
 
 At year end, pick the year on the Wins tab and click **Download as Markdown**. The file opens with your large wins as highlights, then lists everything by theme with its date and why it mattered. Paste it into a promotion doc or use it to pick resume bullets. Removing a notebook entry never removes a win made from it.
 
 ## What you should see
 
-The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
+The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, V2MOM, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
 
 - **Home**: a one-card view of the goal.
   - **Promotion readiness:** a bar each for Grade 6 and Grade 7, showing how many key experiences are shown, with a percentage (hover for the detail; click for the Promo map).
+  - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method (see **The V2MOM page**). Hidden until a V2MOM is loaded.
   - **Four tiles:** leveling-guide skills with evidence, wins this half, kudos this half, and records waiting in the Intake Review Queue.
   - **Momentum:** a small chart of evidence per week (wins plus records linked to the guide) for the last 12 weeks, with the current week in darker green. Hover over a bar for its count.
   - **Next:** one line with the Promo map's top Aim for next.
   - **Below:** the Sync buttons with their status chips, and one slim line to add something the syncs missed. Pick a kind, type a few words, and click **Add**; you land on that kind's tab with the new entry. **Paste notes, a link, or a transcript** folds out under it.
   - There's no day-by-day list here any more. The daily review happens in the Intake Review Queue, and the Friday digest covers the week. Every record is still on its tab.
-- **Wins**, **Promo map**, and the **Intake Review Queue**: described in their own sections above.
+- **Wins**, **Promo map**, **V2MOM**, and the **Intake Review Queue**: described in their own sections above.
 - **Meetings / Conversations / Documents / Tasks / Kudos / Other**: one tab per kind of entry, newest first. Each entry is one line: a small icon for where it came from (calendar, Slack, Docs, GitHub, Tasks, kudos, or a pencil for typed), the text, and four icon buttons on the right (hover for their names):
   - **+** adds notes or a link to it.
   - **Trophy** counts it as a win.
@@ -310,7 +328,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `180 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `186 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

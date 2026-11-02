@@ -24,7 +24,7 @@ You go back to doing the job. Which, conveniently, is also the best evidence for
 2. **Sorts.** Claude reads each record and decides what it is (meeting, conversation, doc, task), which parts of the leveling guide it shows, and whether it's a win worth keeping.
 3. **Counts once.** A deployment that shows up as a meeting, a Slack thread, *and* a task is one deployment, not three. Nobody likes a padded case, least of all the promotion committee.
 4. **Shows the map.** The Promo map lays the leveling guide next to your evidence: what you've shown, what's strong, what's still a gap, and how many times you actually did the thing.
-5. **Knows your V2MOM.** Paste your V2MOM into a Google Doc once and the app reads its methods, measures, and how each is tracking, then re-reads it every month. While Claude sorts each record, it also notes which V2MOM method the work moves forward (marked AI, one click to fix). It's the document you wrote in March promising things; now something remembers it besides your manager.
+5. **Knows your V2MOM.** Paste your V2MOM into a Google Doc once and the app reads its methods, measures, and how each is tracking, then re-reads it every month. While Claude sorts each record, it also notes which V2MOM method the work moves forward (marked AI, one click to fix). It's the document you wrote in March promising things; now something remembers it besides your manager. The **V2MOM** page shows the work behind each method this quarter and this fiscal year, Home shows how many methods are moving, and the Friday digest points out any method that's gone quiet for a month, before your check-in does.
 6. **Writes the case.** Press **Write my promo case** and Claude drafts it (Summary, Key accomplishments, Impact, Behaviors & values, Growth areas) from your own evidence, with a little [3] after every sentence pointing to where it came from. The app double-checks each sentence: no source, or a number that isn't in your data, and it's flagged **Check this**. Your manager can't fact-check you harder than this. Then edit it in place or have Claude rewrite one section; every change is a new draft you can compare. When it's ready, **Send to Google Docs** makes a copy with sources for you and a clean one for your manager.
 
 <p align="center">
@@ -89,7 +89,7 @@ Because nobody ever wrote a good promotion case under fluorescent lights.
 
 ## What's next
 
-**Version 1.0.** Everything in [PLAN.md](docs/plans/PLAN.md) (what and why) and [IMPLEMENTATION_PLAN.md](docs/plans/IMPLEMENTATION_PLAN.md) (how) is built, ending with a **Friday digest**: at noon a notification tells you what the week added, and the **Weekly digest** page lists the wins, kudos, counts and a few nudges, each with a link to the place to fix it. Think of it as a coworker who remembers what you did this week and doesn't want anything for it. Next up is actually using it, which is the part where the bugs come out, plus a V2MOM page showing the evidence behind each method, and a nudge when a method has gone quiet.
+**Version 1.0.** Everything in [PLAN.md](docs/plans/PLAN.md) (what and why) and [IMPLEMENTATION_PLAN.md](docs/plans/IMPLEMENTATION_PLAN.md) (how) is built, ending with a **Friday digest**: at noon a notification tells you what the week added, and the **Weekly digest** page lists the wins, kudos, counts and a few nudges, each with a link to the place to fix it. Think of it as a coworker who remembers what you did this week and doesn't want anything for it. Next up is actually using it, which is the part where the bugs come out.
 
 For day-to-day details (every button, every command, every "wait, why did it do that"), see [INSTRUCTIONS.md](docs/INSTRUCTIONS.md).
 
@@ -101,7 +101,7 @@ For day-to-day details (every button, every command, every "wait, why did it do 
 | `web/` | The local pages (loopback only), the background Sync jobs, and the Intake Review Queue |
 | `google/` | Google Calendar, Google Tasks, and meeting-note summaries through Claude Code's Google Workspace connector |
 | `slack/` | Reading the Slack tracker canvas, sorting its items, and importing them |
-| `v2mom/` | Reading your V2MOM from a Google Doc, keeping its methods stable across re-reads, and links from your work to them |
+| `v2mom/` | Reading your V2MOM from a Google Doc, keeping its methods stable across re-reads, links from your work to them, and the counts per method |
 | `guide/` | The leveling guide, links from your work to it, grouping records into pieces of work, impact counts, the Promo map, and Claude's read-through |
 | `promo/` | The promotion-case writer: the numbered evidence it's written from, and the checks on every sentence |
 | `export/` | Downloads: wins and the evidence behind the Promo map as Markdown, and everything as CSV |
