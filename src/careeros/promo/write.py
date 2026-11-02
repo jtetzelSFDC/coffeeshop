@@ -20,7 +20,7 @@ from ..storage.models import PromoSection, PromoVersion
 from .evidence import SECTIONS, build
 
 WORKERS = 3
-NUMBER = re.compile(r"\d+(?:[.,:]\d+)*")
+NUMBER = re.compile(r"(?<![A-Za-z])\d+(?:[.,:]\d+)*")  # not the 2 in "V2MOM M2", which every V2MOM piece has
 
 PROMPT = """You write one section of a promotion case for {name}, a DevOps release manager at Grade 5 going for \
 Grade 6, with evidence of some Grade 7 work. The section is "{heading}": {what}. Write {length}.

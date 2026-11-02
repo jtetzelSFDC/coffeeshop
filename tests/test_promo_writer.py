@@ -65,6 +65,10 @@ def test_bad_citations_and_invented_numbers_are_flagged():
     assert [(x["valid"], x["reason"]) for x in got] == [
         (True, ""), (False, "31 isn't in the evidence"), (False, "no source in the evidence"), (True, "")]
     assert got[3]["text"] == "Jordan shipped 27 deployments." and got[3]["sources"] == [2]
+    ev = [dict(n=1, kind="v2mom", text="V2MOM M2 (Build, On Track): 1 win and 0 records.", day="", refs=[])]
+    got = pw.check([dict(text="Jordan ran 2 releases, advancing V2MOM method M2 (Build).", sources=[1]),
+                    dict(text="Jordan had 1 win advancing V2MOM method M2.", sources=[1])], ev)
+    assert [x["reason"] for x in got] == ["2 isn't in the evidence", ""]
 
 
 def test_write_case_saves_a_version_with_its_evidence(nb):
