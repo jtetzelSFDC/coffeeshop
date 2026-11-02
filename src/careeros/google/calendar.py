@@ -78,9 +78,10 @@ def parse_events(ics: bytes, first: date, last: date) -> list[Event]:
         cal = icalendar.Calendar.from_ical(ics)
     except ValueError:
         raise CalendarError("That address didn't return a calendar file.") from None
-    local = datetime.now().astimezone().tzinfo
-    start = datetime.combine(first, datetime.min.time(), tzinfo=local)
-    stop = datetime.combine(last + timedelta(days=1), datetime.min.time(), tzinfo=local)
+    # .astimezone() with no zone uses this Mac's rules for that moment, so a date across a daylight-saving change
+    # gets its own offset, not today's.
+    start = datetime.combine(first, datetime.min.time()).astimezone()
+    stop = datetime.combine(last + timedelta(days=1), datetime.min.time()).astimezone()
     out: dict[str, Event] = {}
     for ev in recurring_ical_events.of(cal).between(start, stop):
         if str(ev.get("STATUS", "")).upper() == "CANCELLED":
@@ -88,13 +89,11 @@ def parse_events(ics: bytes, first: date, last: date) -> list[Event]:
         dts = ev.get("DTSTART").dt
         if not isinstance(dts, datetime):  # all-day (holidays, out-of-office banners)
             continue
-        if dts.tzinfo is None:
-            dts = dts.replace(tzinfo=local)
-        dts = dts.astimezone(local)
+        dts = dts.astimezone()
         if not first <= dts.date() <= last:
             continue
         dte = ev.get("DTEND").dt if ev.get("DTEND") else None
-        dte = dte.astimezone(local) if isinstance(dte, datetime) and dte.tzinfo else None
+        dte = dte.astimezone() if isinstance(dte, datetime) and dte.tzinfo else None
         title = " ".join(str(ev.get("SUMMARY", "")).split())[:200] or "(no title)"
         uid = f"{ev.get('UID')}@{dts.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
         out[uid] = Event(uid, dts.date().isoformat(), dts, dte, title)
@@ -141,18 +140,17 @@ def sync(s: Session, events: list[Event], first: date, last: date) -> dict[str, 
     return dict(added=added, updated=updated, removed=removed)
 
 
-def events_from_items(items: list[dict], local=None) -> tuple[list[Event], dict[str, list[tuple[str, str]]]]:
+def events_from_items(items: list[dict]) -> tuple[list[Event], dict[str, list[tuple[str, str]]]]:
     """Plain event data (id, title, start, end, links) handed over by a connector run, not read from iCal.
 
     Only the title, the times, and Google file links are kept; anything else in an item is ignored.
     """
-    local = local or datetime.now().astimezone().tzinfo
     events: dict[str, Event] = {}
     links: dict[str, list[tuple[str, str]]] = {}
     for it in items:
         try:
-            uid, start = str(it["id"]), datetime.fromisoformat(str(it["start"])).astimezone(local)
-            end = datetime.fromisoformat(str(it["end"])).astimezone(local) if it.get("end") else None
+            uid, start = str(it["id"]), datetime.fromisoformat(str(it["start"])).astimezone()
+            end = datetime.fromisoformat(str(it["end"])).astimezone() if it.get("end") else None
         except (KeyError, ValueError):
             raise CalendarError(f"Couldn't read this calendar item: {str(it)[:120]}") from None
         title = " ".join(str(it.get("title", "")).split())[:200] or "(no title)"

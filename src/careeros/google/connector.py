@@ -50,9 +50,8 @@ def fetch(first: date, last: date) -> list[dict]:
     """Meetings from `first` through the end of `last`, via a headless Claude Code run."""
     if (last - first).days > MAX_DAYS:
         raise CalendarError(f"Pick a window of {MAX_DAYS} days or fewer.")
-    tz = datetime.now().astimezone().tzinfo
-    t0 = datetime.combine(first, time.min, tzinfo=tz).isoformat()
-    t1 = datetime.combine(last + timedelta(days=1), time.min, tzinfo=tz).isoformat()
+    t0 = datetime.combine(first, time.min).astimezone().isoformat()
+    t1 = datetime.combine(last + timedelta(days=1), time.min).astimezone().isoformat()
     prompt = (f"Call the get_events tool exactly once with calendar_id=primary, time_min={t0}, time_max={t1}, "
               "max_results=250, detailed=true, include_attachments=true. When it returns, reply with only DONE.")
     try:
