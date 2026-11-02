@@ -181,3 +181,10 @@ def test_failed_calendar_reply_is_an_error_not_an_empty_calendar(monkeypatch, re
     monkeypatch.setattr(connector, "call_tool", lambda *a, **k: reply)
     with pytest.raises(gcal.CalendarError):
         connector.fetch(D, D)
+
+
+def test_times_use_the_offset_of_their_own_date_across_daylight_saving():
+    items = [dict(id="edt", title="Before the change", start="2026-10-29T12:00:00Z", end="2026-10-29T12:30:00Z"),
+             dict(id="est", title="After the change", start="2026-11-03T13:00:00Z", end="2026-11-03T13:30:00Z")]
+    events, _ = gcal.events_from_items(items)
+    assert [(e.start.hour, e.start.utcoffset().total_seconds() / 3600) for e in events] == [(8, -4), (8, -5)]

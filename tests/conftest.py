@@ -4,6 +4,17 @@ from careeros.storage.db import init_db, make_engine, make_session_factory
 
 
 @pytest.fixture(autouse=True)
+def new_york_time(monkeypatch):
+    """Tests run on New York time wherever they run, so local-time results don't depend on the machine."""
+    import time
+    monkeypatch.setenv("TZ", "America/New_York")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
+
+
+@pytest.fixture(autouse=True)
 def no_real_claude(monkeypatch):
     """Tests never start the real `claude` command; a test that needs Claude passes a fake reader or patches ask."""
     from careeros import claude_cli
