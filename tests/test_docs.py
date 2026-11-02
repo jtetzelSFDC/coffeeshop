@@ -8,10 +8,10 @@ from careeros.google import docs as gdocs
 from careeros.storage.models import JournalAttachment, JournalEntry
 from careeros.storage.removal import add_skip_rule, remove_entry
 
-ME = "52677683+jtetzelSFDC@users.noreply.github.com"
+ME = "casey@example.com"
 
 
-def row(gid, name, kind="document", modified="2026-10-20T15:00:00.000Z", editor=f"Jordan Tetzel <{ME}>"):
+def row(gid, name, kind="document", modified="2026-10-20T15:00:00.000Z", editor=f"Casey Morgan <{ME}>"):
     slug = {"document": "document", "spreadsheet": "spreadsheets", "presentation": "presentation"}[kind]
     return (f'- Name: "{name}" (ID: {gid}, Type: application/vnd.google-apps.{kind}, Size: 1024, '
             f"Created: 2026-09-01T12:00:00.000Z, Modified: {modified}, Last Edited By: {editor}) "
@@ -26,7 +26,7 @@ def answer(*rows, more=False):
 OWNED = answer(row("own1", "Release Manager Runbook"), row("own2", "Pine release plan", "spreadsheet"),
                row("own3", "Hotfix deck", "presentation", "2026-10-13T15:00:00.000Z"))
 OTHERS = answer(row("oth1", "Sandbox Refresh SOP"),
-                row("oth2", "Team stand-up doc", editor="Pat Lee <plee@salesforce.com>"))
+                row("oth2", "Team stand-up doc", editor="Pat Lee <pat@example.com>"))
 
 
 def by_text(s):
