@@ -108,7 +108,7 @@ The **Intake Review Queue** (in the Menu) lists every record (calendar meetings,
 - **Looks right** marks the row checked. Whatever Claude picked for it becomes yours, and the row leaves the **Not checked yet** list, so you can work down the list until it's empty.
 - **Remove** (under Looks right) takes a record out for good, for example a meeting you didn't attend. Its pasted notes, guide links, and any win Claude drafted from it go too; wins you made or edited stay. Calendar, Tasks, and Slack syncs skip removed records so they don't come back. Choose **Removed** in the Show menu to see them and **Restore** one if you change your mind.
 
-**Is everything pulled in?** A row of small status chips (at the top of the queue, and under each Sync button on Home) shows each source with a dot, an icon, and when it was last pulled: a time for today, "Yesterday", or a date. A green dot means up to date: Slack was pulled after 5:30 PM on the latest evening (the tracker automation runs at 5 PM), and the others were synced today. An orange dot means it needs a pull; press that Sync button. Hover over a chip for the details: the exact time, how many new items came in, the date of the newest item, and what's missing. "(about)" means the time is estimated from when items were added, before the app kept a sync history.
+**Is everything pulled in?** A row of small status chips (at the top of the queue, and under each Sync button on Home) shows each source with a dot, an icon, and when it was last pulled: a time for today, "Yesterday", or a date. A green dot means up to date: Slack was pulled after 5:30 PM on the latest evening (the tracker automation runs at 5 PM), the V2MOM in the last 31 days, and the others were synced today. An orange dot means it needs a pull; press that Sync button. Hover over a chip for the details: the exact time, how many new items came in, the date of the newest item, and what's missing. "(about)" means the time is estimated from when items were added, before the app kept a sync history.
 
 **One piece of work, counted once.** A deployment often shows up three times: a calendar meeting, a Slack thread, and a Google task. Claude groups records like that into one piece of work, and the Promo map counts the piece once, at its strongest evidence (a large win made from one of them beats a plain record). A grouped row shows **Part of: Pine 5.1.2 release · 3 records** (marked AI until you check the row). **Not the same work** takes a row out of its group, and **Group with…** puts it in a nearby group or starts a new one you name. Claude never regroups a row you grouped, split, or marked **Looks right**. A piece of work runs at most 30 days from its first record, and a record joins only work that's had activity in the last 14 days, so groups don't snowball. New records are grouped after every sync. To group everything already in the notebook (it shows what it would do first with `--dry-run`):
 
@@ -237,6 +237,25 @@ Adding a rule also removes the matching records already in the notebook. **Remov
 
 If `gh` isn't signed in, the sync says so; run `gh auth login`.
 
+## V2MOM: your Vision, Values, Methods, Obstacles, and Measures
+
+the V2MOM app won't let the command line sign in, so the app reads your V2MOM from a Google Doc you paste it into.
+
+1. **Paste it into a Google Doc.** The easiest way: open your V2MOM in the V2MOM app, expand each method so its measures show, select the whole page, copy, and paste it into a new Google Doc. The page's extra text (Check-Ins, Success, Helpful Resources, feedback links, filters, "requires your review" banners) is fine; the app ignores it.
+2. **Connect it** once, with the Doc's link:
+
+```
+cd ~/Documents/career-os
+uv run careeros v2mom connect "https://docs.google.com/document/d/…/edit"
+uv run careeros v2mom sync
+```
+
+The sync reads the Doc through Claude Code's Google Workspace connector, then Claude (with no tools) picks out the fiscal year, the published date, the vision, the values, each method in order (M1, M2, …) with its description, status (On Track, At Risk, Completed, …), percent, and measures (each with its own status), and the obstacles with the method they relate to. If it can't find any methods, it says so and nothing changes.
+
+**Keeping it current.** The scheduled sync re-reads the Doc once a month. After a check-in, paste the updated page over the Doc's text and press **Sync V2MOM** on Home. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
+
+**The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when the Doc was read in the last 31 days, orange when it's older, and grey with a hint when no Doc is connected yet. The Doc's id is kept in `v2mom.doc` in the notebook folder, readable only by you. The Doc's text passes through Claude Code to be read.
+
 ## Year-end exports
 
 At year end, pick the year on the Wins tab and click **Download as Markdown**. The file opens with your large wins as highlights, then lists everything by theme with its date and why it mattered. Paste it into a promotion doc or use it to pick resume bullets. Removing a notebook entry never removes a win made from it.
@@ -280,7 +299,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `154 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `171 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

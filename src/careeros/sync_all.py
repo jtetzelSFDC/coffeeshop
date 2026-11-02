@@ -1,4 +1,5 @@
 """`careeros sync all`: back up, then run the same Slack and Google syncs as the buttons, then GitHub, with a log.
+Once a month it also re-reads the V2MOM Doc.
 
 Run by the scheduled task at 8 AM and 6 PM and at login. A run that's already covered by an earlier one since
 the latest scheduled time does nothing, so the login catch-up is cheap.
@@ -46,6 +47,15 @@ def _covered(Session_, since: datetime) -> bool:
                    for src in SOURCES)
 
 
+def _v2mom_due(dd: DataDir, Session_, now: datetime) -> bool:
+    """Monthly, and only once a V2MOM Doc is connected."""
+    from .v2mom import connector, store
+    if not connector.load_doc_id(dd):
+        return False
+    with Session_() as s:
+        return store.due(s, now)
+
+
 def run(dd: DataDir, *, force: bool = False, now: datetime | None = None,
         notify: Callable[[str, str], None] = mac_notify) -> int:
     """0 if everything synced (or nothing was due), 1 if any step failed."""
@@ -74,9 +84,12 @@ def run(dd: DataDir, *, force: bool = False, now: datetime | None = None,
         say(f"Backup: {make_backup(dd).name} ({prune(dd)} old copies removed)")
         lock = threading.Lock()
         failed = []
-        for name, steps, fn in (("Slack", syncs.SLACK_STEPS, lambda j: syncs.run_slack(j, Session_, lock, dd)),
-                                ("Google", syncs.GOOGLE_STEPS, lambda j: syncs.run_google(j, Session_, lock)),
-                                ("GitHub", syncs.GITHUB_STEPS, lambda j: syncs.run_github(j, Session_, lock))):
+        runs = [("Slack", syncs.SLACK_STEPS, lambda j: syncs.run_slack(j, Session_, lock, dd)),
+                ("Google", syncs.GOOGLE_STEPS, lambda j: syncs.run_google(j, Session_, lock)),
+                ("GitHub", syncs.GITHUB_STEPS, lambda j: syncs.run_github(j, Session_, lock))]
+        if _v2mom_due(dd, Session_, now):
+            runs.append(("V2MOM", syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, lock, dd)))
+        for name, steps, fn in runs:
             job = Job(steps)
             try:
                 fn(job)

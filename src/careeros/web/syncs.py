@@ -247,6 +247,36 @@ def run_slack(job: Job, Session_, lock, dd: DataDir) -> None:
     job.finish(f"Slack synced: {_plural(r['added'], 'new item')}" + (f" and {praised} kudos." if praised else "."))
 
 
+V2MOM_STEPS = ["Read your V2MOM Google Doc", "Save its methods and measures"]
+V2MOM_CONNECT = "No V2MOM Doc connected yet. In Terminal run: uv run careeros v2mom connect <doc link>"
+
+
+def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
+    from ..v2mom import connector, store
+    doc = connector.load_doc_id(dd)
+    if not doc:
+        job.fail(0, V2MOM_CONNECT)
+        job.skip(1)
+        job.finish("V2MOM sync couldn't start.")
+        return
+    job.start(0)
+    try:
+        parsed = connector.read(doc)
+    except ClaudeError as exc:
+        job.fail(0, str(exc))
+        job.skip(1)
+        job.finish("V2MOM sync couldn't read the Doc, so nothing changed.")
+        return
+    job.done(0, f"{_plural(len(parsed['methods']), 'method')}, {_plural(len(parsed['obstacles']), 'obstacle')}")
+    job.start(1)
+    with Session_() as s, lock:
+        r = store.save(s, parsed, doc)
+    job.done(1, f"{r['added']} new" + (f", {r['retired']} no longer in the Doc (kept, marked inactive)"
+                                      if r["retired"] else ""))
+    job.finish(f"V2MOM synced: {(parsed['fiscal_year'] + ', ') if parsed['fiscal_year'] else ''}"
+               f"{_plural(r['methods'], 'method')}.")
+
+
 def _kudos(job: Job, i: int, s, lock, dd: DataDir) -> int:
     from ..slack import kudos
     job.start(i)

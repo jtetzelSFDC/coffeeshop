@@ -186,7 +186,7 @@ def test_web_sync_and_cards(tmp_path, monkeypatch):
 
 def run_sync(c, token, name):
     import time
-    path = {"slack": "/slack/sync", "google": "/sync/google"}[name]
+    path = {"slack": "/slack/sync", "google": "/sync/google", "v2mom": "/sync/v2mom"}[name]
     assert c.post(path, data={"csrf": token}, headers={"X-Sync": "1"}).json()["started"]
     for _ in range(200):
         job = c.get("/sync/status").json().get(name)

@@ -363,6 +363,40 @@ def slack_pull(data_dir: Optional[str] = DataOpt) -> None:
     _slack_import(dd, s, raw)
 
 
+v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from a Google Doc (read-only)")
+app.add_typer(v2mom_app, name="v2mom")
+
+
+@v2mom_app.command("connect")
+def v2mom_connect(doc: str = typer.Argument(..., help="Link to the Google Doc you pasted your V2MOM into"),
+                  data_dir: Optional[str] = DataOpt) -> None:
+    """Remember which Google Doc holds your V2MOM."""
+    from .v2mom.connector import save_doc_id
+    dd, _ = _open_personal(data_dir, "V2MOM sync")
+    try:
+        typer.echo(f"Saved Doc {save_doc_id(dd, doc)}. Now run: uv run careeros v2mom sync")
+    except ValueError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+
+
+@v2mom_app.command("sync")
+def v2mom_sync(data_dir: Optional[str] = DataOpt) -> None:
+    """Read the connected Doc and update your V2MOM's methods and measures (the Sync V2MOM button)."""
+    import threading
+    from .web import syncs
+    from .web.jobs import Job
+    dd, s = _open_personal(data_dir, "V2MOM sync")
+    s.close()
+    job = Job(syncs.V2MOM_STEPS)
+    syncs.run_v2mom(job, make_session_factory(make_engine(dd.db)), threading.Lock(), dd)
+    for st in job.steps:
+        typer.echo(f"{st['label']}: {st['state']}" + (f" ({st['detail']})" if st["detail"] else ""))
+    typer.echo(job.message)
+    if job.state in ("error", "partial"):
+        raise typer.Exit(1)
+
+
 calendar_app = typer.Typer(no_args_is_help=True, help="Pull Google Calendar meetings into your notebook (read-only)")
 app.add_typer(calendar_app, name="calendar")
 
