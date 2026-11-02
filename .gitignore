@@ -2,10 +2,38 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.DS_Store
+tmp/
+scratch/
+
+# Secrets
+.env
+.env.*
+
+# Notebook data, in case CAREEROS_DATA_DIR points inside the repo
 *.db
 *.db-wal
 *.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+backups/
+logs/
+exports/
+*.log
+.secret
+.demo
+.personal
+.metadata_never_index
+profile.json
+slack_user.json
+slack.canvas
+calendar.url
+
+# Downloads and exports
 career-notebook-*.zip
 my-wins-*.md
 *.csv
+
+# Leveling guide (internal)
 guides/
