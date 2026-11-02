@@ -14,18 +14,18 @@ ME = "U01ME"
 
 
 def result(n, who, uid, text, ts="1792789025.320009", day="2026-10-23", bot=False, thread=""):
-    frm = f"{who} <{who.split()[0].lower()}@salesforce.com> (ID: {uid}) " if not bot else " (ID: U00)  [BOT]"
+    frm = f"{who} <{who.split()[0].lower()}@example.com> (ID: {uid}) " if not bot else " (ID: U00)  [BOT]"
     return (f"### Result {n} of 4\nChannel: #release-team (ID: C1)\nFrom: {frm}\nTime: {day} 16:57:05 EDT\n"
-            f"Message_ts: {ts}\nPermalink: [link](https://salesforce.enterprise.slack.com/archives/C1/p{ts.replace('.', '')}"
+            f"Message_ts: {ts}\nPermalink: [link](https://example.enterprise.slack.com/archives/C1/p{ts.replace('.', '')}"
             f"{thread})\nText: \n{text}\n\n---\n\n")
 
 
-KUDOS = f"Huge shout-out to <@{ME}|Jordan Tetzel> for getting the 3.4 release out the door on a Friday night. Saved us!"
-INVITE = f"Thanks for the invite <@{ME}|Jordan Tetzel>, see you there."
+KUDOS = f"Huge shout-out to <@{ME}|Casey Morgan> for getting the 3.4 release out the door on a Friday night. Saved us!"
+INVITE = f"Thanks for the invite <@{ME}|Casey Morgan>, see you there."
 SEARCH = json.dumps({"results": "# Search Results for: \n\n## Messages (4 results)\n"
                      + result(1, "Pat Lee", "U02PAT", KUDOS)
                      + result(2, "Sam Roe", "U03SAM", INVITE, ts="1792789999.000001", thread="?thread_ts=1&cid=C1")
-                     + result(3, "Jordan Tetzel", ME, "I'll take this one", ts="1792780000.000002")
+                     + result(3, "Casey Morgan", ME, "I'll take this one", ts="1792780000.000002")
                      + result(4, "", "U00", f"Thank you, <@{ME}> for your request.", ts="1792770000.000003", bot=True),
                      "pagination_info": "End of results - No more pages available.\\n"})
 PAGED = json.loads(SEARCH) | {"pagination_info": "For the next page of results use cursor `Q1VSUkVOVF9QQUdFOjI=`\n"}
@@ -35,7 +35,7 @@ PAGED = json.dumps(PAGED)
 def fake_filter(prompt, data, timeout=0):
     msgs = json.loads(data)["messages"]
     return json.dumps({"results": [dict(id=m["id"], keep="shout-out" in m["text"],
-                                        quote="Huge shout-out to <@U01ME|Jordan Tetzel> for getting the 3.4 release out the door")
+                                        quote="Huge shout-out to <@U01ME|Casey Morgan> for getting the 3.4 release out the door")
                                    for m in msgs]})
 
 
@@ -54,20 +54,20 @@ def slack(monkeypatch):
 
 def test_parse_reads_the_real_format():
     msgs, nxt = kudos.parse(SEARCH)
-    assert nxt == "" and kudos.parse(PAGED)[1] == "Q1VSUkVOVF9QQUdFOjI=" and [m.who for m in msgs] == ["Pat Lee", "Sam Roe", "Jordan Tetzel", ""]
+    assert nxt == "" and kudos.parse(PAGED)[1] == "Q1VSUkVOVF9QQUdFOjI=" and [m.who for m in msgs] == ["Pat Lee", "Sam Roe", "Casey Morgan", ""]
     assert msgs[0].who_id == "U02PAT" and msgs[0].day == date(2026, 10, 23) and msgs[0].channel == "#release-team"
-    assert msgs[1].key == "kudos:https://salesforce.enterprise.slack.com/archives/C1/p1792789999000001"
+    assert msgs[1].key == "kudos:https://example.enterprise.slack.com/archives/C1/p1792789999000001"
     assert msgs[3].bot
 
 
 def test_only_real_kudos_kept_with_an_exact_quote_and_reruns_add_nothing(session, slack):
     msgs, full = kudos.fetch(ME, date(2026, 10, 1), date(2026, 10, 29))
     assert [m.who for m in msgs] == ["Pat Lee", "Sam Roe"] and full == 0  # you and bots dropped
-    kept = kudos.choose(kudos.new(session, msgs), ME, "Jordan Tetzel")
+    kept = kudos.choose(kudos.new(session, msgs), ME, "Casey Morgan")
     assert kudos.merge(session, kept) == 1
     e = session.scalar(select(JournalEntry).where(JournalEntry.source == "kudos"))
     assert e.kind == "recognition" and e.day == "2026-10-23"
-    assert e.text == 'Pat Lee: "Huge shout-out to @Jordan Tetzel for getting the 3.4 release out the door"'
+    assert e.text == 'Pat Lee: "Huge shout-out to @Casey Morgan for getting the 3.4 release out the door"'
     link = session.scalar(select(JournalAttachment).where(JournalAttachment.entry_id == e.id))
     assert link.title == "Slack message in #release-team" and "/p1792789025320009" in link.body
     again, _ = kudos.fetch(ME, date(2026, 10, 1), date(2026, 10, 29))
@@ -79,7 +79,7 @@ def test_a_made_up_quote_falls_back_to_the_message_itself(session, monkeypatch):
     monkeypatch.setattr("careeros.claude_cli.ask", lambda p, d, timeout=0: json.dumps(
         {"results": [dict(id="m0", keep=True, quote="Jordan is the best release manager ever")]}))
     [(_, quote)] = kudos.choose([msg], ME, "Jordan")
-    assert quote == "Huge shout-out to @Jordan Tetzel for getting the 3.4 release out the door on a Friday night. Saved us!"
+    assert quote == "Huge shout-out to @Casey Morgan for getting the 3.4 release out the door on a Friday night. Saved us!"
 
 
 def test_quotes_show_mentions_and_symbols_as_people_read_them():
@@ -128,7 +128,7 @@ def test_dms_and_messages_without_praise_never_reach_claude(monkeypatch):
     seen = []
     monkeypatch.setattr("careeros.claude_cli.ask", lambda p, d, timeout=0: seen.append(d) or '{"results": []}')
     plain = kudos.Message("https://x/p1", "#c", "Kim", "U9", False, date(2026, 10, 1), f"<@{ME}|Jordan> can you look?")
-    kudos.choose(msgs + [plain], ME, "Jordan Tetzel")
+    kudos.choose(msgs + [plain], ME, "Casey Morgan")
     assert len(seen) == 1 and "can you look" not in seen[0] and "Thanks for the invite" in seen[0]
 
 
@@ -136,9 +136,9 @@ def test_user_id_is_asked_once_and_kept(tmp_path, monkeypatch):
     dd = DataDir(tmp_path)
     asked = []
     monkeypatch.setattr("careeros.claude_cli.call_tool", lambda prompt, tool: asked.append(tool) or
-                        "User ID: U01ME\nUsername: jtetzel\nDisplay Name: Jordan Tetzel\n")
-    assert kudos.user(dd) == ("U01ME", "Jordan Tetzel")
-    assert kudos.user(dd) == ("U01ME", "Jordan Tetzel") and len(asked) == 1
+                        "User ID: U01ME\nUsername: cmorgan\nDisplay Name: Casey Morgan\n")
+    assert kudos.user(dd) == ("U01ME", "Casey Morgan")
+    assert kudos.user(dd) == ("U01ME", "Casey Morgan") and len(asked) == 1
     assert oct((tmp_path / kudos.USER_FILE).stat().st_mode & 0o777) == "0o600"
 
 

@@ -138,8 +138,8 @@ def test_classify_aborts_when_claude_is_unreachable(monkeypatch):
 
 def test_canvas_id_from_link(tmp_path):
     dd, _ = personal(tmp_path)
-    assert save_canvas_id(dd, "https://x.slack.com/docs/T1/F0C2ZF10L02") == "F0C2ZF10L02"
-    assert load_canvas_id(dd) == "F0C2ZF10L02"
+    assert save_canvas_id(dd, "https://x.slack.com/docs/T1/F0EXAMPLE01") == "F0EXAMPLE01"
+    assert load_canvas_id(dd) == "F0EXAMPLE01"
     with pytest.raises(ValueError):
         save_canvas_id(dd, "not a canvas")
 
@@ -165,7 +165,7 @@ def test_web_sync_and_cards(tmp_path, monkeypatch):
     job = run_sync(c, token, "slack")
     assert job["state"] == "error" and "No Slack canvas connected" in job["steps"][0]["detail"]
 
-    save_canvas_id(dd, "F0C2ZF10L02")
+    save_canvas_id(dd, "F0EXAMPLE01")
     monkeypatch.setattr(connector, "call_tool", lambda prompt, tool: json.dumps({"markdown_content": TRACKER}))
     monkeypatch.setattr(cls, "ask", lambda p, d: '{"i0": "task", "i1": "document", "i2": "conversation"}')
     from careeros.slack import kudos

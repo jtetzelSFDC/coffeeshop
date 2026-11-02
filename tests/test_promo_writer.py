@@ -10,9 +10,11 @@ from sqlalchemy import select
 from careeros.claude_cli import ClaudeError
 from careeros.guide.service import experiences
 from careeros.promo import evidence as pe, write as pw
-from careeros.storage.models import GuideLink, JournalEntry, PromoSection, PromoVersion, Win
+from careeros.storage.models import GuideLink, JournalEntry, PromoSection, PromoVersion, V2momLink, Win, WorkItem
 
 from test_guide import nb, session  # noqa: F401
+from test_v2mom import TWO
+from test_v2mom_links import load_v2mom
 
 
 def seed(s):
@@ -63,6 +65,10 @@ def test_bad_citations_and_invented_numbers_are_flagged():
     assert [(x["valid"], x["reason"]) for x in got] == [
         (True, ""), (False, "31 isn't in the evidence"), (False, "no source in the evidence"), (True, "")]
     assert got[3]["text"] == "Jordan shipped 27 deployments." and got[3]["sources"] == [2]
+    ev = [dict(n=1, kind="v2mom", text="V2MOM M2 (Build, On Track): 1 win and 0 records.", day="", refs=[])]
+    got = pw.check([dict(text="Jordan ran 2 releases, advancing V2MOM method M2 (Build).", sources=[1]),
+                    dict(text="Jordan had 1 win advancing V2MOM method M2.", sources=[1])], ev)
+    assert [x["reason"] for x in got] == ["2 isn't in the evidence", ""]
 
 
 def test_write_case_saves_a_version_with_its_evidence(nb):
@@ -111,3 +117,71 @@ def test_write_button_shows_the_draft_with_sources(nb, monkeypatch):
     assert c.get("/promo/case/999").status_code == 404
     assert c.post("/promo/write", data={"csrf": "nope"}).status_code == 403
     assert pw.load_name(dd) == "Jordan"
+
+
+def seed_v2mom(s):
+    """seed(), plus a V2MOM: M1 has the win (and a record outside the window), M2 one record of a piece of work."""
+    w = seed(s)
+    ids = load_v2mom(s)
+    wi = WorkItem(title="Pipeline accelerator", day="2026-10-22", started="2026-10-21", created_at=datetime.now())
+    s.add(wi)
+    s.flush()
+    a, b = (JournalEntry(day=d, kind="task", text=t, created_at=datetime.now(), source="slack", activity="document",
+                         work_item_id=wi.id)
+            for d, t in [("2026-10-21", "Drafted the accelerator template"), ("2026-10-22", "Shared it with 3 teams")])
+    old = s.scalar(select(JournalEntry).where(JournalEntry.text == "Ancient deploy"))
+    s.add_all([a, b])
+    s.flush()
+    s.add_all([V2momLink(method_id=ids["M1"], win_id=w.id, created_at=datetime.now()),
+               V2momLink(method_id=ids["M1"], entry_id=old.id, created_at=datetime.now()),
+               V2momLink(method_id=ids["M2"], entry_id=a.id, created_at=datetime.now(), by_ai=True)])
+    s.commit()
+
+
+def test_v2mom_methods_become_evidence_pieces(nb, monkeypatch):
+    dd, *_ = nb
+    monkeypatch.setitem(pe.CAPS, "impact", 2)  # a full section still has room for them: the win doesn't push them out
+    with session(dd) as s:
+        seed_v2mom(s)
+        pieces, slices = pe.build(s, "2025-10-29", "2026-10-29")
+        m1, m2 = (p for p in pieces if p["kind"] == "v2mom")
+        assert m1["text"] == ("V2MOM M1 (Share Release Know-How Across Teams, On Track, 69% progress): 1 win and 0 "
+                              "records between 2025-10-29 and 2026-10-29, for example: Planned and ran a full sandbox "
+                              "refresh for four teams.")
+        assert m2["text"].startswith("V2MOM M2 (Build Reusable Pipeline Accelerators, On Track, 50% progress): 0 wins "
+                                     "and 1 record between") and m2["text"].endswith("Drafted the accelerator template.")
+        for p in (m1, m2):
+            assert [k for k, ns in slices.items() if p["n"] in ns] == ["summary", "impact"]
+        win = next(p for p in pieces if p["kind"] == "win")
+        work = next(p for p in pieces if p["kind"] == "work")
+        assert win["text"].endswith(" Advances V2MOM M1.") and work["text"].endswith(" Advances V2MOM M2.")
+        load_v2mom(s, TWO[:1])  # M2 dropped from the Doc: no piece, and its work no longer says it advances it
+        pieces, _ = pe.build(s, "2025-10-29", "2026-10-29")
+        assert [p["text"][:8] for p in pieces if p["kind"] == "v2mom"] == ["V2MOM M1"]
+        assert "V2MOM" not in next(p for p in pieces if p["kind"] == "work")["text"]
+
+
+def test_no_v2mom_no_v2mom_pieces(nb):
+    dd, *_ = nb
+    with session(dd) as s:
+        seed(s)
+        pieces, _ = pe.build(s, "2025-10-29", "2026-10-29")
+        assert pieces and not any("V2MOM" in p["text"] for p in pieces)
+
+
+def test_a_sentence_about_a_method_passes_the_check(nb):
+    dd, *_ = nb
+    with session(dd) as s:
+        seed_v2mom(s)
+
+        def answers(key, ev):
+            m2 = next((p for p in ev if p["text"].startswith("V2MOM M2")), None)
+            return [dict(text="Jordan worked on advancing V2MOM method M2 (Build Reusable Pipeline Accelerators, 50% "
+                              "progress), with 1 record between 2025-10-29 and 2026-10-29.", sources=[m2["n"]])] \
+                if m2 else [dict(text="Jordan did things.", sources=[ev[0]["n"]])]
+        v = pw.write_case(s, start="2025-10-29", end="2026-10-29", name="Jordan", reader=by_key(answers))
+        secs = {x.key: x for x in s.scalars(select(PromoSection).where(PromoSection.version_id == v.id))}
+        for key in ("summary", "impact"):
+            assert secs[key].sentences[0]["text"].startswith("Jordan worked on advancing V2MOM method M2")
+            assert secs[key].sentences[0]["valid"], secs[key].sentences[0]
+    assert "advancing V2MOM method M2 (its name)" in pw.PROMPT

@@ -61,7 +61,7 @@ def canvas_file(dd: DataDir):
 def save_canvas_id(dd: DataDir, value: str) -> str:
     m = re.search(r"\b(F[A-Z0-9]{8,})\b", value.strip())
     if not m:
-        raise ValueError("That doesn't look like a canvas link or ID (it starts with F, like F0C2ZF10L02).")
+        raise ValueError("That doesn't look like a canvas link or ID (it starts with F, like F0EXAMPLE01).")
     fd = os.open(canvas_file(dd), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as fh:
         fh.write(m.group(1) + "\n")

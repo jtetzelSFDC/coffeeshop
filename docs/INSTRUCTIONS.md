@@ -90,6 +90,8 @@ Colors come from points. A linked entry is worth 1, and a small, medium, or larg
 
 **Write my promo case** (on the Promo map, or at http://127.0.0.1:8765/promo/case) has Claude draft the case itself. Pick who it's about (your first name, remembered for next time) and the window (the last 12 months by default), then press the button; it takes a minute or two, with progress per section. The draft has five sections: **Summary, Key accomplishments, Impact, Behaviors & values, Growth areas**, written in the third person. Claude writes them only from your notebook: wins and why they mattered, pieces of work, linked records, the impact numbers, and the Promo map's gaps and next steps, all dated inside the window. Every sentence ends with small [numbers] that jump to its sources, listed at the bottom as they were when the draft was written. The app then checks each sentence itself: one with no source, or with a number that doesn't appear in its evidence, is marked **Check this** with the reason. The check catches invented numbers and missing sources, not every wrong word, so read the draft before you use it. Every draft is kept. From Terminal: `uv run careeros promo write` (with `--start`, `--end`, `--name`).
 
+**V2MOM alignment.** Once your V2MOM is loaded and records are linked to its methods, the evidence also has one piece per current method with work in the window, like "V2MOM M2 (Build Reusable Pipeline Accelerators, On Track, 50% progress): 3 wins and 12 records between … and …, for example: …", and each win and piece of work says which methods it advances ("Advances V2MOM M2."). These go to the Summary and Impact sections, so the case can say a piece of work was "advancing V2MOM method M2 (its name)", but only when a source it cites says so; the usual check applies. Methods with nothing in the window, and ones dropped from the Doc, are left out. With no V2MOM loaded, the case is written exactly as before.
+
 **Reading a draft.** The top of a draft shows chips for its number and date, the window it's written from, and how many sentences to check (or "every sentence sourced"). The **Sources** list at the bottom is folded; clicking any [number] in the draft opens it at that source.
 
 **Editing and rewriting a draft.** Under each section, **Edit** opens it as plain text, one sentence per line, with its sources as [numbers] at the end of the line: keep a number to keep that source, and your wording is checked the same way as Claude's. **Rewrite** (beside the section's heading) has Claude redo just that section from the same evidence; if you've edited it, tick **Replace my edits** first. Either way the result is saved as a **new draft**, so nothing is ever overwritten. **All drafts and compare** lists every draft with what changed ("Edited Impact", "Rewrote Growth areas") and shows any two side by side: struck-through sentences are only in the first, underlined ones only in the second. Viewing an older draft shows a link to the newest.
@@ -177,7 +179,7 @@ On Fridays at 12:00 PM the schedule shows a macOS notification like "This week: 
 - **Before Claude sees anything**, messages without a word of praise (thanks, great, shout-out, congrats, appreciate, and so on) are dropped. In your first pull that was 2,155 mentions, of which only the ones with praise words were sent on.
 - Claude then keeps only real recognition: praise, a shout-out, or thanks that says what you did. A bare "thanks!", thanks for an invite, requests, FYIs, and announcements that just list you among many people are dropped. When unsure, Claude drops it.
 
-Each kept message becomes a **Kudos** record with a short **word-for-word quote** and who said it, like `Steph Rau: "really nice work on that alignment meeting with the PMs!!!"`, with a link to the message. If Claude's quote isn't exactly in the message, the message's own words are used instead. On the Promo map, a kudos record **counts like a medium win**, and the promo case quotes it exactly.
+Each kept message becomes a **Kudos** record with a short **word-for-word quote** and who said it, like `Robin Vale: "really nice work on that planning meeting with the PMs!!!"`, with a link to the message. If Claude's quote isn't exactly in the message, the message's own words are used instead. On the Promo map, a kudos record **counts like a medium win**, and the promo case quotes it exactly.
 
 You can also mark any record as kudos yourself: press **Kudos** in its row of the Intake Review Queue. Everything recognition-related is on the **Kudos** tab.
 
@@ -214,8 +216,8 @@ The file's text passes through Claude Code to write the summary. Claude has no t
 
 The scheduled sync (8 AM and 6 PM) also reads your GitHub pull requests on github.com, through the `gh` command already signed in as `jtetzelSFDC`. No Claude is involved in reading them; only the title, repo, date, and link are kept.
 
-- **PRs you wrote and merged** come in one record each, like "Merged PR: Add Cherry-Pick Report (pine-github-automations#12)", with a link to the PR.
-- **PRs you reviewed** come in as **one record per repo per week**, like "Reviewed 31 pull requests in ccirsgov-org, week of Oct 19", with the list of PRs attached. You review close to a thousand a year, nearly all routine branch PRs, so one record each would bury the Intake Review Queue. A week's record grows as more reviews arrive.
+- **PRs you wrote and merged** come in one record each, like "Merged PR: Add Cherry-Pick Report (example-automations#12)", with a link to the PR.
+- **PRs you reviewed** come in as **one record per repo per week**, like "Reviewed 31 pull requests in example-org, week of Oct 19", with the list of PRs attached. You review close to a thousand a year, nearly all routine branch PRs, so one record each would bury the Intake Review Queue. A week's record grows as more reviews arrive.
 - The **first pull goes back a year**; after that each pull starts two days before the last one. Nothing is ever deleted by a sync.
 - Then Claude links the new records to the leveling guide, like every other source. GitHub's last pull shows as the **GitHub** chip in the Intake Review Queue.
 
@@ -284,6 +286,8 @@ Below, one row per method, in the Doc's order:
 
 On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active this quarter", with a small bar per method (how many wins and records it has this quarter, longest for the busiest; orange for a method that's gone quiet). Click the line for the V2MOM page, or a bar for that method. The strip is hidden until a V2MOM is loaded. Everything here is worked out when the page opens, from the notebook only: no Claude, nothing stored.
 
+The promo case then shows how your work lines up with your V2MOM (see **V2MOM alignment** under the promo case).
+
 ## Year-end exports
 
 At year end, pick the year on the Wins tab and click **Download as Markdown**. The file opens with your large wins as highlights, then lists everything by theme with its date and why it mattered. Paste it into a promotion doc or use it to pick resume bullets. Removing a notebook entry never removes a win made from it.
@@ -328,7 +332,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `186 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `190 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

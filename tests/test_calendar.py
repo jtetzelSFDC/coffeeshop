@@ -188,3 +188,21 @@ def test_times_use_the_offset_of_their_own_date_across_daylight_saving():
              dict(id="est", title="After the change", start="2026-11-03T13:00:00Z", end="2026-11-03T13:30:00Z")]
     events, _ = gcal.events_from_items(items)
     assert [(e.start.hour, e.start.utcoffset().total_seconds() / 3600) for e in events] == [(8, -4), (8, -5)]
+
+
+def test_calendar_sync_and_pull_commands_run(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+    from careeros.cli import app as cli
+    from careeros.google import connector, summaries
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    windows = []
+    monkeypatch.setattr(gcal, "load_url", lambda dd: "https://example.invalid/basic.ics")
+    monkeypatch.setattr(gcal, "fetch_ics", lambda url: ics())
+    monkeypatch.setattr(connector, "fetch", lambda first, last: windows.append((first, last)) or [])
+    monkeypatch.setattr(summaries, "summarize_pending", lambda s, first, last: {"summarized": 0, "failed": 0})
+    r = CliRunner().invoke(cli, ["calendar", "sync", "--days", "3", "--data-dir", str(dd.root)])
+    assert r.exit_code == 0 and "0 added" in r.output, r.output
+    r = CliRunner().invoke(cli, ["calendar", "pull", "--days", "2", "--data-dir", str(dd.root)])
+    assert r.exit_code == 0 and "Summaries: 0 written" in r.output, r.output
+    assert windows == [(date.today() - timedelta(days=2), date.today())]
