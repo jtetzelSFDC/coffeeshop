@@ -481,7 +481,7 @@ def calendar_connect(data_dir: Optional[str] = DataOpt) -> None:
 def calendar_sync(days: int = typer.Option(14, help="How many past days to pull (max 60)"),
                   data_dir: Optional[str] = DataOpt) -> None:
     """Pull meetings (title and time only) for the last few days into the Today page."""
-    from datetime import date
+    from datetime import date, timedelta
     from .google import calendar as gcal
     dd, s = _open_personal(data_dir)
     last = date.today()
@@ -521,7 +521,7 @@ def calendar_import(file: str = typer.Argument("-", help="JSON file of meetings,
 def calendar_pull(days: int = typer.Option(1, help="How many past days to include besides today (max 14)"),
                   data_dir: Optional[str] = DataOpt) -> None:
     """Ask Claude Code to fetch your meetings through the Google Workspace connector (what the Sync button runs)."""
-    from datetime import date
+    from datetime import date, timedelta
     from .google import calendar as gcal, connector, summaries
     dd, s = _open_personal(data_dir)
     last = date.today()
