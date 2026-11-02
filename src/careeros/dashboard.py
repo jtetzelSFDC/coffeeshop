@@ -37,6 +37,7 @@ def momentum(s: Session, today: date) -> list[dict]:
 
 def build(s: Session, today: date | None = None) -> dict:
     from .guide.service import CURRENT_GRADE, has_guide, promo_map
+    from .v2mom import report
     today = today or date.today()
     half = _half_start(today)
     pm = promo_map(s) if has_guide(s) else None
@@ -54,6 +55,7 @@ def build(s: Session, today: date | None = None) -> dict:
         nxt = pm["next"][0] if pm["next"] else None
     return dict(
         grades=grades, skills=skills, next=nxt, current=CURRENT_GRADE, weeks=momentum(s, today),
+        v2mom=report.build(s, today),
         wins=s.scalar(select(func.count()).select_from(Win).where(Win.day >= half)) or 0,
         kudos=s.scalar(select(func.count()).select_from(JournalEntry).where(
             JournalEntry.kind == "recognition", JournalEntry.day >= half)) or 0,

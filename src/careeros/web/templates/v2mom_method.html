@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block body %}
+{% from "_ui.html" import icon %}
+<section class="card">
+  <h2>{% if current %}{{ m.label }} {% endif %}{{ m.name }}</h2>
+  <p class="muted"><a href="/v2mom#m{{ m.id }}">Back to the V2MOM</a> &middot; {{ wins|length }} win{{ '' if wins|length == 1 else 's' }} and {{ entries|length }} record{{ '' if entries|length == 1 else 's' }} linked{% if not current %} &middot; no longer in your current V2MOM{% endif %}</p>
+  {% call howto() %}<p class="help">Everything linked to this method, newest first: wins (yours, or made from a linked record) and the records Claude or you linked. Fix a record's methods in the <a href="/sheet?show=all">Intake Review Queue</a> with its <b>edit</b> link.</p>{% endcall %}
+</section>
+<section class="card">
+  <h3>Wins ({{ wins|length }})</h3>
+  {% for w in wins %}<div class="exp">{{ icon("win") }} <b>{{ w.title }}</b> <span class="muted" title="{{ w.day }}">{{ w.day|short_day }} &middot; {{ size_label.get(w.size, w.size) }}</span>{% if w.impact %}<br><span class="help">{{ w.impact }}</span>{% endif %}</div>
+  {% else %}<p class="muted">No wins linked yet.</p>{% endfor %}
+  <h3>Records ({{ entries|length }})</h3>
+  {% for e in entries %}<div class="exp line"><span class="muted" title="{{ e.day }}">{{ e.day|short_day }}</span> {{ e.text }} <span class="chip">{{ kind_label.get(e.kind, "Other") }}</span>{% if e.source %} <span class="muted">{{ source_label.get(e.source, e.source) }}</span>{% endif %}</div>
+  {% else %}<p class="muted">No records linked yet.</p>{% endfor %}
+</section>
+{% endblock %}

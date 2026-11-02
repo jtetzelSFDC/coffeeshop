@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .storage.models import GuideItem, GuideLink, JournalEntry, Win
+from .v2mom import report as v2mom_report
 
 QUIET_DAYS = 60
 QUEUE_NUDGE = 25  # unchecked records before the queue gets a nudge
@@ -57,6 +58,14 @@ def build(s: Session, week_end: date | None = None) -> dict:
             if days and max(days) < quiet_since and row["topic"].name not in aimed:
                 nudges.append(dict(text=f"Nothing new for {row['topic'].name} in {QUIET_DAYS} days (last: {max(days)}).",
                                    link="/promo", act="Open the Promo map"))
+    v2 = v2mom_report.build(s, last)
+    for x in v2["methods"] if v2 and last >= v2["fy_lo"] else []:
+        m = x["m"]
+        if x["state"] != "active" and v2mom_report.status_class(m.status) != "done":
+            name = f"V2MOM {m.label} ({m.name})"
+            nudges.append(dict(text=f"Nothing new for {name} in {v2mom_report.QUIET_DAYS} days (last: {x['last']})."
+                                    if x["last"] else f"Nothing linked to {name} yet.",
+                               link="/v2mom", act="Open the V2MOM"))
     queue = s.scalar(select(func.count()).select_from(JournalEntry).where(JournalEntry.reviewed.is_(False))) or 0
     if queue >= QUEUE_NUDGE:
         nudges.append(dict(text=f"{queue} records in the Intake Review Queue haven't been checked yet.",
