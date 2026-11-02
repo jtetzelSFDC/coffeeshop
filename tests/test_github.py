@@ -8,16 +8,16 @@ from careeros.github import connector as gh
 from careeros.storage.models import JournalAttachment, JournalEntry, SyncRun
 from careeros.storage.removal import add_skip_rule, remove_entry
 
-ORG = "p-amers-us-pine-crm/ccirsgov-org"
+ORG = "example-co/example-org"
 
 
-def pr(n, title, repo=ORG, author="jtetzelSFDC", closed="2026-10-20T18:00:00Z"):
+def pr(n, title, repo=ORG, author="cmorgan-example", closed="2026-10-20T18:00:00Z"):
     return dict(number=n, title=title, url=f"https://github.com/{repo}/pull/{n}", author={"login": author},
                 repository={"nameWithOwner": repo}, closedAt=closed, updatedAt="2026-10-21T12:00:00Z")
 
 
 MINE = [pr(1, "Add sandbox refresh job"), pr(2, "Career OS thing", repo="jmysterio/career-os")]
-REVIEWED = [pr(7, "Fix deploy gate", author="abirchfieldSFDC"), pr(1, "Add sandbox refresh job"),
+REVIEWED = [pr(7, "Fix deploy gate", author="rvale-example"), pr(1, "Add sandbox refresh job"),
             pr(8, "Still open", author="someone", closed=None),
             pr(9, "Last week", author="someone", closed="2026-10-14T15:00:00Z")]
 
@@ -30,7 +30,7 @@ def fake_gh(monkeypatch):
     def run(*args):
         state["calls"].append(args)
         if args[:2] == ("api", "user"):
-            return "jtetzelSFDC\n"
+            return "cmorgan-example\n"
         return json.dumps(MINE if "--author=@me" in args else state["reviewed"])
     monkeypatch.setattr(gh, "_gh", run)
     return state
@@ -115,5 +115,5 @@ def test_sync_step_reports_counts(fake_gh, tmp_path):
     init_db(engine)
     job = Job(syncs.GITHUB_STEPS)
     syncs.run_github(job, make_session_factory(engine), threading.Lock())
-    assert job.steps[0]["state"] == "done" and "for jtetzelSFDC" in job.steps[0]["detail"]
+    assert job.steps[0]["state"] == "done" and "for cmorgan-example" in job.steps[0]["detail"]
     assert job.steps[1]["state"] == "skipped"  # no leveling guide loaded

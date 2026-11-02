@@ -176,7 +176,7 @@ On Fridays at 12:00 PM the schedule shows a macOS notification like "This week: 
 - **Before Claude sees anything**, messages without a word of praise (thanks, great, shout-out, congrats, appreciate, and so on) are dropped. In your first pull that was 2,155 mentions, of which only the ones with praise words were sent on.
 - Claude then keeps only real recognition: praise, a shout-out, or thanks that says what you did. A bare "thanks!", thanks for an invite, requests, FYIs, and announcements that just list you among many people are dropped. When unsure, Claude drops it.
 
-Each kept message becomes a **Kudos** record with a short **word-for-word quote** and who said it, like `Steph Rau: "really nice work on that alignment meeting with the PMs!!!"`, with a link to the message. If Claude's quote isn't exactly in the message, the message's own words are used instead. On the Promo map, a kudos record **counts like a medium win**, and the promo case quotes it exactly.
+Each kept message becomes a **Kudos** record with a short **word-for-word quote** and who said it, like `Robin Vale: "really nice work on that planning meeting with the PMs!!!"`, with a link to the message. If Claude's quote isn't exactly in the message, the message's own words are used instead. On the Promo map, a kudos record **counts like a medium win**, and the promo case quotes it exactly.
 
 You can also mark any record as kudos yourself: press **Kudos** in its row of the Intake Review Queue. Everything recognition-related is on the **Kudos** tab.
 
@@ -213,8 +213,8 @@ The file's text passes through Claude Code to write the summary. Claude has no t
 
 The scheduled sync (8 AM and 6 PM) also reads your GitHub pull requests on github.com, through the `gh` command already signed in as `jtetzelSFDC`. No Claude is involved in reading them; only the title, repo, date, and link are kept.
 
-- **PRs you wrote and merged** come in one record each, like "Merged PR: Add Cherry-Pick Report (pine-github-automations#12)", with a link to the PR.
-- **PRs you reviewed** come in as **one record per repo per week**, like "Reviewed 31 pull requests in ccirsgov-org, week of Oct 19", with the list of PRs attached. You review close to a thousand a year, nearly all routine branch PRs, so one record each would bury the Intake Review Queue. A week's record grows as more reviews arrive.
+- **PRs you wrote and merged** come in one record each, like "Merged PR: Add Cherry-Pick Report (example-automations#12)", with a link to the PR.
+- **PRs you reviewed** come in as **one record per repo per week**, like "Reviewed 31 pull requests in example-org, week of Oct 19", with the list of PRs attached. You review close to a thousand a year, nearly all routine branch PRs, so one record each would bury the Intake Review Queue. A week's record grows as more reviews arrive.
 - The **first pull goes back a year**; after that each pull starts two days before the last one. Nothing is ever deleted by a sync.
 - Then Claude links the new records to the leveling guide, like every other source. GitHub's last pull shows as the **GitHub** chip in the Intake Review Queue.
 
