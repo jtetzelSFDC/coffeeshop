@@ -90,6 +90,8 @@ Colors come from points. A linked entry is worth 1, and a small, medium, or larg
 
 **Write my promo case** (on the Promo map, or at http://127.0.0.1:8765/promo/case) has Claude draft the case itself. Pick who it's about (your first name, remembered for next time) and the window (the last 12 months by default), then press the button; it takes a minute or two, with progress per section. The draft has five sections: **Summary, Key accomplishments, Impact, Behaviors & values, Growth areas**, written in the third person. Claude writes them only from your notebook: wins and why they mattered, pieces of work, linked records, the impact numbers, and the Promo map's gaps and next steps, all dated inside the window. Every sentence ends with small [numbers] that jump to its sources, listed at the bottom as they were when the draft was written. The app then checks each sentence itself: one with no source, or with a number that doesn't appear in its evidence, is marked **Check this** with the reason. The check catches invented numbers and missing sources, not every wrong word, so read the draft before you use it. Every draft is kept. From Terminal: `uv run careeros promo write` (with `--start`, `--end`, `--name`).
 
+**V2MOM alignment.** Once your V2MOM is loaded and records are linked to its methods, the evidence also has one piece per current method with work in the window, like "V2MOM M2 (Build Reusable Pipeline Accelerators, On Track, 50% progress): 3 wins and 12 records between … and …, for example: …", and each win and piece of work says which methods it advances ("Advances V2MOM M2."). These go to the Summary and Impact sections, so the case can say a piece of work was "advancing V2MOM method M2 (its name)", but only when a source it cites says so; the usual check applies. Methods with nothing in the window, and ones dropped from the Doc, are left out. With no V2MOM loaded, the case is written exactly as before.
+
 **Reading a draft.** The top of a draft shows chips for its number and date, the window it's written from, and how many sentences to check (or "every sentence sourced"). The **Sources** list at the bottom is folded; clicking any [number] in the draft opens it at that source.
 
 **Editing and rewriting a draft.** Under each section, **Edit** opens it as plain text, one sentence per line, with its sources as [numbers] at the end of the line: keep a number to keep that source, and your wording is checked the same way as Claude's. **Rewrite** (beside the section's heading) has Claude redo just that section from the same evidence; if you've edited it, tick **Replace my edits** first. Either way the result is saved as a **new draft**, so nothing is ever overwritten. **All drafts and compare** lists every draft with what changed ("Edited Impact", "Rewrote Growth areas") and shows any two side by side: struck-through sentences are only in the first, underlined ones only in the second. Viewing an older draft shows a link to the newest.
@@ -266,6 +268,8 @@ uv run careeros v2mom tag           # just the last 90 days
 ```
 
 It skips records already read against the V2MOM and ones whose methods you set, so running it again only does what's left (for example after a batch failed). Its picks are marked AI too, including on rows you'd already checked. Record text and the V2MOM's methods pass through the AI tool.
+
+The promo case then shows how your work lines up with your V2MOM (see **V2MOM alignment** under the promo case).
 
 ## Year-end exports
 
