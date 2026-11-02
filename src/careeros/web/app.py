@@ -25,12 +25,13 @@ from ..guide.topics import suggest, topic_of
 from ..slack import importer as slack_imp
 from ..storage.removal import remove_entry, restore_entry
 from ..storage.sync_log import status as sync_status
-from ..v2mom import connector as v2mom_conn
+from ..v2mom import connector as v2mom_conn, links as v2mom_links, store as v2mom_store
 from . import syncs
 from .jobs import Jobs
 from ..storage.db import init_db, make_engine, make_session_factory
 from ..guide import activities, work
-from ..storage.models import GuideItem, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, Win, WorkItem
+from ..storage.models import (GuideItem, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, V2momLink, Win,
+                              WorkItem)
 
 ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
 CSP = ("default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self'; "
@@ -467,25 +468,30 @@ def create_app(dd: DataDir) -> FastAPI:
             return back("That item is gone, or the leveling guide isn't loaded yet.", "/promo")
         obj, ref, text = t
         linked = gsvc.linked_ids(s, **ref)
-        if not linked and isinstance(obj, Win) and obj.entry_id:
-            linked = gsvc.linked_ids(s, entry_id=obj.entry_id)
+        linked_methods = v2mom_links.linked_ids(s, **ref)
+        if isinstance(obj, Win) and obj.entry_id:
+            linked = linked or gsvc.linked_ids(s, entry_id=obj.entry_id)
+            linked_methods = linked_methods or v2mom_links.linked_ids(s, entry_id=obj.entry_id)
         suggested = set() if linked else gsvc.suggested_ids(s, text)
         pm = gsvc.promo_map(s)
         html = env.get_template("guide_link.html").render(
             obj=obj, is_win=isinstance(obj, Win), ref=ref, checked=linked or suggested, suggested=bool(suggested),
+            methods=v2mom_store.methods(s), checked_methods=linked_methods,
             pm=pm, next=next if next in PAGES else "/wins", csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(),
             theme=theme_of(request), page="/promo", personal=personal, q="")
         return HTMLResponse(html)
 
     @app.post("/guide/link", dependencies=[Depends(check_csrf)])
     def guide_link_save(win: int | None = Form(None), entry: int | None = Form(None), item: list[int] = Form([]),
-                        next: str = Form("/wins"), s: Session = Depends(db)):
+                        method: list[int] = Form([]), next: str = Form("/wins"), s: Session = Depends(db)):
         to = next if next in PAGES else "/wins"
         with _write_lock:
             t = link_target(s, win, entry)
             if t is None:
                 return back("That item is gone.", to)
             gsvc.set_links(s, set(item), **t[1])
+            if shown := {m.id for m in v2mom_store.methods(s)}:
+                v2mom_links.set_links(s, set(method), shown, **t[1])
         n = len(item)
         return back(f"Linked to {n} leveling guide item{'' if n == 1 else 's'}." if n else "Saved, with no guide items.", to)
 
@@ -511,7 +517,8 @@ def create_app(dd: DataDir) -> FastAPI:
         return {"todo": q.where(JournalEntry.reviewed.is_(False)), "checked": q.where(JournalEntry.reviewed.is_(True)),
                 "ai": q.where(JournalEntry.reviewed.is_(False), (JournalEntry.kind_was != "") | JournalEntry.id.in_(
                     select(GuideLink.entry_id).where(GuideLink.by_ai)) | JournalEntry.id.in_(
-                    select(Win.entry_id).where(Win.by_ai))),
+                    select(Win.entry_id).where(Win.by_ai)) | JournalEntry.id.in_(
+                    select(V2momLink.entry_id).where(V2momLink.by_ai))),
                 "linked": q.where(JournalEntry.id.in_(linked)), "unlinked": q.where(JournalEntry.id.not_in(linked)),
                 "wins": q.where(JournalEntry.id.in_(select(Win.entry_id).where(Win.entry_id.is_not(None)))),
                 "removed": q.where(false()), "all": q}[f["show"]]
@@ -580,6 +587,7 @@ def create_app(dd: DataDir) -> FastAPI:
                               .where(GuideLink.entry_id.in_(ids)).order_by(GuideItem.position)):
             links.setdefault(l.entry_id, []).append(dict(id=l.id, label=guide_label(g), ai=l.by_ai, name=g.name))
         wins = {w.entry_id: w for w in s.scalars(select(Win).where(Win.entry_id.in_(ids)).order_by(Win.id))}
+        v2mom = v2mom_links.chips(s, ids)
         notes: dict[int, str] = {}
         for a in s.scalars(select(JournalAttachment).where(JournalAttachment.entry_id.in_(ids),
                                                            JournalAttachment.kind == "notes")):
@@ -605,6 +613,7 @@ def create_app(dd: DataDir) -> FastAPI:
         return [dict(id=e.id, day=e.day, source=SOURCE_LABEL.get(e.source, e.source), kind=e.kind,
                      kind_was=dict(SHEET_KIND).get(e.kind_was, ""),
                      text=e.text, reviewed=e.reviewed, ai_read=e.ai_read, links=links.get(e.id, []),
+                     v2mom=v2mom.get(e.id, []),
                      win=wins.get(e.id), notes=notes.get(e.id, ""),
                      work=(dict(id=w.id, title=w.title, ai=w.by_ai and not e.work_fixed, size=members.get(w.id, 1))
                            if (w := by_id.get(e.work_item_id)) else None),
@@ -694,6 +703,12 @@ def create_app(dd: DataDir) -> FastAPI:
                 s.execute(delete(GuideLink).where(GuideLink.item_id == l.item_id, GuideLink.win_id.in_(win_ids)))
                 s.delete(l)
                 s.commit()
+        return sheet_back(request, s, ret, eid)
+
+    @app.post("/sheet/v2mom/{lid}/delete", dependencies=[Depends(check_csrf)])
+    def sheet_v2mom_unlink(request: Request, lid: int, ret: str = Form(""), s: Session = Depends(db)):
+        with _write_lock:
+            eid = v2mom_links.unlink(s, lid)
         return sheet_back(request, s, ret, eid)
 
     @app.post("/sheet/{eid}/ok", dependencies=[Depends(check_csrf)])

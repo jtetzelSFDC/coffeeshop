@@ -17,6 +17,14 @@
   <div class="row"><button class="primary">Save</button><a href="{{ next }}">Skip for now</a></div>
 </section>
 
+{% if methods %}
+<section class="card">
+  <h2>Which V2MOM methods does this move forward?</h2>
+  {% for m in methods %}<label class="pick"><input type="checkbox" name="method" value="{{ m.id }}" {{ 'checked' if m.id in checked_methods }}>
+    <span>{{ m.label }}: {{ m.name }}{% if m.status %} <span class="st">&middot; {{ m.status }}</span>{% endif %}</span></label>{% endfor %}
+</section>
+{% endif %}
+
 <section class="card">
   <h2>Key experiences</h2>
   {% for row in pm.rows %}
