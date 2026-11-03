@@ -1,119 +1,42 @@
 <h1 align="center">Career Tracker</h1>
 
-<p align="center">
-  <em>You were hired to do the work, not to write essays about the work.</em>
-</p>
+<p align="center"><em>Do the work. It remembers.</em></p>
 
 <p align="center">
-  <img src="docs/img/home.jpg" width="880" alt="Career Tracker's Home page in dark mode: a latte in the corner, house plants down the side, and one card with Grade 6 and Grade 7 readiness bars, tiles for skills, wins, kudos and records to check, a 12-week evidence chart, and the next step.">
+  <img src="docs/img/home.jpg" width="820" alt="Career Tracker's Home page in dark mode: a latte in the corner, house plants down the side, and one card with Grade 6 and Grade 7 readiness bars, tiles for skills, wins, kudos and records to check, a 12-week evidence chart, and the next step.">
 </p>
-
----
-
-Every year it's the same ritual. Promotion season opens, and a perfectly productive engineer stops shipping things to go on an archaeology dig through their own Slack history. *What did I do in March? Was that refresh mine? Who wrote that runbook? Probably me. Hopefully me.*
-
-Two weeks later there's a promotion case and nothing got deployed. That's backwards.
-
-**Career Tracker keeps the receipts so you don't have to.** It quietly collects what you actually did (meetings, Slack threads, tasks, the 9 PM hotfix), sorts it against your leveling guide, and keeps a running tally of the evidence. When it's time to make the case, the case is mostly already made.
-
-You go back to doing the job. Which, conveniently, is also the best evidence for the promotion.
 
 ## What it does
 
-1. **Collects, so you don't have to.** Twice a day it pulls in your Google Calendar meetings (once they've happened, with their Gemini notes), your Google Tasks, the Docs, Sheets and Slides you wrote (each with a two-line summary, so future-you remembers what "Untitled document (3)" was), your Slack activity tracker, kudos people post about you in your Slack channels (never DMs) (word for word, with who said it, because "Pat said I was great" is hearsay and a quote is evidence), and your GitHub pull requests (the ones you merged, plus a weekly tally of the ones you reviewed, because a thousand individual "Approved" clicks is a cry for help, not evidence). You don't press anything. You don't fill in a form. You don't "log time."
-2. **Sorts.** Claude reads each record and decides what it is (meeting, conversation, doc, task), which parts of the leveling guide it shows, and whether it's a win worth keeping.
-3. **Counts once.** A deployment that shows up as a meeting, a Slack thread, *and* a task is one deployment, not three. Nobody likes a padded case, least of all the promotion committee.
-4. **Shows the map.** The Promo map lays the leveling guide next to your evidence: what you've shown, what's strong, what's still a gap, and how many times you actually did the thing.
-5. **Knows your V2MOM.** Download your V2MOM as a PDF from the V2MOM app (or paste it into a Google Doc), connect it once, and the app reads its methods, measures with their progress and comments, how each is tracking, and your manager's check-in comments, then re-reads it every month (re-download after each check-in). While Claude sorts each record, it also notes which V2MOM method the work moves forward (marked AI, one click to fix). It's the document you wrote in March promising things; now something remembers it besides your manager. The **V2MOM** page shows the work behind each method this quarter and this fiscal year, Home shows how many methods are moving, and the Friday digest points out any method that's gone quiet for a month, before your check-in does.
-6. **Writes the case.** Press **Write my promo case** and Claude drafts it (Summary, Key accomplishments, Impact, Behaviors & values, Growth areas) from your own evidence, with a little [3] after every sentence pointing to where it came from. The app double-checks each sentence: no source, or a number that isn't in your data, and it's flagged **Check this**. With a V2MOM loaded, it can also say which work advanced which method, citing the method's own evidence: how many wins and records advance it, its status, and how far along it is. Your manager can't fact-check you harder than this. Then edit it in place or have Claude rewrite one section; every change is a new draft you can compare. When it's ready, **Send to Google Docs** makes a copy with sources for you and a clean one for your manager.
+- It gathers your days from Calendar, Tasks, Docs, Slack, and GitHub, twice each day.
+- It sorts each record by its kind, and by the part of the leveling guide it shows.
+- It counts a deed once, however many places it appears.
+- It keeps the kind words others say of you, word for word.
+- It holds your V2MOM, and notes which work moves each method forward.
+- It shows the path: what is shown, what is strong, what is still to come.
+- Each morning it offers three small steps, none longer than ten minutes.
+- When the season comes, it writes your promotion case, each sentence with its source, for you to shape and send to Google Docs.
+- On Friday it tells you what the week added.
+- It marks what Claude chose, so that you may decide.
+- Each day it keeps a copy, and you may take everything with you.
+- It lives on your machine. Only what Claude must read leaves it.
 
-<p align="center">
-  <img src="docs/img/promo-map.jpg" width="880" alt="The Promo map: compact Grade 6 and Grade 7 readiness bars, a By the numbers table of activity counts, and one-line Aim for next steps.">
-</p>
+## Begin
 
-<p align="center"><sub>Both screenshots are the practice notebook: made-up records, a made-up release called "Pine," and zero real people. It's going to keep changing; the coffee stays.</sub></p>
-
-## What it doesn't do
-
-- **Invent things.** "Why it mattered" comes from you or from your own Slack tracker. No numbers you didn't produce, no outcomes that didn't happen.
-- **Decide for you.** Everything Claude picks is marked **AI** until you check it, and every pick can be undone. One click: **Looks right**.
-- **Live in the cloud.** The app and its database run on your laptop, on a local address only. No accounts, no server, no "we've updated our privacy policy."
-
-## Get going
-
-You'll need a Mac, [uv](https://docs.astral.sh/uv/), and Claude Code signed in to the Google Workspace and Slack connectors.
+You need a Mac, [uv](https://docs.astral.sh/uv/), and Claude Code signed in to the Google Workspace and Slack connectors.
 
 ```
 cd ~/Documents/career-os
-uv run careeros notebook init        # makes your notebook (once)
-uv run careeros schedule install     # keeps the app running and syncing, forever-ish
+uv run careeros notebook init
+uv run careeros schedule install
+open http://127.0.0.1:8765
 ```
 
-Then open **http://127.0.0.1:8765**. That's it. The schedule starts the app when you log in, syncs at 8 AM and 6 PM, backs everything up first, and only bothers you (with a notification) if something breaks.
+Then load your leveling guide and connect your V2MOM ([INSTRUCTIONS.md](docs/INSTRUCTIONS.md)); without them there is nothing to sort against.
 
-Want to poke around without touching real data? Try the practice notebook:
+To try it with made-up data: `uv run careeros demo seed --data-dir /tmp/cos-demo && uv run careeros serve --data-dir /tmp/cos-demo`. The screenshot above is that practice notebook.
 
-```
-uv run careeros demo seed --data-dir /tmp/cos-demo
-uv run careeros serve --data-dir /tmp/cos-demo
-```
+## Read more
 
-## The daily routine
-
-There isn't one. That's the point. But if you're the type who likes to check:
-
-- **Morning:** glance at **Home** (how close the promotion is), then the **Intake Review Queue**. Green dots mean everything's in. Click **Looks right** on what's right, fix what isn't, **Remove** the meeting you didn't actually attend.
-- **When something big happens:** press the trophy on the record (**Count this as a win**), and write one sentence on why it mattered while you still remember.
-- **Promotion season:** open the Promo map, click **Write my promo case**, read what comes back, fix the bits marked **Check this**, and enjoy the unfamiliar feeling of being early.
-
-## Your data and Claude
-
-The Sync buttons, the scheduled syncs, and Claude's read-through run the `claude` command on your computer. That sends the text being read (your Slack tracker, calendar events, meeting notes, tasks, and your records) to Claude, with Claude's built-in tools turned off, so it can read and answer but not wander around your laptop. Nothing else leaves the machine. Backups stay next to the notebook, so they guard against mistakes, not against losing the laptop.
-
-## FAQ
-
-**Is this cheating?**
-No. It's remembering. The work is yours; the app just refuses to let you forget it.
-
-**Will it make me sound amazing?**
-It will make you sound exactly as amazing as you were, with sources. If that's not amazing enough, the Promo map's **Aim for next** has ideas.
-
-**Does it read my Slack messages?**
-It reads one canvas: the activity tracker your Slackbot automation writes each day about your own work. It doesn't go through your channels or DMs itself. (A planned kudos finder will search public channels only.)
-
-**What if Claude gets something wrong?**
-Then you click one button and it's fixed, and Claude won't touch that record again. It's an intern with excellent recall and no ego.
-
-**Why the coffee shop?**
-Because nobody ever wrote a good promotion case under fluorescent lights.
-
-## What's next
-
-**Version 1.0.** Everything in [PLAN.md](docs/plans/PLAN.md) (what and why) and [IMPLEMENTATION_PLAN.md](docs/plans/IMPLEMENTATION_PLAN.md) (how) is built, ending with a **Friday digest**: at noon a notification tells you what the week added, and the **Weekly digest** page lists the wins, kudos, counts and a few nudges, each with a link to the place to fix it. Think of it as a coworker who remembers what you did this week and doesn't want anything for it. Next up is actually using it, which is the part where the bugs come out.
-
-For day-to-day details (every button, every command, every "wait, why did it do that"), see [INSTRUCTIONS.md](docs/INSTRUCTIONS.md).
-
-<details>
-<summary><b>Under the hood</b></summary>
-
-| Folder | What it does |
-|---|---|
-| `web/` | The local pages (loopback only), the background Sync jobs, and the Intake Review Queue |
-| `google/` | Google Calendar, Google Tasks, and meeting-note summaries through Claude Code's Google Workspace connector |
-| `slack/` | Reading the Slack tracker canvas, sorting its items, and importing them |
-| `v2mom/` | Reading your V2MOM from a Google Doc, keeping its methods stable across re-reads, links from your work to them, and the counts per method |
-| `guide/` | The leveling guide, links from your work to it, grouping records into pieces of work, impact counts, the Promo map, and Claude's read-through |
-| `promo/` | The promotion-case writer: the numbered evidence it's written from, and the checks on every sentence |
-| `export/` | Downloads: wins and the evidence behind the Promo map as Markdown, and everything as CSV |
-| `claude_cli.py` | Runs Claude Code headless for one narrow job, with built-in tools off |
-| `sync_all.py`, `schedule.py`, `backup.py` | The scheduled sync, the two macOS launch agents, and daily backups |
-| `fixtures/` | The practice notebook's made-up records, wins, and leveling guide |
-| `storage/` | Database tables, removed-record and skip-rule bookkeeping, and the sync log |
-
-Stack: Python 3.12, FastAPI, SQLAlchemy, SQLite, Jinja2, Typer. Tests: `uv run pytest`.
-
-Principles the code holds to: Claude's picks stay marked AI until you check them; syncs never delete a record you built on (a win, a guide link, or your check); removed records stay removed; nothing leaves the laptop except through the Sync buttons and the Claude review.
-
-The backdrop photos in `src/careeros/web/static/img/` were AI-generated for this project, each in a light and a dark version: the latte (`latte-*.jpg`), the pothos vine along the top (`vine-top-*.jpg`), and the pothos, snake plant, and fern down the right (`plants-right-*.jpg`). Each sits on a plain wall that drops out against the page. To swap one, keep the file name and the composition, and stay around 1500 px on the long side. README screenshots live in `docs/img/` and come from the practice notebook only.
-
-</details>
+- [INSTRUCTIONS.md](docs/INSTRUCTIONS.md): every page, button, and command.
+- [TECHNICAL.md](docs/TECHNICAL.md): how it is built, for people reviewing the code.

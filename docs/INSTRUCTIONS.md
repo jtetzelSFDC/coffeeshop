@@ -1,10 +1,10 @@
 # Career Tracker: How to use it
 
-Plain-language notes on running and testing the app. New questions and answers get added at the bottom under **Q&A**. For what the app *is*, see [README.md](../README.md).
+Plain-language notes on running and testing the app. New questions and answers get added at the bottom under **Q&A**. For what the app *is*, see [README.md](../README.md); for how it's built, [TECHNICAL.md](TECHNICAL.md).
 
 ## Where things stand
 
-Career Tracker is your work notebook. It pulls in your Google Calendar meetings, Google Tasks, and Slack tracker items, has Claude sort each one and link it to the DevOps leveling guide, and keeps your wins so the Promo map and promo case reflect what you've actually done. Everything is stored on this laptop. The only things that send anything out are the Sync buttons and the Claude review (see the README for what Claude sees).
+Career Tracker is your work notebook. It pulls in your Google Calendar meetings, Google Tasks, and Slack tracker items, has Claude sort each one and link it to the DevOps leveling guide, and keeps your wins so the Promo map and promo case reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -235,7 +235,7 @@ The file's text passes through Claude Code to write the summary. Claude has no t
 
 ## GitHub: pull requests you merged or reviewed
 
-The scheduled sync (8 AM and 6 PM) also reads your GitHub pull requests on github.com, through the `gh` command already signed in as `jtetzelSFDC`. No Claude is involved in reading them; only the title, repo, date, and link are kept.
+The scheduled sync (8 AM and 6 PM) also reads your GitHub pull requests on github.com, through the `gh` command already signed in to your work account. No Claude is involved in reading them; only the title, repo, date, and link are kept.
 
 - **PRs you wrote and merged** come in one record each, like "Merged PR: Add Cherry-Pick Report (example-automations#12)", with a link to the PR.
 - **PRs you reviewed** come in as **one record per repo per week**, like "Reviewed 31 pull requests in example-org, week of Oct 19", with the list of PRs attached. You review close to a thousand a year, nearly all routine branch PRs, so one record each would bury the Intake Review Queue. A week's record grows as more reviews arrive.
@@ -301,7 +301,7 @@ Below, one row per method, in your V2MOM's order:
 
 - **A dot:** green when something was linked in the last 30 days, orange when it has gone quiet (work before, nothing in 30 days), grey when nothing is linked yet.
 - **M1 and the name**, then the **status** as a chip (green for Completed, orange for At Risk, Off Track or Behind) and its **percent** as a small bar (from the Doc, or worked out from the measures for a PDF).
-- **The numbers:** wins plus records linked to it **this quarter** (calendar quarters: Jan to Mar, Apr to Jun, Jul to Sep, Oct to Dec) and **in FY27** (Salesforce's fiscal year, Feb 1 to Jan 31; FY27 runs Feb 1, 2026 to Jan 31, 2027), and the date of the latest one. A win made from a linked record counts too, so a record and its win count as two. An open task doesn't count until it's done.
+- **The numbers:** wins plus records linked to it **this quarter** (calendar quarters: Jan to Mar, Apr to Jun, Jul to Sep, Oct to Dec) and **in FY27** (the company's fiscal year, Feb 1 to Jan 31; FY27 runs Feb 1, 2026 to Jan 31, 2027), and the date of the latest one. A win made from a linked record counts too, so a record and its win count as two. An open task doesn't count until it's done.
 - **The measures**, each with its own status chip, its percent as a small bar, and **Comments** folded under it when it has any.
 - **About this method** folds open to the description and any obstacles related to it (an obstacle related to two methods shows under both). Obstacles that don't name a method are listed at the bottom.
 
