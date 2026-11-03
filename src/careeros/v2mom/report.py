@@ -16,7 +16,7 @@ LATE_STATUS = ("at risk", "off track", "behind")
 def fy_name(text: str) -> str:
     """FY27 from "FY27", "fy 27", "FY2027" or a file name holding one; "" when there's none. The one way fiscal
     years are written everywhere, so the V2MOM, KSOs and PDFs always agree."""
-    m = re.search(r"FY\s*(?:20)?(\d{2})\b", text or "", re.I)
+    m = re.search(r"FY\s*(?:20)?(\d{2})(?!\d)", text or "", re.I)  # not \b: "FY27_V2MOM.pdf" has a word char after
     return f"FY{m.group(1)}" if m else ""
 
 

@@ -420,3 +420,18 @@ def test_review_skips_records_removed_or_edited_while_claude_reads(nb):
         assert s.get(JournalEntry, retyped).kind == "document"  # your choice wins over Claude's
         assert s.get(JournalEntry, plain).kind == "task"
         assert {l.entry_id for l in s.scalars(select(GuideLink))} == {retyped, plain}
+
+
+def test_a_vanished_meeting_claude_linked_is_removed_without_breaking_the_sync(nb):
+    from careeros.storage.models import GuideItem
+    dd, *_ = nb
+    with session(dd) as s:
+        e = JournalEntry(day="2026-10-20", kind="meeting", text="9:00 AM Moved meeting", created_at=datetime.now(),
+                         source="calendar", external_id="moved@1")
+        s.add(e)
+        s.flush()
+        s.add(GuideLink(item_id=s.scalar(select(GuideItem.id).limit(1)), entry_id=e.id, created_at=datetime.now(),
+                        by_ai=True))
+        s.commit()
+        assert gcal.sync(s, [], date(2026, 10, 19), date(2026, 10, 21))["removed"] == 1
+        assert s.get(JournalEntry, e.id) is None

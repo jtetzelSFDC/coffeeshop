@@ -51,7 +51,7 @@ function render(name, job) {
     const end = el("p", "jmsg", job.message);
     const again = el("button", "", "Show the new items");
     again.type = "button";
-    again.addEventListener("click", () => location.assign(location.pathname));
+    again.addEventListener("click", () => location.assign(location.pathname + location.search));
     end.append(" ", again);
     box.append(end);
   } else {
