@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from .claude_cli import ClaudeError, ask
 from .storage.models import DailyTask, JournalEntry, Win
 
+SOURCE = "daily"  # its runs show as the Daily chip
 TASKS = 3
 RECENT_DAYS = 14
 MAX_TEXT, MAX_WHY, MAX_MINUTES = 110, 90, 10
@@ -165,6 +166,8 @@ def suggest(s: Session, today: date | None = None, *, force: bool = False,
     s.flush()  # done tasks take positions 1.. before the new ones are added
     for i, t in enumerate(tasks[: TASKS - len(kept)], len(kept) + 1):
         s.add(DailyTask(day=today.isoformat(), position=i, created_at=datetime.now(), **t))
+    from .storage.sync_log import record
+    record(s, SOURCE, TASKS - len(kept))
     try:
         s.commit()
     except IntegrityError:  # another run (the schedule and a button press) saved today's three first; keep those

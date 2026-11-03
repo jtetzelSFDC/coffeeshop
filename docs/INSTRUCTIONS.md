@@ -23,7 +23,7 @@ Don't add `--data-dir` to this command. That flag points the app at a different 
 
 ## Let it run on its own (recommended)
 
-One command sets up three small macOS scheduled tasks, so you never start the app or press Sync yourself:
+One command sets up four small macOS scheduled tasks, so you never start the app or press Sync yourself:
 
 ```
 cd ~/Documents/career-os
@@ -33,10 +33,11 @@ uv run careeros schedule install
 - **The app** starts when you log in and restarts by itself if it ever stops. It's always at http://127.0.0.1:8765. If you'd started it yourself in a Terminal, stop that one (Ctrl+C) first.
 - **The sync** runs at 8:00 AM and 6:00 PM (after your 5 PM Slack automation), and once when you log in if a run was missed while the laptop was closed. Each run backs up the notebook first, then does exactly what the Sync Slack tracker and Sync Google buttons do, then pulls your GitHub pull requests. If nothing is due, it does nothing.
 - **If something fails**, for example a connector's sign-in expired, a macOS notification says which sync and what to do (usually: open Claude Code's connector settings and sign in again). Nothing is shown when everything works; the status chips show the times.
+- **The daily three** are suggested every morning at 8:30 AM, after the 8 AM sync (if the laptop was asleep, as soon as it wakes). See **Daily three** below.
 - **The digest** shows a notification on Fridays at 12:00 PM (if the laptop was asleep, as soon as it wakes). See **Weekly digest** below.
 - `uv run careeros schedule status` shows whether each is on and the last sync log line. Logs are in `logs/` in your notebook folder.
 - `uv run careeros sync all --force` runs a sync right now from Terminal.
-- `uv run careeros schedule uninstall` removes the three tasks and nothing else.
+- `uv run careeros schedule uninstall` removes the four tasks and nothing else.
 
 ## Start the practice notebook (made-up data)
 
@@ -157,7 +158,7 @@ uv run careeros slack connect <canvas link>
 
 ## Daily three
 
-Once a day Claude suggests **three small tasks**, each ten minutes or less, that each move one of your goals a step. Goals are offered in this order: V2MOM methods that are quiet, unstarted, or behind; the Promo map's Aim for next; V2MOM methods on track but with measures still open; Grade 6 or 7 key experiences that are gaps; and skills with little or no evidence. It reads only short summaries: the goals (names, status, progress, open measures) and the titles of your last two weeks of work. Never your pasted notes or transcripts.
+Every morning at 8:30 AM (after the 8 AM sync, so it sees yesterday's work) Claude suggests **three small tasks**, each ten minutes or less, that each move one of your goals a step. Goals are offered in this order: V2MOM methods that are quiet, unstarted, or behind; the Promo map's Aim for next; V2MOM methods on track but with measures still open; Grade 6 or 7 key experiences that are gaps; and skills with little or no evidence. It reads only short summaries: the goals (names, status, progress, open measures) and the titles of your last two weeks of work. Never your pasted notes or transcripts.
 
 ```
 cd ~/Documents/career-os
@@ -166,7 +167,7 @@ uv run careeros daily suggest --force   # a new three, keeping any you've alread
 uv run careeros daily show              # print today's three
 ```
 
-Each task names its goal, like `V2MOM M4` or `Grade 6: …`. If Claude's answer doesn't fit (not exactly three, longer than ten minutes, or tied to a goal that wasn't offered), nothing is saved and the command says why. With no leveling guide and no V2MOM loaded there's nothing to aim at, so it says that instead.
+Each task names its goal, like `V2MOM M4` or `Grade 6: …`. If Claude's answer doesn't fit (not exactly three, longer than ten minutes, or tied to a goal that wasn't offered), nothing is saved and the command says why. With no leveling guide and no V2MOM loaded there's nothing to aim at, so it says that instead. When the 8:30 run fails, one macOS notification says why and nothing is saved; the **Daily** chip in the Intake Review Queue turns green once today's three exist. The log is `logs/daily-agent.log` in your notebook folder.
 
 ## Weekly digest
 
@@ -349,7 +350,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `221 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `224 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

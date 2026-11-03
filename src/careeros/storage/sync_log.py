@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from .models import JournalEntry, SyncRun
 
-SOURCES = {"slack": "Slack tracker", "calendar": "Google Calendar", "tasks": "Google Tasks", "docs": "Google Docs you wrote", "github": "GitHub pull requests", "kudos": "Slack kudos", "v2mom": "V2MOM"}
+SOURCES = {"slack": "Slack tracker", "calendar": "Google Calendar", "tasks": "Google Tasks", "docs": "Google Docs you wrote", "github": "GitHub pull requests", "kudos": "Slack kudos", "v2mom": "V2MOM", "daily": "Daily three"}
 SLACK_READY = time(17, 30)  # the Slack tracker automation runs at 5 PM; give it time to finish
 V2MOM_FRESH = timedelta(days=31)  # pulled monthly, not daily
 
@@ -51,6 +51,9 @@ def status(s: Session, now: datetime | None = None) -> dict[str, dict]:
         elif src == "v2mom":
             ok = bool(last and now - last <= V2MOM_FRESH)
             hint = "" if ok else "Not pulled in the last month. Press Sync V2MOM."
+        elif src == "daily":
+            ok = bool(last and last.date() == now.date())
+            hint = "" if ok else "No three yet today. They arrive at 8:30 AM, or press Suggest now."
         else:
             ok = bool(last and last.date() == now.date())
             hint = "" if ok else "Not synced today yet."

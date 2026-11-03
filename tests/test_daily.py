@@ -176,3 +176,39 @@ def test_two_runs_at_once_keep_one_three(nb):
     with session(dd) as s:
         tasks = daily.suggest(s, TODAY, reader=racing)
         assert [t.text for t in tasks] == ["The other run"] * 3 and s.query(DailyTask).count() == 3
+
+
+def test_schedule_status_lists_the_daily_three(tmp_path, monkeypatch):
+    from careeros import schedule
+    from careeros.config import DataDir
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    monkeypatch.setattr(schedule, "launchctl", lambda *a: 0)
+    schedule.install(dd, agents_dir=tmp_path / "LaunchAgents", uv="/opt/uv", repo=tmp_path)
+    assert "Daily three at 8:30 AM: on" in schedule.status(dd, agents_dir=tmp_path / "LaunchAgents")
+
+
+def test_a_scheduled_failure_notifies_once_and_saves_nothing(nb, monkeypatch):
+    dd, *_ = nb
+    setup(dd)
+    shown = []
+    monkeypatch.setattr("careeros.sync_all.mac_notify", lambda title, msg: shown.append((title, msg)))
+    monkeypatch.setattr(daily, "ask", lambda p, d, timeout=0: "not json")
+    r = CliRunner().invoke(cli, ["daily", "suggest", "--notify", "--data-dir", str(dd.root)])
+    assert r.exit_code == 1 and len(shown) == 1 and "daily three" in shown[0][0] and "didn't fit" in shown[0][1]
+    with session(dd) as s:
+        assert s.query(DailyTask).count() == 0
+    CliRunner().invoke(cli, ["daily", "suggest", "--data-dir", str(dd.root)])  # a manual run doesn't notify
+    assert len(shown) == 1
+
+
+def test_a_successful_run_lights_the_daily_chip(nb):
+    from careeros.storage.sync_log import status
+    dd, *_ = nb
+    setup(dd)
+    with session(dd) as s:
+        assert status(s)["daily"]["ok"] is False and "8:30 AM" in status(s)["daily"]["hint"]
+        ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
+        daily.suggest(s, TODAY, reader=lambda p, d: reply(ids))
+        st = status(s)["daily"]
+        assert st["ok"] is True and st["added"] == 3

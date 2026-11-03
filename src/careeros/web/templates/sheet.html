@@ -3,7 +3,7 @@
 {% block body %}
 <section class="card">
   <div class="qhead"><h2>Intake Review Queue</h2>
-  {% if personal %}{% from "_sync.html" import sync_chips %}{{ sync_chips(sync, [("slack", "Slack"), ("calendar", "Calendar"), ("tasks", "Tasks"), ("docs", "Docs"), ("kudos", "Kudos"), ("github", "GitHub"), ("v2mom", "V2MOM")]) }}
+  {% if personal %}{% from "_sync.html" import sync_chips %}{{ sync_chips(sync, [("slack", "Slack"), ("calendar", "Calendar"), ("tasks", "Tasks"), ("docs", "Docs"), ("kudos", "Kudos"), ("github", "GitHub"), ("v2mom", "V2MOM"), ("daily", "Daily")]) }}
     {% if not (sync.slack.ok and sync.calendar.ok) %}<a class="muted" href="/">Sync on Today</a>{% endif %}{% endif %}</div>
   <div class="stats"><span><b>{{ counts.total }}</b> records</span><span><b>{{ counts.read }}</b> read by Claude</span><span><b>{{ counts.checked }}</b> checked</span>{% if counts.links or counts.wins %}<span class="ai"><b>{{ counts.links }}</b> AI link{{ '' if counts.links == 1 else 's' }} &middot; <b>{{ counts.wins }}</b> AI win{{ '' if counts.wins == 1 else 's' }} to check</span>{% endif %}</div>
   <details class="howto"><summary>How this works</summary>
