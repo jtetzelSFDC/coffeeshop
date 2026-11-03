@@ -439,7 +439,7 @@ def kso_connect(deck: list[str] = typer.Option([], "--deck", help="The KSO frame
     from .kso import framework, map as kmap
     dd, s = _open_personal(data_dir, "KSOs")
     try:
-        src = framework.save_sources(dd, deck, canvas, track, manager) if deck or canvas else framework.load_sources(dd)
+        src = framework.sources(deck, canvas, track, manager) if deck or canvas else framework.load_sources(dd)
     except ValueError as exc:
         typer.echo(str(exc))
         raise typer.Exit(1)
@@ -449,7 +449,12 @@ def kso_connect(deck: list[str] = typer.Option([], "--deck", help="The KSO frame
     typer.echo("Reading the KSO material and having Claude sort it. This takes a few minutes.")
     try:
         fw = framework.save(s, framework.parse(framework.fetch(src), src["track"], src["manager"]), src)
+        framework.save_sources(dd, src)
         typer.echo(_kso_summary(fw))
+        if framework.v2mom_year(s) not in (None, fw.fiscal_year):
+            typer.echo(f"Your V2MOM is still for {framework.v2mom_year(s)}; its methods get matched to {fw.fiscal_year} "
+                       "once you sync the new V2MOM.")
+            return
         r = kmap.suggest(s, fw)
         typer.echo(f"Matched {r['mapped']} V2MOM methods to KSO components (marked AI); {r['none']} fit none.")
     except ClaudeError as exc:
@@ -464,7 +469,7 @@ def kso_map(redo: bool = typer.Option(False, "--redo", help="Also redo Claude's 
     from .claude_cli import ClaudeError
     from .kso import framework, map as kmap
     dd, s = _open_personal(data_dir, "KSOs")
-    fw = framework.get(s)
+    fw = framework.for_current(s)
     if fw is None:
         typer.echo("No KSOs yet. Run: uv run careeros kso connect --deck <link> --canvas <link>")
         raise typer.Exit(1)
@@ -481,7 +486,7 @@ def kso_show(data_dir: Optional[str] = DataOpt) -> None:
     """This year's KSOs, their components, and which V2MOM methods count toward each."""
     from .kso import framework, map as kmap
     dd, s = _open_personal(data_dir, "KSOs")
-    fw = framework.get(s)
+    fw = framework.for_current(s)
     if fw is None:
         typer.echo("No KSOs yet. Run: uv run careeros kso connect --deck <link> --canvas <link>")
         raise typer.Exit(1)

@@ -285,9 +285,7 @@ def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
 def _kso_matches(s, lock) -> str:
     """New V2MOM methods get matched to this year's KSO components, when KSOs are connected."""
     from ..kso import framework, map as kmap
-    from ..v2mom import report, store
-    v = store.current(s)
-    fw = v and framework.get(s, report.fiscal_year(v.fiscal_year, date.today())[0])
+    fw = framework.for_current(s)
     if not fw or not kmap.pending(s, fw):
         return ""
     try:

@@ -46,7 +46,9 @@ def test_the_framework_is_read_and_kept_per_fiscal_year(nb):
     (dict(payout={"1": 0, "2": 80, "3": 70, "4": 100, "5": 120}), "rise"),
     (dict(payout={"1": 0, "2": 40, "3": 70, "4": 100}), "ratings 1 to 5"),
     (dict(ksos=[]), "no KSOs"),
-    (dict(ksos=[dict(fw_reply()["ksos"][0], weight=90), fw_reply()["ksos"][1]]), "more than 100"),
+    (dict(ksos=[dict(fw_reply()["ksos"][0], weight=95), fw_reply()["ksos"][1]]), "more than 100"),
+    (dict(ksos=3), "isn't a list"),
+    (dict(ksos=[fw_reply()["ksos"][0], dict(fw_reply()["ksos"][1], key="1")]), "appears twice"),
 ])
 def test_a_bad_framework_answer_saves_nothing(nb, bad, why):
     dd, *_ = nb
@@ -62,19 +64,29 @@ def test_a_component_missing_a_level_or_examples_is_refused():
     del no_level[0]["components"][0]["levels"]["3"]
     one_example = json.loads(json.dumps(k))
     one_example[1]["components"][1]["examples"] = ["Only one"]
-    for ksos, why in ((no_level, "rubric"), (one_example, "examples")):
+    a_string = json.loads(json.dumps(k))
+    a_string[1]["components"][1]["examples"] = "Write notes; ship"
+    for ksos, why in ((no_level, "rubric"), (one_example, "examples"), (a_string, "isn't a list")):
         with pytest.raises(ValueError, match=why):
             framework.validate(fw_reply(ksos=ksos))
 
 
 def test_sources_come_from_links_and_stay_private(nb):
     dd, *_ = nb
-    src = framework.save_sources(dd, ["https://docs.google.com/presentation/d/1DeckDeckDeckDeckDeckDeckDeck00/edit"],
-                                 ["https://example.slack.com/docs/T0TEAM/F0MADEUP01"], "Delivery", False)
-    assert src == SRC and framework.load_sources(dd) == SRC
-    assert stat.S_IMODE(framework.source_file(dd).stat().st_mode) == 0o600
+    src = framework.sources(["https://docs.google.com/presentation/d/1DeckDeckDeckDeckDeckDeckDeck00/edit"],
+                            ["https://example.slack.com/docs/T0TEAM/F0MADEUP01"], "Delivery", False)
+    assert src == SRC and framework.load_sources(dd) is None
+    framework.save_sources(dd, src)
+    assert framework.load_sources(dd) == SRC and stat.S_IMODE(framework.source_file(dd).stat().st_mode) == 0o600
     with pytest.raises(ValueError):
-        framework.save_sources(dd, [], [], "Delivery", False)
+        framework.sources([], [], "Delivery", False)
+
+
+def test_fiscal_years_are_named_one_way(nb):
+    assert [framework.fiscal_year(x) for x in ("FY2027", "fy 27", "FY27 Q4", "2027")] == ["FY27", "FY27", "FY27", ""]
+    dd, *_ = nb
+    with session(dd) as s:
+        assert connect(s, "FY2027").fiscal_year == "FY27"
 
 
 def test_methods_are_matched_once_and_your_picks_stay(nb):
@@ -90,6 +102,31 @@ def test_methods_are_matched_once_and_your_picks_stay(nb):
         assert rows == {m["M1"]: ("1.2", True), m["M2"]: ("2.2", False)}
         by = kmap.by_component(s, fw)
         assert [x.label for x, _ in by["2.2"]] == ["M2"] and by["2.1"] == []
+
+
+def test_a_renamed_component_gets_its_methods_matched_again(nb):
+    dd, *_ = nb
+    with session(dd) as s:
+        m = load_v2mom(s)
+        fw = connect(s)
+        kmap.suggest(s, fw, reader=picks(M1="1.1", M2=""))
+        kmap.set_pick(s, "FY27", m["M2"], "2.2")
+        ksos = fw_reply()["ksos"]
+        ksos[0]["components"][0]["key"] = "1.3"  # the new material renames 1.1, and drops nothing else
+        fw = connect(s, ksos=ksos)
+        assert [x.label for x in kmap.pending(s, fw)] == ["M1"]
+        kmap.suggest(s, fw, reader=picks(M1="1.3"))
+        assert [x.label for x, _ in kmap.by_component(s, fw)["1.3"]] == ["M1"]
+
+
+def test_methods_wait_for_their_own_years_ksos(nb):
+    dd, *_ = nb
+    with session(dd) as s:
+        load_v2mom(s)  # an FY27 V2MOM
+        fw28 = connect(s, "FY28")
+        assert kmap.pending(s, fw28) == [] and framework.for_current(s) is None
+        assert [x.label for x in kmap.pending(s, connect(s))] == ["M1", "M2"]
+        assert framework.for_current(s).fiscal_year == "FY27"
 
 
 @pytest.mark.parametrize("answer", ['{"map": {"M1": "9.9", "M2": ""}}', '{"map": {"M1": "1.1"}}', "no JSON"])
@@ -115,7 +152,7 @@ def test_connect_and_show_from_the_command_line(nb, monkeypatch):
     r = CliRunner().invoke(cli, ["kso", "connect", "--deck", "1DeckDeckDeckDeckDeckDeckDeck00", "--canvas",
                                  "F0MADEUP01", "--data-dir", str(dd.root)])
     assert r.exit_code == 0, r.output
-    assert "FY27 Delivery: KSO 1 Calm Releases (15%, 2 parts)" in r.output and "Matched 2 V2MOM methods" in r.output
+    assert "FY27 Delivery: KSO 1 Calm Releases (20%, 2 parts)" in r.output and "Matched 2 V2MOM methods" in r.output
     assert seen["src"] == SRC
     r = CliRunner().invoke(cli, ["kso", "show", "--data-dir", str(dd.root)])
     assert "1.1 Plan Kept: M1 (AI)" in r.output and "1.2 Kind Words: no V2MOM goal yet" in r.output
@@ -135,3 +172,11 @@ def test_the_v2mom_sync_matches_new_methods_once_ksos_are_connected(nb, monkeypa
         monkeypatch.setattr(kmap, "ask", lambda p, d, timeout=0: json.dumps({"map": {"M1": "2.1", "M2": "1.2"}}))
         assert "2 new methods matched to KSOs" in syncs._kso_matches(s, threading.Lock())
         assert syncs._kso_matches(s, threading.Lock()) == ""
+
+
+def test_a_bad_link_never_replaces_the_saved_ones(nb, monkeypatch):
+    dd, *_ = nb
+    framework.save_sources(dd, SRC)
+    monkeypatch.setattr(framework, "fetch", lambda src: (_ for _ in ()).throw(ClaudeError("The canvas wasn't found.")))
+    r = CliRunner().invoke(cli, ["kso", "connect", "--canvas", "F0TYPO0000", "--data-dir", str(dd.root)])
+    assert r.exit_code == 1 and framework.load_sources(dd) == SRC

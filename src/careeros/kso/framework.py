@@ -54,8 +54,8 @@ def source_file(dd: DataDir):
     return dd.root / SOURCE_FILE
 
 
-def save_sources(dd: DataDir, decks: list[str], canvases: list[str], track: str, manager: bool) -> dict:
-    """Remembers where the KSO material is (deck and canvas ids from links or ids). ValueError for a bad one."""
+def sources(decks: list[str], canvases: list[str], track: str, manager: bool) -> dict:
+    """Where the KSO material is (deck and canvas ids, from links or ids). ValueError for a bad one."""
     d, c = [], []
     for x in decks:
         m = DECK_ID.search(x.strip())
@@ -69,11 +69,14 @@ def save_sources(dd: DataDir, decks: list[str], canvases: list[str], track: str,
         c.append(m.group(1))
     if not d and not c:
         raise ValueError("Give at least one --deck or --canvas.")
-    src = dict(decks=d, canvases=c, track=track.strip() or "Delivery", manager=manager)
+    return dict(decks=d, canvases=c, track=track.strip() or "Delivery", manager=manager)
+
+
+def save_sources(dd: DataDir, src: dict) -> None:
+    """Remembered once a read with them worked, so a typo never replaces good links."""
     fd = os.open(source_file(dd), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as fh:
         fh.write(json.dumps(src) + "\n")
-    return src
 
 
 def load_sources(dd: DataDir) -> dict | None:
@@ -117,6 +120,19 @@ def _text(d: dict, key: str, limit: int = 2_000) -> str:
     return " ".join(v.split())[:limit]
 
 
+def _list(d: dict, key: str) -> list:
+    v = d.get(key) or []
+    if not isinstance(v, list):
+        raise ValueError(f"{key} isn't a list")
+    return v
+
+
+def fiscal_year(text: str) -> str:
+    """FY27 from "FY27", "fy 27" or "FY2027"; "" when it isn't one."""
+    m = re.search(r"FY\s*(?:20)?(\d{2})\b", text or "", re.I)
+    return f"FY{m.group(1)}" if m else ""
+
+
 def _ratings(d: object, what: str) -> dict:
     if not isinstance(d, dict) or sorted(d) != list(RATINGS):
         raise ValueError(f"{what} doesn't cover ratings 1 to 5")
@@ -135,14 +151,17 @@ def validate(data: object) -> dict:
         raise ValueError("payouts don't rise with the rating")
     names = _ratings(data.get("level_names"), "the rating names")
     ksos, keys = [], set()
-    for k in data.get("ksos") or []:
+    for k in _list(data, "ksos"):
         if not isinstance(k, dict):
             raise ValueError("a KSO isn't an object")
         key, weight = _text(k, "key", 10), k.get("weight")
+        if "kso:" + key in keys:
+            raise ValueError(f"KSO {key} appears twice")
+        keys.add("kso:" + key)
         if isinstance(weight, bool) or not isinstance(weight, (int, float)) or not 0 < weight <= 100:
             raise ValueError(f"KSO {key} has no weight")
         comps = []
-        for c in k.get("components") or []:
+        for c in _list(k, "components"):
             if not isinstance(c, dict):
                 raise ValueError("a component isn't an object")
             ckey = _text(c, "key", 10)
@@ -150,7 +169,7 @@ def validate(data: object) -> dict:
                 raise ValueError(f"component {ckey} appears twice")
             keys.add(ckey)
             levels = _ratings(c.get("levels"), f"component {ckey}'s rubric")
-            ex = [" ".join(x.split()) for x in c.get("examples") or [] if isinstance(x, str) and x.strip()]
+            ex = [" ".join(x.split()) for x in _list(c, "examples") if isinstance(x, str) and x.strip()]
             if len(ex) < 2 or any(len(x) > MAX_EXAMPLE for x in ex):
                 raise ValueError(f"component {ckey} needs 2 or more short examples")
             comps.append(dict(key=ckey, name=_text(c, "name", 120), what=_text(c, "what", 600),
@@ -164,13 +183,13 @@ def validate(data: object) -> dict:
     if sum(k["weight"] for k in ksos) > 100:
         raise ValueError("the KSO weights add up to more than 100%")
     dates = []
-    for d in data.get("dates") or []:
+    for d in _list(data, "dates"):
         if isinstance(d, dict) and isinstance(d.get("date"), str) and isinstance(d.get("what"), str):
             try:
                 dates.append(dict(date=date.fromisoformat(d["date"]).isoformat(), what=" ".join(d["what"].split())[:120]))
             except ValueError:
                 continue
-    return dict(fiscal_year=str(data.get("fiscal_year") or "").strip().upper(), track=_text(data, "track", 60),
+    return dict(fiscal_year=fiscal_year(str(data.get("fiscal_year") or "")), track=_text(data, "track", 60),
                 rated="quarterly" if data.get("rated") == "quarterly" else "yearly",
                 payout={r: payout[r] for r in RATINGS}, level_names={r: _text(names, r, 80) for r in RATINGS},
                 ksos=ksos, dates=sorted(dates, key=lambda x: x["date"]))
@@ -208,6 +227,19 @@ def get(s: Session, fy: str | None = None) -> KsoFramework | None:
     q = select(KsoFramework)
     q = q.where(KsoFramework.fiscal_year == fy) if fy else q.order_by(KsoFramework.fiscal_year.desc())
     return s.scalar(q.limit(1))
+
+
+def v2mom_year(s: Session, today: date | None = None) -> str | None:
+    """The fiscal year of the current V2MOM, or None without one: the year KSO matches belong to."""
+    from ..v2mom import report, store
+    v = store.current(s)
+    return report.fiscal_year(v.fiscal_year, today or date.today())[0] if v else None
+
+
+def for_current(s: Session) -> KsoFramework | None:
+    """The framework for the current V2MOM's year, else (no V2MOM yet) the newest."""
+    fy = v2mom_year(s)
+    return get(s, fy) if fy else get(s)
 
 
 def components(fw: KsoFramework) -> list[dict]:

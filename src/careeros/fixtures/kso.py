@@ -12,7 +12,7 @@ FRAMEWORK = dict(
     payout={"1": 0, "2": 40, "3": 70, "4": 100, "5": 120},
     level_names={"1": "Missed", "2": "Partly there", "3": "Mostly there", "4": "There", "5": "Beyond"},
     ksos=[
-        dict(key="1", name="Calm Releases", weight=15, what="How smoothly the work you own ships.",
+        dict(key="1", name="Calm Releases", weight=20, what="How smoothly the work you own ships.",
              components=[
                  dict(key="1.1", name="Plan Kept", what="Did the plan in your V2MOM happen? Write results there.",
                       levels=_levels("plan kept"),
@@ -22,7 +22,7 @@ FRAMEWORK = dict(
                       levels=_levels("praise"),
                       examples=["Ask one teammate how the last handoff went", "Save a thank-you message as a record"]),
              ]),
-        dict(key="2", name="Sharper Tools", weight=15, what="How you grow, and how you bring new tools in.",
+        dict(key="2", name="Sharper Tools", weight=10, what="How you grow, and how you bring new tools in.",
              components=[
                  dict(key="2.1", name="New Skills", what="Learning you planned, and used.",
                       levels=_levels("learning"),

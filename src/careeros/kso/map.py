@@ -7,7 +7,7 @@ import re
 from contextlib import nullcontext
 from typing import Callable
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..claude_cli import ClaudeError, ask
@@ -28,11 +28,20 @@ def mapped(s: Session, fy: str) -> dict[int, KsoMap]:
     return {m.method_id: m for m in s.scalars(select(KsoMap).where(KsoMap.fiscal_year == fy))}
 
 
-def pending(s: Session, fw: KsoFramework) -> list[V2momMethod]:
-    """Current V2MOM methods with no pick yet for this fiscal year."""
+def _stale(fw: KsoFramework, row: KsoMap) -> bool:
+    """A pick naming a component the (re-read) framework no longer has."""
+    return bool(row.component) and row.component not in {c["key"] for c in framework.components(fw)}
+
+
+def pending(s: Session, fw: KsoFramework, redo: bool = False) -> list[V2momMethod]:
+    """Current V2MOM methods with no pick for this fiscal year, or a pick of a component that's gone (with `redo`,
+    also Claude's own picks). None when the V2MOM belongs to another year: its own year's sync matches it."""
     from ..v2mom import store
+    if framework.v2mom_year(s) not in (None, fw.fiscal_year):
+        return []
     have = mapped(s, fw.fiscal_year)
-    return [m for m in store.methods(s) if m.id not in have]
+    return [m for m in store.methods(s)
+            if m.id not in have or _stale(fw, have[m.id]) or (redo and have[m.id].by_ai)]
 
 
 def validate(reply: str, method_ids: set[str], keys: set[str]) -> dict[str, str]:
@@ -53,12 +62,10 @@ def validate(reply: str, method_ids: set[str], keys: set[str]) -> dict[str, str]
 def suggest(s: Session, fw: KsoFramework, *, redo: bool = False,
             reader: Callable[[str, str], str] | None = None, lock=None) -> dict[str, int]:
     """Claude's picks for methods not mapped yet (with `redo`, also for ones Claude mapped before). Yours stay.
-    A bad answer raises ClaudeError and changes nothing. `lock` is held only while saving."""
-    if redo:
-        s.execute(delete(KsoMap).where(KsoMap.fiscal_year == fw.fiscal_year, KsoMap.by_ai))
-    todo = pending(s, fw)
+    A bad answer raises ClaudeError and changes nothing. Nothing is written until the answer is in, and `lock` is
+    held only while saving."""
+    todo = pending(s, fw, redo)
     if not todo:
-        s.commit()
         return dict(mapped=0, none=0)
     comps = framework.components(fw)
     data = dict(components=[dict(key=c["key"], name=c["name"], what=c["what"]) for c in comps],
@@ -68,15 +75,21 @@ def suggest(s: Session, fw: KsoFramework, *, redo: bool = False,
     try:
         picks = validate(reply, {m.label for m in todo}, {c["key"] for c in comps})
     except ValueError as exc:
-        s.rollback()
         raise ClaudeError(f"Claude's KSO matches didn't fit ({exc}). Nothing was changed.") from None
+    n = 0
     with lock or nullcontext():
-        have = mapped(s, fw.fiscal_year)  # a pick you made while Claude was thinking stays
+        have = mapped(s, fw.fiscal_year)
         for m in todo:
-            if m.id not in have:
-                s.add(KsoMap(fiscal_year=fw.fiscal_year, method_id=m.id, component=picks[m.label], by_ai=True))
+            row = have.get(m.id)
+            if row is not None and not row.by_ai and not _stale(fw, row):
+                continue  # a pick you made while Claude was thinking stays
+            if row is None:
+                row = KsoMap(fiscal_year=fw.fiscal_year, method_id=m.id)
+                s.add(row)
+            row.component, row.by_ai = picks[m.label], True
+            n += bool(picks[m.label])
         s.commit()
-    return dict(mapped=sum(1 for v in picks.values() if v), none=sum(1 for v in picks.values() if not v))
+    return dict(mapped=n, none=len(todo) - n)
 
 
 def set_pick(s: Session, fy: str, method_id: int, component: str) -> None:
