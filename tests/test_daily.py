@@ -269,8 +269,7 @@ def test_home_card_shows_three_ticks_and_the_empty_state(nb):
     assert 'data-label="New three"' in home and home.index("Today's three") < home.index('aria-label="Progress"')
 
 
-def test_done_logs_a_record_with_details_and_undo_takes_it_back(nb):
-    from careeros.web.app import create_app  # noqa: F401
+def test_done_logs_a_record_with_details_and_undo_keeps_your_note(nb):
     dd, *_ = nb
     setup(dd)
     c, tok = _web(nb)
@@ -287,9 +286,43 @@ def test_done_logs_a_record_with_details_and_undo_takes_it_back(nb):
         eid = e.id
     home = c.get("/").text
     assert 'aria-label="Mark not done: Write a two-line summary' in home
+    c.post(f"/daily/{tid}/done", data={"csrf": tok})  # a double press
+    c.post(f"/daily/{tid}/undo", data={"csrf": tok})
+    with session(dd) as s:
+        assert s.get(DailyTask, tid).done_at is None and s.get(JournalEntry, eid) is not None  # it has your note
+    c.post(f"/daily/{tid}/done", data={"csrf": tok})
+    with session(dd) as s:
+        assert s.query(JournalEntry).filter_by(source="daily").count() == 1 and s.get(DailyTask, tid).entry_id == eid
+
+
+def test_undo_without_a_note_takes_the_record_back(nb):
+    dd, *_ = nb
+    setup(dd)
+    c, tok = _web(nb)
+    tid = _three(dd)[0]
+    c.post(f"/daily/{tid}/done", data={"csrf": tok})
+    with session(dd) as s:
+        eid = s.get(DailyTask, tid).entry_id
     c.post(f"/daily/{tid}/undo", data={"csrf": tok})
     with session(dd) as s:
         assert s.get(DailyTask, tid).done_at is None and s.get(JournalEntry, eid) is None
+
+
+def test_removing_its_record_unlinks_the_task_so_undo_cant_hit_a_reused_id(nb):
+    from careeros.storage.removal import remove_entry
+    dd, *_ = nb
+    setup(dd)
+    c, tok = _web(nb)
+    tid = _three(dd)[0]
+    c.post(f"/daily/{tid}/done", data={"csrf": tok})
+    with session(dd) as s:
+        eid = s.get(DailyTask, tid).entry_id
+        remove_entry(s, eid)
+        s.add(JournalEntry(id=eid, day=TODAY.isoformat(), kind="meeting", text="Planning", created_at=datetime.now()))
+        s.commit()
+    c.post(f"/daily/{tid}/undo", data={"csrf": tok})
+    with session(dd) as s:
+        assert s.get(JournalEntry, eid).text == "Planning" and s.get(DailyTask, tid).entry_id is None
 
 
 def test_undo_keeps_a_record_you_already_checked(nb):
@@ -314,7 +347,8 @@ def test_all_three_done_and_the_suggest_button_starts_a_job(nb, monkeypatch):
     c, tok = _web(nb)
     for tid in _three(dd):
         c.post(f"/daily/{tid}/done", data={"csrf": tok})
-    assert "All three done. Nice." in c.get("/").text
+    home = c.get("/").text
+    assert "All three done. Nice." in home and 'action="/daily/suggest"' not in home
     started = []
     monkeypatch.setattr("careeros.web.syncs.run_daily",
                         lambda job, S, lock, force=False: (started.append(force), job.finish("ok")))

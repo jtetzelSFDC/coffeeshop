@@ -5,10 +5,11 @@
 
 {% if personal %}
 <section class="card daily" aria-label="Today's three">
+  {% set all_done = daily and daily|selectattr("done_at")|list|length == daily|length %}
   <div class="qhead"><h2>Today's three</h2>{{ sync_chips(sync, [("daily", "Daily")]) }}
-    <form method="post" action="/daily/suggest" data-sync="daily" style="margin-left:auto">
+    {% if not all_done %}<form method="post" action="/daily/suggest" data-sync="daily" style="margin-left:auto">
       <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="force" value="{{ '1' if daily else '' }}">
-      <button data-label="{{ 'New three' if daily else 'Suggest now' }}" title="{{ 'Swap the ones not done yet for new ideas' if daily else 'Ask Claude now instead of waiting for the morning sync' }}">{{ 'New three' if daily else 'Suggest now' }}</button></form></div>
+      <button data-label="{{ 'New three' if daily else 'Suggest now' }}" title="{{ 'Swap the ones not done yet for new ideas' if daily else 'Ask Claude now instead of waiting for the morning sync' }}">{{ 'New three' if daily else 'Suggest now' }}</button></form>{% endif %}</div>
   {% for t in daily %}
   <div class="dt {{ 'done' if t.done_at }}">
     {% if t.done_at %}
@@ -24,7 +25,7 @@
     <span class="dt-meta muted" title="{{ t.goal }}">~{{ t.minutes }} min &middot; {{ t.goal|truncate(26, True, '…', 0) }}</span>
   </div>
   {% else %}<p class="muted">No three yet today. They come with the morning sync, or press <b>Suggest now</b>.</p>{% endfor %}
-  {% if daily and daily|selectattr("done_at")|list|length == daily|length %}<p class="next">All three done. Nice.</p>{% endif %}
+  {% if all_done %}<p class="next">All three done. Nice.</p>{% endif %}
   <div class="job" data-job="daily" hidden></div>
 </section>
 {% endif %}

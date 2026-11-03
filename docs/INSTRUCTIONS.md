@@ -170,8 +170,8 @@ uv run careeros daily show              # print today's three
 **On Home**, a **Today's three** card sits at the top. Each line is a checkbox, the task, and a small `~5 min · V2MOM M4` hint (hover the task for why it helps).
 
 - **Check one off:** press its box, add what you did if you like (optional), and press **Done**. It's logged as a finished task (from "daily"), so it counts like any other work, and the next sync links it to the leveling guide and your V2MOM.
-- **Changed your mind:** press the checked box. The record it logged goes too, unless you've since checked it in the Intake Review Queue or made a win from it.
-- **Suggest now** (when today's three aren't there yet) or **New three** (swap the ones not done for new ideas) asks Claude right away, with a progress box like the Sync buttons.
+- **Changed your mind:** press the checked box. The record it logged goes too, unless you wrote what you did, checked it in the Intake Review Queue, or made a win from it. Then the record stays, and checking the box again reuses it.
+- **Suggest now** (when today's three aren't there yet) or **New three** (swap the ones not done for new ideas; it's hidden once all three are done) asks Claude right away, with a progress box like the Sync buttons.
 - When all three are done, the card says so.
 
 Each task names its goal, like `V2MOM M4` or `Grade 6: …`. If Claude's answer doesn't fit (not exactly three, longer than ten minutes, or tied to a goal that wasn't offered), nothing is saved and the command says why. With no leveling guide and no V2MOM loaded there's nothing to aim at, so it says that instead. When it fails in the morning sync, the sync's usual notification says why and nothing is saved; the next sync that day tries again. The **Daily** chip in the Intake Review Queue turns green once today's three exist, and the sync log in `logs/` shows each run.
@@ -357,7 +357,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `229 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `231 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

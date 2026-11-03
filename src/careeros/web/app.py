@@ -62,7 +62,7 @@ TABS = {  # path -> (kind, tab name, heading, what's on it)
 }
 PAGES = {"/", "/search", "/wins", "/promo", "/v2mom", "/sheet", "/digest", *TABS}
 SOURCE_LABEL = {"calendar": "Calendar", "tasks": "Google Tasks", "slack": "Slack", "docs": "Google Docs", "github": "GitHub",
-                "kudos": "Slack kudos", "": "Typed"}
+                "kudos": "Slack kudos", "daily": "Daily three", "": "Typed"}
 SHEET_KIND = [("meeting", "Meeting"), ("conversation", "Convo"), ("document", "Doc"), ("task", "Task"), ("recognition", "Kudos"),
               ("note", "Other")]
 SHEET_SHOW = {"all": "Everything", "todo": "Not checked yet", "ai": "Changed by Claude", "linked": "Linked to the guide",

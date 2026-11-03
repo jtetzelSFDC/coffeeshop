@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import nullcontext
 from datetime import date, datetime, timedelta
 from typing import Callable
 
@@ -143,9 +144,9 @@ def today_tasks(s: Session, day: date | None = None) -> list[DailyTask]:
 
 
 def suggest(s: Session, today: date | None = None, *, force: bool = False,
-            reader: Callable[[str, str], str] | None = None) -> list[DailyTask]:
+            reader: Callable[[str, str], str] | None = None, lock=None) -> list[DailyTask]:
     """Today's three, asking Claude only if they don't exist yet (or `force`). A bad answer raises ClaudeError and
-    leaves today's tasks as they were."""
+    leaves today's tasks as they were. `lock` is held only while saving, not while Claude thinks."""
     today = today or date.today()
     have = today_tasks(s, today)
     if have and (not force or all(t.done_at for t in have)):
@@ -158,6 +159,15 @@ def suggest(s: Session, today: date | None = None, *, force: bool = False,
         tasks = validate(reply, {g["id"] for g in data["goals"]})
     except ValueError as exc:
         raise ClaudeError(f"Claude's suggestions didn't fit ({exc}). Try again.") from None
+    with lock or nullcontext():
+        return _save(s, today, tasks, force)
+
+
+def _save(s: Session, today: date, tasks: list[dict], force: bool) -> list[DailyTask]:
+    s.expire_all()
+    have = today_tasks(s, today)  # again: a tick or another run may have landed while Claude was thinking
+    if have and (not force or all(t.done_at for t in have)):
+        return have
     if have:  # forced: replace only the ones not done yet
         s.execute(delete(DailyTask).where(DailyTask.day == today.isoformat(), DailyTask.done_at.is_(None)))
     kept = [t for t in have if t.done_at]
@@ -179,12 +189,14 @@ def check(s: Session, task: DailyTask, details: str = "") -> JournalEntry:
     """Done: logs a finished task record (with your details as notes) that the rest of the app counts like any other
     work, linked to the guide and the V2MOM on the next sync."""
     from .storage.models import JournalAttachment
-    if task.entry_id and (e := s.get(JournalEntry, task.entry_id)):
+    if task.done_at and task.entry_id and (e := s.get(JournalEntry, task.entry_id)):
         return e
-    e = JournalEntry(day=task.day, kind="task", text=task.text[:500], created_at=datetime.now(), source=SOURCE,
-                     status="done")
-    s.add(e)
-    s.flush()
+    e = s.get(JournalEntry, task.entry_id) if task.entry_id else None
+    if e is None:  # a record kept from an earlier untick is reused
+        e = JournalEntry(day=task.day, kind="task", text=task.text[:500], created_at=datetime.now(), source=SOURCE,
+                         status="done")
+        s.add(e)
+        s.flush()
     if details.strip():
         s.add(JournalAttachment(entry_id=e.id, kind="notes", title="What I did", body=details.strip()[:20_000],
                                 created_at=datetime.now()))
@@ -194,16 +206,19 @@ def check(s: Session, task: DailyTask, details: str = "") -> JournalEntry:
 
 
 def uncheck(s: Session, task: DailyTask) -> bool:
-    """Not done after all. The record it logged goes too, unless you've since checked it in the queue or made a win
-    from it. Returns whether the record was deleted."""
+    """Not done after all. The record it logged goes too, unless you wrote what you did, checked it in the queue, or
+    made a win from it; then it stays, and ticking again reuses it. Returns whether the record was deleted."""
     from .storage.models import GuideLink, JournalAttachment, V2momLink
     e = s.get(JournalEntry, task.entry_id) if task.entry_id else None
-    task.done_at, task.entry_id = None, None
+    task.done_at = None
     gone = False
-    if e is not None and not e.reviewed and not s.scalar(select(Win.id).where(Win.entry_id == e.id).limit(1)):
-        for model in (JournalAttachment, GuideLink, V2momLink):
+    if e is None:
+        task.entry_id = None
+    elif not e.reviewed and not any(s.scalar(select(m.id).where(m.entry_id == e.id).limit(1))
+                                    for m in (Win, JournalAttachment)):
+        for model in (GuideLink, V2momLink):
             s.execute(delete(model).where(model.entry_id == e.id))
         s.delete(e)
-        gone = True
+        task.entry_id, gone = None, True
     s.commit()
     return gone

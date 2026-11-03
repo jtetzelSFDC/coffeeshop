@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
-from .models import GuideLink, JournalAttachment, JournalEntry, RemovedEntry, SkipRule, Win
+from .models import DailyTask, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, SkipRule, Win
 
 
 def skip_patterns(s: Session, source: str = "calendar") -> list[str]:
@@ -55,6 +55,7 @@ def remove_entry(s: Session, eid: int) -> bool:
         else:
             w.entry_id = None
     s.execute(delete(GuideLink).where(GuideLink.entry_id == eid))
+    s.execute(update(DailyTask).where(DailyTask.entry_id == eid).values(entry_id=None))  # ids get reused
     s.delete(e)
     s.flush()
     from ..guide.work import drop_empty

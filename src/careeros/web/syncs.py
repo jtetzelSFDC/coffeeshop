@@ -292,8 +292,7 @@ def run_daily(job: Job, Session_, lock, force: bool = False) -> None:
             job.finish("No daily three without goals.")
             return
         try:
-            with lock:
-                tasks = daily.suggest(s, force=force)
+            tasks = daily.suggest(s, force=force, lock=lock)
         except ClaudeError as exc:
             job.fail(0, str(exc))
             job.finish("No daily three today, so nothing changed.")
