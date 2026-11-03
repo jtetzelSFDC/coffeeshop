@@ -351,7 +351,7 @@ def slack_pull(data_dir: Optional[str] = DataOpt) -> None:
     """Read the connected canvas, import new items, look for kudos, and link them to the guide (the Sync Slack
     button)."""
     from .web import syncs
-    _run_job(data_dir, "Slack sync", syncs.SLACK_STEPS, lambda j, S, lock, dd: syncs.run_slack(j, S, lock, dd))
+    _run_job(data_dir, "Slack sync", syncs.SLACK_STEPS, syncs.run_slack)
 
 v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from its PDF or a Google Doc (read-only)")
 app.add_typer(v2mom_app, name="v2mom")
@@ -494,7 +494,7 @@ app.add_typer(calendar_app, name="calendar")
 
 def _run_job(data_dir: Optional[str], what: str, steps: list[str], run) -> None:
     """Runs one of the app's background jobs here in Terminal (the same code as its button) and prints each step.
-    `run(job, Session_, lock)` is the job; exits 1 when a step failed."""
+    `run(job, Session_, lock, dd)` is the job; exits 1 when a step failed."""
     import threading
     from .web.jobs import Job
     dd, s = _open_personal(data_dir, what)
