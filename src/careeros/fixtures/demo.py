@@ -59,8 +59,19 @@ LINKS = {  # record index -> guide names it shows
 }
 
 
+def _seed_ksos(s: Session) -> None:
+    from ..storage.models import KsoFramework
+    from .kso import FRAMEWORK
+    if s.query(KsoFramework).first() is None:
+        s.add(KsoFramework(fiscal_year=FRAMEWORK["fiscal_year"], track=FRAMEWORK["track"], data=FRAMEWORK,
+                           sources={}, pulled_at=datetime.now()))
+        s.commit()
+
+
 def seed(s: Session, today: date | None = None) -> dict[str, int]:
-    """Fill an empty practice notebook. Does nothing if it already has records."""
+    """Fill an empty practice notebook. Does nothing if it already has records (but adds the made-up KSOs to an
+    older practice notebook that has none)."""
+    _seed_ksos(s)
     if s.query(JournalEntry).first() is not None:
         return dict(records=0, wins=0, guide=0)
     today = today or date.today()

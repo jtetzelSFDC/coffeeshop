@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import os
 import hmac
+import re
 import threading
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -60,7 +61,7 @@ TABS = {  # path -> (kind, tab name, heading, what's on it)
     "/recognition": ("recognition", "Kudos", "Kudos", "Recognition from other people: shout-outs and thanks found in public and private Slack channels (never DMs), and anything you marked as recognition. Each counts like a medium win on the Promo map."),
     "/other": ("note", "Other", "Something else", "Anything that didn't fit the other tabs."),
 }
-PAGES = {"/", "/search", "/wins", "/promo", "/v2mom", "/sheet", "/digest", *TABS}
+PAGES = {"/", "/search", "/wins", "/promo", "/v2mom", "/kso", "/sheet", "/digest", *TABS}
 SOURCE_LABEL = {"calendar": "Calendar", "tasks": "Google Tasks", "slack": "Slack", "docs": "Google Docs", "github": "GitHub",
                 "kudos": "Slack kudos", "daily": "Daily three", "": "Typed"}
 SHEET_KIND = [("meeting", "Meeting"), ("conversation", "Convo"), ("document", "Doc"), ("task", "Task"), ("recognition", "Kudos"),
@@ -156,7 +157,8 @@ def create_app(dd: DataDir) -> FastAPI:
         return JSONResponse({"error": "bad csrf token"}, status_code=403)
 
     def back(msg: str | None = None, to: str = "/") -> RedirectResponse:
-        return RedirectResponse(to + (f"?msg={quote(msg[:300])}" if msg else ""), status_code=303)
+        sep = "&" if "?" in to else "?"
+        return RedirectResponse(to + (f"{sep}msg={quote(msg[:300])}" if msg else ""), status_code=303)
 
     def theme_of(request: Request) -> str:
         return "light" if request.cookies.get("theme") == "light" else "dark"
@@ -821,6 +823,61 @@ def create_app(dd: DataDir) -> FastAPI:
             csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/v2mom",
             personal=personal, q="")
         return HTMLResponse(html)
+
+    @app.get("/kso", response_class=HTMLResponse)
+    def kso_page(request: Request, fy: str = "", msg: str | None = None, s: Session = Depends(db)):
+        """This year's KSOs: how each is measured, how you stand (plain math from your V2MOM), and what it pays."""
+        from ..kso import progress as kso_progress
+        html = env.get_template("kso.html").render(
+            r=kso_progress.build(s, fy or None), csrf=csrf_token, msg=msg, sync_warning=dd.sync_warning(),
+            theme=theme_of(request), page="/kso", personal=personal, q="")
+        return HTMLResponse(html)
+
+    def _kso_fw(s: Session, fy: str):
+        from ..kso import framework as kso_fw
+        return kso_fw.get(s, fy) if fy else None
+
+    @app.post("/kso/target", dependencies=[Depends(check_csrf)])
+    def kso_target(fy: str = Form(""), target: str = Form("", max_length=20), s: Session = Depends(db)):
+        from ..kso import progress as kso_progress
+        to = f"/kso?fy={quote(fy)}"
+        if _kso_fw(s, fy) is None:
+            return back("Those KSOs aren't here any more.", "/kso")
+        digits = re.sub(r"[$,\s]", "", target)
+        whole = re.fullmatch(r"(\d+)(?:\.\d{1,2})?", digits)
+        try:
+            if digits and not whole:
+                raise ValueError
+            with _write_lock:
+                kso_progress.set_target(s, fy, int(whole.group(1)) if digits else None)
+        except ValueError:
+            return back("Enter your yearly target incentive in dollars, like 12000.", to)
+        return back("Saved. It stays on this laptop." if digits else "Target cleared.", to)
+
+    @app.post("/kso/rating", dependencies=[Depends(check_csrf)])
+    def kso_rating(fy: str = Form(""), kso: str = Form(""), rating: str = Form(""), s: Session = Depends(db)):
+        from ..kso import progress as kso_progress
+        fw = _kso_fw(s, fy)
+        if fw is None:
+            return back("Those KSOs aren't here any more.", "/kso")
+        try:
+            with _write_lock:
+                kso_progress.set_rating(s, fw, kso, rating)
+        except ValueError as exc:
+            return back(str(exc), f"/kso?fy={quote(fy)}")
+        return back(f"KSO {kso}: " + (f"rated {rating}." if rating else "rating cleared."), f"/kso?fy={quote(fy)}")
+
+    @app.post("/kso/map", dependencies=[Depends(check_csrf)])
+    def kso_map(fy: str = Form(""), method_id: int = Form(...), component: str = Form(""), s: Session = Depends(db)):
+        from ..kso import framework as kso_fw, map as kso_map_mod
+        fw = _kso_fw(s, fy)
+        m = s.get(V2momMethod, method_id)
+        if fw is None or m is None or component not in ("", *(c["key"] for c in kso_fw.components(fw))):
+            return back("That V2MOM method or KSO part isn't here any more.", "/kso")
+        with _write_lock:
+            kso_map_mod.set_pick(s, fy, method_id, component)
+        return back(f"{m.label} now counts toward " + (f"KSO {component}." if component else "no KSO part."),
+                    f"/kso?fy={quote(fy)}")
 
     @app.get("/v2mom/{mid}", response_class=HTMLResponse)
     def v2mom_method_page(request: Request, mid: int, s: Session = Depends(db)):

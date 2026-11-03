@@ -155,7 +155,7 @@ def test_connect_and_show_from_the_command_line(nb, monkeypatch):
     assert "FY27 Delivery: KSO 1 Calm Releases (20%, 2 parts)" in r.output and "Matched 2 V2MOM methods" in r.output
     assert seen["src"] == SRC
     r = CliRunner().invoke(cli, ["kso", "show", "--data-dir", str(dd.root)])
-    assert "1.1 Plan Kept: M1 (AI)" in r.output and "1.2 Kind Words: no V2MOM goal yet" in r.output
+    assert "1.1 Plan Kept: M1 (AI)" in r.output and "1.2 Kind Feedback: no V2MOM goal yet" in r.output
     monkeypatch.setattr(framework, "ask", lambda p, d, timeout=0: "not JSON")
     r = CliRunner().invoke(cli, ["kso", "connect", "--data-dir", str(dd.root)])  # re-reads the saved sources
     assert r.exit_code == 1 and "Nothing was changed" in r.output
