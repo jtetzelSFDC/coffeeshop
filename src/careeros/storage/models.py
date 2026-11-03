@@ -220,6 +220,16 @@ class KsoMap(Base):
     by_ai: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class KsoYear(Base):
+    """What you enter for a fiscal year: your target incentive (dollars, never sent anywhere) and your own 1-5
+    rating per KSO (a guess, or the final one once your manager has rated you)."""
+    __tablename__ = "kso_year"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fiscal_year: Mapped[str] = mapped_column(String, unique=True)
+    target_incentive: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    ratings: Mapped[dict] = mapped_column(JSON, default=dict)  # {"1": 4, "2": 5}
+
+
 class V2momLink(Base):
     """A win or a notebook entry that advances a V2MOM method. Goes away with the win or entry."""
     __tablename__ = "v2mom_link"

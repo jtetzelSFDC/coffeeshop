@@ -95,5 +95,9 @@ def seed(s: Session, today: date | None = None) -> dict[str, int]:
         s.flush()
         for n in LINKS.get(idx, []):
             s.add(GuideLink(item_id=items[n].id, win_id=w.id, created_at=now))
+    from .kso import FRAMEWORK
+    from ..storage.models import KsoFramework
+    s.add(KsoFramework(fiscal_year=FRAMEWORK["fiscal_year"], track=FRAMEWORK["track"], data=FRAMEWORK, sources={},
+                       pulled_at=now))
     s.commit()
     return dict(records=len(entries), wins=len(WINS), guide=len(GUIDE))

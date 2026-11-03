@@ -103,12 +103,12 @@ def set_pick(s: Session, fy: str, method_id: int, component: str) -> None:
 
 
 def by_component(s: Session, fw: KsoFramework) -> dict[str, list[tuple[V2momMethod, KsoMap]]]:
-    """Component key -> the current V2MOM methods mapped to it (with their pick)."""
-    from ..v2mom import store
-    have = mapped(s, fw.fiscal_year)
+    """Component key -> the year's V2MOM methods mapped to it (with their pick), in V2MOM order. A method dropped
+    from the V2MOM no longer counts."""
     out: dict[str, list] = {c["key"]: [] for c in framework.components(fw)}
-    for m in store.methods(s):
-        pick = have.get(m.id)
-        if pick and pick.component in out:
+    rows = s.execute(select(V2momMethod, KsoMap).join(KsoMap, KsoMap.method_id == V2momMethod.id).where(
+        KsoMap.fiscal_year == fw.fiscal_year, V2momMethod.active).order_by(V2momMethod.position))
+    for m, pick in rows:
+        if pick.component in out:
             out[pick.component].append((m, pick))
     return out

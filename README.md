@@ -13,6 +13,7 @@
 - It counts a deed once, however many places it appears.
 - It keeps the kind words others say of you, word for word.
 - It holds your V2MOM, and notes which work moves each method forward.
+- It shows how your year will be weighed for the bonus, and what it may pay.
 - It shows the path: what is shown, what is strong, what is still to come.
 - Each morning it offers three small steps, none longer than ten minutes.
 - When the season comes, it writes your promotion case, each sentence with its source, for you to shape and send to Google Docs.

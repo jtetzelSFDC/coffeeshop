@@ -18,7 +18,7 @@ FRAMEWORK = dict(
                       levels=_levels("plan kept"),
                       examples=["Mark one V2MOM measure's progress after today's release",
                                 "Write a two-line release note for the team"]),
-                 dict(key="1.2", name="Kind Words", what="What people say about working with you.",
+                 dict(key="1.2", name="Kind Feedback", what="What people say about working with you.",
                       levels=_levels("praise"),
                       examples=["Ask one teammate how the last handoff went", "Save a thank-you message as a record"]),
              ]),

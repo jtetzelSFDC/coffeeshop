@@ -327,6 +327,21 @@ It reads the deck through the Google connector and the canvases through the Slac
 
 **Which V2MOM methods count toward which KSO part.** After connecting, Claude matches each V2MOM method to the one KSO component it gives the most evidence for (marked AI). New methods are matched after each monthly V2MOM sync. `uv run careeros kso show` lists each component and its methods; a component with none says "no V2MOM goal yet", and every component needs one. `uv run careeros kso map --redo` asks Claude again for its own matches; yours never change.
 
+**The KSOs page** (Menu > KSOs) shows this year's KSOs, with a year picker once there's more than one.
+
+- **At the top:** how you're rated, the payout for each rating, and the next key dates.
+- **One card per KSO:** its share of your bonus, what it measures, and a bar. Then one row per part:
+  - **The bar:** the average progress of the V2MOM methods that count toward the part, taken from your V2MOM. A part with no V2MOM goal gets a warning and counts as 0 in the KSO's bar, because your manager counts a missing one against you too.
+  - **What the manager looks at,** in plain words.
+  - **The methods that count,** each with a **Move** list to point it at another part. That makes the pick yours.
+  - **How many wins and records** back those methods this year, plus your kudos count for the feedback part.
+  - **Try this week:** a few small things to do.
+  - **What a 4 and a 5 look like,** from the rubric.
+- **Your rating:** set a guess per KSO, or the real rating once your manager has entered it.
+- **What the KSOs pay:** enter your yearly target incentive (from your incentive compensation plan; it stays on this laptop and is never sent to Claude). The card shows each KSO's share, what your rating pays, the total once both are set, and what all-3s, all-4s, and all-5s would pay. Utilization (the rest of your bonus) isn't measured here.
+
+The practice notebook has made-up KSOs, so you can try the page without real material.
+
 ## Year-end exports
 
 At year end, pick the year on the Wins tab and click **Download as Markdown**. The file opens with your large wins as highlights, then lists everything by theme with its date and why it mattered. Paste it into a promotion doc or use it to pick resume bullets. Removing a notebook entry never removes a win made from it.
@@ -371,7 +386,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `253 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `260 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 
