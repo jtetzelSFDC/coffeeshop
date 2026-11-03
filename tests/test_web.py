@@ -8,7 +8,7 @@ from careeros.config import DataDir, NotDemoData
 from datetime import date
 
 from careeros.storage.db import init_db, make_engine, make_session_factory
-from careeros.storage.models import GuideItem, JournalAttachment, JournalEntry, Win
+from careeros.storage.models import DailyTask, GuideItem, JournalAttachment, JournalEntry, Win
 from careeros.web.app import create_app
 
 BASE = "http://127.0.0.1"
@@ -63,6 +63,9 @@ def test_demo_seed_fills_every_page_with_made_up_data(tmp_path):
     c = TestClient(create_app(dd), base_url=BASE)
     home = c.get("/").text
     assert "practice notebook" in home and "Grade 5 to 6, aiming at 7" in home and "Sync Google" not in home
+    assert "Today's three" in home and 'action="/daily/suggest"' not in home  # the made-up three, no Suggest
+    with make_session_factory(make_engine(dd.db))() as s:
+        assert s.query(DailyTask).count() == 3  # seeding twice the same day adds no second three
     assert "Release readiness review" in c.get("/meetings").text
     for path in ("/wins", "/promo", "/sheet?show=all", "/meetings", "/conversations", "/documents", "/tasks", "/other",
                  "/search?q=rollback"):

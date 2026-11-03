@@ -64,6 +64,15 @@ DAILY = [("Write a two-line note on the Pine release for the team channel", "Sho
          ("Try an AI helper on one release checklist and note what it saved", "New tools, shared", "KSO 2.2", 10)]
 
 
+def _seed_daily(s: Session, today: date) -> None:
+    """Today's made-up three, if today has none: running `demo seed` again shows the card on a new day."""
+    if s.query(DailyTask).filter(DailyTask.day == today.isoformat()).first() is None:
+        for pos, (text, why, goal, minutes) in enumerate(DAILY, 1):
+            s.add(DailyTask(day=today.isoformat(), position=pos, text=text, why=why, goal=goal, minutes=minutes,
+                            created_at=datetime.now()))
+        s.commit()
+
+
 def _seed_ksos(s: Session) -> None:
     from ..storage.models import KsoFramework
     from .kso import FRAMEWORK
@@ -77,6 +86,7 @@ def seed(s: Session, today: date | None = None) -> dict[str, int]:
     """Fill an empty practice notebook. Does nothing if it already has records (but adds the made-up KSOs to an
     older practice notebook that has none)."""
     _seed_ksos(s)
+    _seed_daily(s, today or date.today())
     if s.query(JournalEntry).first() is not None:
         return dict(records=0, wins=0, guide=0)
     today = today or date.today()
@@ -111,8 +121,5 @@ def seed(s: Session, today: date | None = None) -> dict[str, int]:
         s.flush()
         for n in LINKS.get(idx, []):
             s.add(GuideLink(item_id=items[n].id, win_id=w.id, created_at=now))
-    for pos, (text, why, goal, minutes) in enumerate(DAILY, 1):
-        s.add(DailyTask(day=today.isoformat(), position=pos, text=text, why=why, goal=goal, minutes=minutes,
-                        created_at=now))
     s.commit()
     return dict(records=len(entries), wins=len(WINS), guide=len(GUIDE))

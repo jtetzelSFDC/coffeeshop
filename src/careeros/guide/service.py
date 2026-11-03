@@ -11,7 +11,8 @@ from ..storage.models import GuideItem, GuideLink, JournalEntry, Win
 from .parse import parse_guide
 from .topics import suggest
 
-CURRENT_GRADE = 5
+CURRENT_GRADE = 5  # your grade now; the guide's next two grades are what the app lines your work up against
+GRADES = (f"Grade {CURRENT_GRADE}, going for Grade {CURRENT_GRADE + 1}, with some Grade {CURRENT_GRADE + 2} work")
 TARGET_GRADES = (6, 7)
 POINTS = {"entry": 1, "small": 2, "medium": 3, "large": 4}
 RECOGNITION_SIZE = "medium"  # kudos from someone else count like a medium win

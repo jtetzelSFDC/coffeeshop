@@ -14,6 +14,7 @@ Your real, permanent notebook lives in `~/Library/Application Support/CareerOS`.
 
 ```
 cd ~/Documents/career-os
+uv run careeros notebook init   # first time only: makes the notebook folder
 uv run careeros serve
 ```
 
@@ -147,7 +148,7 @@ It never touches rows you've marked checked or guide links you picked yourself. 
 
 Your Slack Work Activity Tracker canvas (the one Slackbot fills in every day) comes into the notebook as entries. Claude reads each work item and decides whether it was a meeting, a conversation, a document, or a task. Anything it can't place goes to **Other**. Every entry from Slack has a **from Slack** label, the tracker's notes underneath (marked as written by Slack's AI), and a link back to the Slack thread. Items that are already in the notebook are skipped, so syncing again is safe. Tasks from Slack come in as done. When the tracker says why something mattered, the entry gets a dashed **suggested win** label and the **Count this as a win** form is pre-filled with that reason, so you can edit it into your own words and save.
 
-**The Sync Slack tracker button** on Home reads the canvas through Claude Code's Slack connector, sorts the new items, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again from the Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
+**The Sync Slack tracker button** on Home reads the canvas through Claude Code's Slack connector, sorts the new items, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again in Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
 
 ```
 cd ~/Documents/career-os
@@ -353,7 +354,7 @@ At year end, pick the year on the Wins tab and click **Download as Markdown**. T
 The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, V2MOM, KSOs, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
 
 - **Home**: today's three small tasks, then one card about the goal.
-  - **Today's three:** see **Daily three** above. The practice notebook shows a made-up three.
+  - **Today's three:** see **Daily three** above. The practice notebook shows a made-up three (run `demo seed` again on a new day to see it).
   - **Promotion readiness:** a bar each for Grade 6 and Grade 7, showing how many key experiences are shown, with a percentage (hover for the detail; click for the Promo map).
   - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method (see **The V2MOM page**). Hidden until a V2MOM is loaded.
   - **Four tiles:** leveling-guide skills with evidence, wins this half, kudos this half, and records waiting in the Intake Review Queue.
