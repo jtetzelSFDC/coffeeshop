@@ -424,6 +424,86 @@ def v2mom_tag(everything: bool = typer.Option(False, "--all", help="Every record
                + (f" {r['failed']} couldn't be read; run this again to retry them." if r["failed"] else ""))
 
 
+kso_app = typer.Typer(no_args_is_help=True, help="Your KSOs: how you're rated, read from the KSO deck and guides")
+app.add_typer(kso_app, name="kso")
+
+
+@kso_app.command("connect")
+def kso_connect(deck: list[str] = typer.Option([], "--deck", help="The KSO framework deck (Google Slides link or id)"),
+                canvas: list[str] = typer.Option([], "--canvas", help="A KSO guide or FAQ Slack canvas (link or id)"),
+                track: str = typer.Option("Delivery", help="Your KSO track, as the material names it"),
+                manager: bool = typer.Option(False, "--manager", help="Include people-manager-only components"),
+                data_dir: Optional[str] = DataOpt) -> None:
+    """Read this year's KSOs (each year, or when the material changes). With no links, re-reads the ones saved."""
+    from .claude_cli import ClaudeError
+    from .kso import framework, map as kmap
+    dd, s = _open_personal(data_dir, "KSOs")
+    try:
+        src = framework.sources(deck, canvas, track, manager) if deck or canvas else framework.load_sources(dd)
+    except ValueError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    if not src:
+        typer.echo("Give the KSO deck and guide canvases: uv run careeros kso connect --deck <link> --canvas <link>")
+        raise typer.Exit(1)
+    typer.echo("Reading the KSO material and having Claude sort it. This takes a few minutes.")
+    try:
+        fw = framework.save(s, framework.parse(framework.fetch(src), src["track"], src["manager"]), src)
+        framework.save_sources(dd, src)
+        typer.echo(_kso_summary(fw))
+        if framework.v2mom_year(s) not in (None, fw.fiscal_year):
+            typer.echo(f"Your V2MOM is still for {framework.v2mom_year(s)}; its methods get matched to {fw.fiscal_year} "
+                       "once you sync the new V2MOM.")
+            return
+        r = kmap.suggest(s, fw)
+        typer.echo(f"Matched {r['mapped']} V2MOM methods to KSO components (marked AI); {r['none']} fit none.")
+    except ClaudeError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+
+
+@kso_app.command("map")
+def kso_map(redo: bool = typer.Option(False, "--redo", help="Also redo Claude's earlier matches (yours stay)"),
+            data_dir: Optional[str] = DataOpt) -> None:
+    """Have Claude match V2MOM methods to KSO components (only ones not matched yet, unless --redo)."""
+    from .claude_cli import ClaudeError
+    from .kso import framework, map as kmap
+    dd, s = _open_personal(data_dir, "KSOs")
+    fw = framework.for_current(s)
+    if fw is None:
+        typer.echo("No KSOs yet. Run: uv run careeros kso connect --deck <link> --canvas <link>")
+        raise typer.Exit(1)
+    try:
+        r = kmap.suggest(s, fw, redo=redo)
+    except ClaudeError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    typer.echo(f"Matched {r['mapped']} V2MOM methods (marked AI); {r['none']} fit none.")
+
+
+@kso_app.command("show")
+def kso_show(data_dir: Optional[str] = DataOpt) -> None:
+    """This year's KSOs, their components, and which V2MOM methods count toward each."""
+    from .kso import framework, map as kmap
+    dd, s = _open_personal(data_dir, "KSOs")
+    fw = framework.for_current(s)
+    if fw is None:
+        typer.echo("No KSOs yet. Run: uv run careeros kso connect --deck <link> --canvas <link>")
+        raise typer.Exit(1)
+    typer.echo(_kso_summary(fw))
+    picks = kmap.by_component(s, fw)
+    for c in framework.components(fw):
+        ms = ", ".join(f"{m.label}{' (AI)' if p.by_ai else ''}" for m, p in picks[c["key"]]) or "no V2MOM goal yet"
+        typer.echo(f"  {c['key']} {c['name']}: {ms}")
+
+
+def _kso_summary(fw) -> str:
+    pay = ", ".join(f"{r}={p:g}%" for r, p in fw.data["payout"].items())
+    ksos = "; ".join(f"KSO {k['key']} {k['name']} ({k['weight']:g}%, {len(k['components'])} parts)"
+                     for k in fw.data["ksos"])
+    return f"{fw.fiscal_year} {fw.track}: {ksos}. Payout by rating: {pay}."
+
+
 calendar_app = typer.Typer(no_args_is_help=True, help="Pull Google Calendar meetings into your notebook (read-only)")
 app.add_typer(calendar_app, name="calendar")
 

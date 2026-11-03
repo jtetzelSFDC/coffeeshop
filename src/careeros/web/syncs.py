@@ -272,12 +272,27 @@ def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
     job.done(0, f"{_plural(len(parsed['methods']), 'method')}, {_plural(len(parsed['obstacles']), 'obstacle')}"
              + (f", {_plural(len(parsed['check_ins']), 'check-in')}" if parsed["check_ins"] else ""))
     job.start(1)
-    with Session_() as s, lock:
-        r = store.save(s, parsed, origin)
+    with Session_() as s:
+        with lock:
+            r = store.save(s, parsed, origin)
+        ksos = _kso_matches(s, lock)
     job.done(1, f"{r['added']} new" + (f", {r['retired']} no longer in your V2MOM (kept, marked inactive)"
-                                      if r["retired"] else ""))
+                                      if r["retired"] else "") + ksos)
     job.finish(f"V2MOM synced: {(parsed['fiscal_year'] + ', ') if parsed['fiscal_year'] else ''}"
                f"{_plural(r['methods'], 'method')}.")
+
+
+def _kso_matches(s, lock) -> str:
+    """New V2MOM methods get matched to this year's KSO components, when KSOs are connected."""
+    from ..kso import framework, map as kmap
+    fw = framework.for_current(s)
+    if not fw or not kmap.pending(s, fw):
+        return ""
+    try:
+        r = kmap.suggest(s, fw, lock=lock)
+    except ClaudeError as exc:
+        return f"; KSO matching didn't work ({exc})"
+    return f"; {_plural(r['mapped'], 'new method')} matched to KSOs (marked AI)"
 
 
 DAILY_STEPS = ["Suggest today's three tasks"]

@@ -197,6 +197,29 @@ class DailyTask(Base):
     entry_id: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)  # the record it logged
 
 
+class KsoFramework(Base):
+    """One fiscal year's KSOs as read from the KSO deck and guides: weights, components, rubric, payout per rating.
+    Internal material, so it stays in the notebook."""
+    __tablename__ = "kso_framework"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fiscal_year: Mapped[str] = mapped_column(String, unique=True)  # e.g. FY27
+    track: Mapped[str] = mapped_column(String, default="")  # e.g. Delivery
+    data: Mapped[dict] = mapped_column(JSON, default=dict)  # see kso.framework.validate
+    sources: Mapped[dict] = mapped_column(JSON, default=dict)  # {decks, canvases, track, manager}
+    pulled_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class KsoMap(Base):
+    """Which KSO component a V2MOM method serves ("" for none). Claude's pick until you set it."""
+    __tablename__ = "kso_map"
+    __table_args__ = (UniqueConstraint("fiscal_year", "method_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fiscal_year: Mapped[str] = mapped_column(String, index=True)
+    method_id: Mapped[int] = mapped_column(ForeignKey("v2mom_method.id"), index=True)
+    component: Mapped[str] = mapped_column(String, default="")  # e.g. "2.2"
+    by_ai: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class V2momLink(Base):
     """A win or a notebook entry that advances a V2MOM method. Goes away with the win or entry."""
     __tablename__ = "v2mom_link"

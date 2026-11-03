@@ -313,6 +313,20 @@ On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active
 
 The promo case then shows how your work lines up with your V2MOM (see **V2MOM alignment** under the promo case).
 
+## KSOs: how your manager rates you for the bonus
+
+KSOs (Key Strategic Objectives) are the part of your bonus your manager rates 1 to 5, once a year for Delivery, against the goals in your V2MOM. Each rating pays a percent of that KSO's share of your target incentive. The app reads this year's KSO material (the framework deck and the guide and FAQ canvases) into your notebook only, because it's internal, and keeps one copy per fiscal year.
+
+**Connect a year** (once a year, or when the material changes):
+
+```
+uv run careeros kso connect --deck <the KSO framework deck link> --canvas <the KSO guide canvas link> --canvas <the FAQ canvas link>
+```
+
+It reads the deck through the Google connector and the canvases through the Slack connector. Claude then sorts them into the KSOs, their weights, their components, the five rubric levels for each, a few example daily or weekly tasks, the payout per rating, and the key dates. A bad read changes nothing. `--track` picks your track (Delivery by default), and `--manager` keeps the people-manager parts. Running `uv run careeros kso connect` with no links re-reads the saved ones.
+
+**Which V2MOM methods count toward which KSO part.** After connecting, Claude matches each V2MOM method to the one KSO component it gives the most evidence for (marked AI). New methods are matched after each monthly V2MOM sync. `uv run careeros kso show` lists each component and its methods; a component with none says "no V2MOM goal yet", and every component needs one. `uv run careeros kso map --redo` asks Claude again for its own matches; yours never change.
+
 ## Year-end exports
 
 At year end, pick the year on the Wins tab and click **Download as Markdown**. The file opens with your large wins as highlights, then lists everything by theme with its date and why it mattered. Paste it into a promotion doc or use it to pick resume bullets. Removing a notebook entry never removes a win made from it.
@@ -357,7 +371,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `234 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `253 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 
