@@ -43,6 +43,7 @@ def fake_syncs(monkeypatch, fail=None):
     monkeypatch.setattr(sync_all.syncs, "run_slack", runner("slack", "slack"))
     monkeypatch.setattr(sync_all.syncs, "run_google", runner("google", "calendar"))
     monkeypatch.setattr(sync_all.syncs, "run_github", runner("github", "github"))
+    monkeypatch.setattr(sync_all, "_daily_due", lambda Session_, now: False)  # covered in test_daily
     return calls
 
 
@@ -132,11 +133,7 @@ def test_install_and_uninstall_write_and_remove_only_their_files(dd, tmp_path, m
     monkeypatch.setattr(schedule, "launchctl", lambda *args: ran.append(args) or 0)
     schedule.install(dd, agents_dir=agents_dir, uv="/opt/uv", repo=Path("/repo"))
     files = sorted(p.name for p in agents_dir.glob("com.careeros.*.plist"))
-    assert files == ["com.careeros.app.plist", "com.careeros.daily.plist", "com.careeros.digest.plist",
-                     "com.careeros.sync.plist"]
-    daily = plistlib.loads((agents_dir / "com.careeros.daily.plist").read_bytes())
-    assert daily["StartCalendarInterval"] == [{"Hour": 8, "Minute": 30}] and "RunAtLoad" not in daily
-    assert daily["ProgramArguments"][-3:] == ["daily", "suggest", "--notify"]
+    assert files == ["com.careeros.app.plist", "com.careeros.digest.plist", "com.careeros.sync.plist"]
     digest = plistlib.loads((agents_dir / "com.careeros.digest.plist").read_bytes())
     assert digest["StartCalendarInterval"] == [{"Weekday": 5, "Hour": 12, "Minute": 0}] and "RunAtLoad" not in digest
     assert digest["ProgramArguments"][-2:] == ["digest", "notify"]
@@ -174,8 +171,8 @@ def test_reinstall_waits_for_the_old_copy_to_stop(dd, tmp_path, monkeypatch):
         return 0
     monkeypatch.setattr(schedule, "launchctl", launchctl)
     monkeypatch.setattr(schedule, "pause", lambda s: None)
-    assert len(schedule.install(dd, agents_dir=agents_dir, uv="/opt/uv", repo=Path("/repo"))) == 4
-    assert len(tries) == 6  # two refusals, then the app, sync, digest and daily agents load
+    assert len(schedule.install(dd, agents_dir=agents_dir, uv="/opt/uv", repo=Path("/repo"))) == 3
+    assert len(tries) == 5  # two refusals, then the app, sync and digest agents load
     monkeypatch.setattr(schedule, "launchctl", lambda *a: 5 if a[0] == "bootstrap" else 0)
     with pytest.raises(RuntimeError, match="wouldn't load"):
         schedule.install(dd, agents_dir=agents_dir, uv="/opt/uv", repo=Path("/repo"))

@@ -280,6 +280,28 @@ def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
                f"{_plural(r['methods'], 'method')}.")
 
 
+DAILY_STEPS = ["Suggest today's three tasks"]
+
+
+def run_daily(job: Job, Session_, lock) -> None:
+    from .. import daily
+    job.start(0)
+    with Session_() as s:
+        if not daily.goals(s, date.today()):
+            job.skip(0, "Nothing to aim at yet: load the leveling guide or connect your V2MOM.")
+            job.finish("No daily three without goals.")
+            return
+        try:
+            with lock:
+                tasks = daily.suggest(s)
+        except ClaudeError as exc:
+            job.fail(0, str(exc))
+            job.finish("No daily three today, so nothing changed.")
+            return
+    job.done(0, f"{len(tasks)} tasks for today")
+    job.finish("Today's three are on Home.")
+
+
 def _kudos(job: Job, i: int, s, lock, dd: DataDir) -> int:
     from ..slack import kudos
     job.start(i)

@@ -22,6 +22,7 @@ from .web import syncs
 from .web.jobs import Job
 
 TIMES = (time(8, 0), time(18, 0))
+DAILY_FROM = time(8, 0)  # the daily three come with the first sync of the day from 8 AM on
 SOURCES = ("slack", "calendar")  # each sync's sign of a successful pull
 LOCKED = 2  # exit code when another sync holds the lock
 
@@ -45,6 +46,16 @@ def _covered(Session_, since: datetime) -> bool:
     with Session_() as s:
         return all((s.scalar(select(func.max(SyncRun.at)).where(SyncRun.source == src)) or datetime.min) >= since
                    for src in SOURCES)
+
+
+def _daily_due(Session_, now: datetime) -> bool:
+    """From the 8 AM sync on, until today's three exist, and only with goals to aim at (a guide or a V2MOM). The
+    login and 6 PM runs catch a morning the Mac was off."""
+    from . import daily
+    if now.time() < DAILY_FROM:
+        return False
+    with Session_() as s:
+        return not daily.today_tasks(s, now.date()) and bool(daily.goals(s, now.date()))
 
 
 def _v2mom_due(dd: DataDir, Session_, now: datetime) -> bool:
@@ -89,6 +100,8 @@ def run(dd: DataDir, *, force: bool = False, now: datetime | None = None,
                 ("GitHub", syncs.GITHUB_STEPS, lambda j: syncs.run_github(j, Session_, lock))]
         if _v2mom_due(dd, Session_, now):
             runs.append(("V2MOM", syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, lock, dd)))
+        if _daily_due(Session_, now):  # last, so the three see the work just synced
+            runs.append(("Daily three", syncs.DAILY_STEPS, lambda j: syncs.run_daily(j, Session_, lock)))
         for name, steps, fn in runs:
             job = Job(steps)
             try:
