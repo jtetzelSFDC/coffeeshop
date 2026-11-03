@@ -13,7 +13,12 @@ document.addEventListener("toggle", (ev) => {
   }
 }, true);
 document.addEventListener("keydown", (ev) => {
-  if (ev.key === "Escape") document.querySelectorAll("details.act[open]").forEach((d) => { d.open = false; });
+  if (ev.key !== "Escape") return;
+  document.querySelectorAll("details.act[open]").forEach((d) => {
+    const inside = d.contains(document.activeElement);
+    d.open = false;
+    if (inside) d.querySelector("summary").focus();
+  });
 });
 
 // A citation like [3] points into the folded Sources list: open it so the browser can scroll to the source.

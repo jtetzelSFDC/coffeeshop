@@ -53,7 +53,7 @@ def status(s: Session, now: datetime | None = None) -> dict[str, dict]:
             hint = "" if ok else "Not pulled in the last month. Press Sync V2MOM."
         elif src == "daily":
             ok = bool(last and last.date() == now.date())
-            hint = "" if ok else "No three yet today. They come with the morning sync, or run: uv run careeros daily suggest"
+            hint = "" if ok else "No three yet today. They come with the morning sync, or press Suggest now on Home."
         else:
             ok = bool(last and last.date() == now.date())
             hint = "" if ok else "Not synced today yet."

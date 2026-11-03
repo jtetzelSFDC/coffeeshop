@@ -283,7 +283,7 @@ def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
 DAILY_STEPS = ["Suggest today's three tasks"]
 
 
-def run_daily(job: Job, Session_, lock) -> None:
+def run_daily(job: Job, Session_, lock, force: bool = False) -> None:
     from .. import daily
     job.start(0)
     with Session_() as s:
@@ -292,8 +292,7 @@ def run_daily(job: Job, Session_, lock) -> None:
             job.finish("No daily three without goals.")
             return
         try:
-            with lock:
-                tasks = daily.suggest(s)
+            tasks = daily.suggest(s, force=force, lock=lock)
         except ClaudeError as exc:
             job.fail(0, str(exc))
             job.finish("No daily three today, so nothing changed.")
