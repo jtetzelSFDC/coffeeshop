@@ -187,13 +187,13 @@ All three add records with `source` set to `github`, `docs` or `releases`, an `e
 - Confirm it's fine to keep customer-related repo and doc titles in this notebook and have Claude summarize them. **Answer: yes.**
 
 ### 7a. GitHub — `feature/07a-github`
-**Answer first:** which repos or orgs count? Any GitHub Enterprise host? **Answer: all PRs on github.com for the `jtetzelSFDC` account; no Enterprise host.**
+**Answer first:** which repos or orgs count? Any GitHub Enterprise host? **Answer: all PRs on github.com for your work GitHub account; no Enterprise host.**
 - `github/connector.py` runs `gh search prs` through `subprocess` (list arguments) with `--json` for: PRs you authored and merged, and PRs you reviewed. No Claude involved. Fields kept: title, repo, date, URL, role (author / reviewer). Use `--hostname` for Enterprise.
 - `external_id = "gh:<repo>#<number>:<role>"`. Import is idempotent.
 - **Changed when built:** a real pull found about 1,000 reviewed PRs a year (mostly routine branch PRs), so reviews come in as one record per repo per week (`gh:reviews:<repo>:<monday>`) with the PR list attached, growing as the week fills; merged PRs stay one record each. Reviews are searched a month at a time (one search tops out at 1,000) with a short pause between searches (GitHub's secondary rate limit). Skip rules match title or repo (`careeros github skip`).
 - Fits item 2's `sync all` as another step; add a step label in `syncs.py`.
 - Tests: canned JSON, no duplicates on a second import, role handled, org filter applied.
-- Risk: `gh` is logged in as `jtetzelSFDC` and your personal repo is under `jmysterio`. Decide in this PR which account the sync uses, and fail clearly if `gh` isn't signed in.
+- Risk: `gh` is logged in as your work account and your personal repo is under `jmysterio`. Decide in this PR which account the sync uses, and fail clearly if `gh` isn't signed in.
 
 ### 7b. Google Docs you wrote — `feature/07b-docs`
 **Answer first:** only docs you own, or also ones you edited heavily? Folders to skip? **Answer: docs owned plus ones edited heavily; no folders skipped yet (keep the skip setting).**

@@ -4,7 +4,7 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Career Tracker is your work notebook. It pulls in your Google Calendar meetings, Google Tasks, and Slack tracker items, has Claude sort each one and link it to the DevOps leveling guide, and keeps your wins so the Promo map and promo case reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
+Career Tracker is your work notebook. It pulls in your Google Calendar meetings, Google Tasks, and Slack tracker items, has Claude sort each one and link it to the DevOps leveling guide, and keeps your wins so the Promo map and promo case reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -263,7 +263,7 @@ If `gh` isn't signed in, the sync says so; run `gh auth login`.
 
 ## V2MOM: your Vision, Values, Methods, Obstacles, and Measures
 
-the V2MOM app won't let the command line sign in, so the app reads your V2MOM from the PDF the V2MOM app exports (recommended: it has every measure's progress and comments, and your check-ins) or from a Google Doc you paste it into.
+The V2MOM app won't let the command line sign in, so the app reads your V2MOM from the PDF the V2MOM app exports (recommended: it has every measure's progress and comments, and your check-ins) or from a Google Doc you paste it into.
 
 1. **Download it as a PDF.** In the V2MOM app, use **download as PDF** and save it to your Desktop. Keep the name it gives you (something like "FY27 V2MOM Your Name.pdf").
 2. **Connect it** once, with the file's path:
@@ -342,7 +342,7 @@ It reads the deck through the Google connector and the canvases through the Slac
 
 The practice notebook has made-up KSOs, so you can try the page without real material.
 
-**Claude's estimate.** Once a month, right after the V2MOM step of the sync, Claude reads the rubric against what your V2MOM shows for each part (status, progress, measures, comments), the titles of the work linked to those methods this year, and your kudos count. It then guesses the 1 to 5 your manager would give each KSO. It never sees your target or any dollar amount. Each KSO card shows the guess (marked AI), one line per part on why, and the three next steps that would raise it most. Press **Re-estimate** to run it now, or run `uv run careeros kso estimate`. Until you set your own rating, the pay card uses Claude's guess (marked AI); your rating always wins. A bad answer changes nothing, and the **KSO estimate** chip shows when it last ran. The daily three also offers KSO parts with no V2MOM goal, and the part furthest behind, as goals.
+**Claude's estimate.** Once a month (once KSOs are read and some V2MOM method counts toward a part), right after the V2MOM step of the sync, Claude reads the rubric against what your V2MOM shows for each part (status, progress, measures, comments), the titles of the work linked to those methods this year, and your kudos count. It then guesses the 1 to 5 your manager would give each KSO. It never sees your target or any dollar amount. Each KSO card shows the guess (marked AI), one line per part on why, and the three next steps that would raise it most. Press **Re-estimate** to run it now, or run `uv run careeros kso estimate`. Until you set your own rating, the pay card uses Claude's guess (marked AI); your rating always wins. A bad answer changes nothing, and the **KSO estimate** chip shows when it last ran. The daily three also offers KSO parts with no V2MOM goal, and the part furthest behind, as goals.
 
 ## Year-end exports
 

@@ -172,7 +172,7 @@ def test_search_finds_titles_and_pasted_text_escaped(seeded):
 def test_page_has_help_text_and_paste_warning(seeded):
     dd, c, token = seeded
     html = c.get("/").text
-    assert "Before you paste" in html and "Pine" in html and "Something the syncs missed?" in html
+    assert "Before you paste" in html and "data rules" in html and "Something the syncs missed?" in html
 
 
 def test_personal_notebook_is_journal_only(tmp_path):

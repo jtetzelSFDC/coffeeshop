@@ -219,7 +219,7 @@ def test_calendar_skip_rule(nb):
         assert [e.text for e in s.scalars(select(JournalEntry))] == ["1:00 PM  Refresh review"]
         new = gcal.Event("u9", "2026-10-21", datetime(2026, 10, 21, 11, 45), None, "[EXT] Team Daily Standup — Pine")
         assert gcal.sync(s, [new], date(2026, 10, 21), date(2026, 10, 21))["added"] == 0
-    assert "Sustainment" in CliRunner().invoke(cli, ["calendar", "skip", "--data-dir", str(dd.root)]).output
+    assert "Daily Standup" in CliRunner().invoke(cli, ["calendar", "skip", "--data-dir", str(dd.root)]).output
 
 
 def test_last_pulled_status(nb):
