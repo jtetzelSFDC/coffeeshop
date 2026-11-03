@@ -56,7 +56,7 @@ TABS = {  # path -> (kind, tab name, heading, what's on it)
     "/meetings": ("meeting", "Meetings", "Meetings", "Every meeting you've logged or pulled from your calendar, newest first. Notes and documents linked to a meeting show underneath it."),
     "/conversations": ("conversation", "Conversations", "Conversations", "Chats and calls you've noted, newest first."),
     "/documents": ("document", "Documents", "Documents", "Documents you've worked on, newest first."),
-    "/tasks": ("task", "Tasks", "Tasks", "Your Google Tasks and any you've noted yourself. What's still open is at the top, finished ones are grouped by the day you completed them."),
+    "/tasks": ("task", "Tasks", "Tasks", "Google Tasks you've finished, grouped by the day you completed them, plus any you've noted yourself (open ones you typed stay at the top)."),
     "/recognition": ("recognition", "Kudos", "Kudos", "Recognition from other people: shout-outs and thanks found in public and private Slack channels (never DMs), and anything you marked as recognition. Each counts like a medium win on the Promo map."),
     "/other": ("note", "Other", "Something else", "Anything that didn't fit the other tabs."),
 }

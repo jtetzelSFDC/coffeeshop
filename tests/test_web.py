@@ -195,7 +195,7 @@ def test_personal_init_refuses_synced_folders(tmp_path):
 
 
 def test_tabs_list_by_kind_and_tasks_open_first(tmp_path):
-    from careeros.google.tasks import Task, sync as sync_tasks
+    from careeros.google.tasks import Task, merge
     from datetime import datetime
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
@@ -207,16 +207,16 @@ def test_tabs_list_by_kind_and_tasks_open_first(tmp_path):
         s.add(JournalAttachment(entry_id=s.scalar(select(JournalEntry.id)), kind="link", title="Notes by Gemini",
                                 body="https://docs.google.com/document/d/abc/edit", created_at=datetime.now()))
         when = datetime.now()
-        batch = [Task("ship it", True, when), Task("write plan", False, when, notes="draft first")]
-        assert sync_tasks(s, batch) == dict(added=2, removed=0)
-        assert sync_tasks(s, batch) == dict(added=0, removed=0)
-        assert sync_tasks(s, batch[:1]) == dict(added=0, removed=1)
-        sync_tasks(s, batch)
+        assert merge(s, [Task("ship it", True, when, gid="T1"), Task("from google", False, when, gid="T2")]) == \
+            dict(added=1, updated=0)
+        s.add(JournalEntry(day=date.today().isoformat(), kind="task", text="write plan", created_at=datetime.now(),
+                           status="open"))
+        s.commit()
     c = TestClient(create_app(dd), base_url=BASE)
     m = c.get("/meetings").text
     assert "Rollout sync" in m and "https://docs.google.com/document/d/abc/edit" in m and "ship it" not in m
     t = c.get("/tasks").text
-    assert t.index("Still to do") < t.index("ship it") and "write plan" in t
+    assert t.index("Still to do") < t.index("write plan") < t.index("ship it") and "from google" not in t
     assert "write plan" not in c.get("/").text  # open tasks stay off Today
     for path in ("/conversations", "/documents", "/other"):
         assert c.get(path).status_code == 200

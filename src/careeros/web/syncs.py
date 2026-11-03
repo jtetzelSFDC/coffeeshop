@@ -72,7 +72,7 @@ def run_google(job: Job, Session_, lock) -> None:
             tasks, failed = gtasks.fetch(_tasks_since(s))
             with lock:
                 r = gtasks.merge(s, tasks, complete=not failed)
-            detail = f"{_plural(r['added'], 'new task')}, {r['updated']} marked done"
+            detail = _plural(r["added"], "finished task")
             if failed:
                 job.fail(1, detail + f"; {_plural(failed, 'task list')} couldn't be read. Press Sync Google again.")
             else:
