@@ -117,6 +117,27 @@ def test_the_newest_v2mom_pdf_in_the_folder_is_read(tmp_path):
     assert connector.newest_pdf(str(other / "gone.pdf")) is None
 
 
+def test_last_years_pdf_opened_again_is_not_read(tmp_path):
+    this = touch(tmp_path / "FY27 V2MOM Pat Example.pdf", 1_700_000_000)
+    touch(tmp_path / "FY26 V2MOM Pat Example.pdf", 1_700_000_500)  # downloaded later, to look back at
+    assert connector.newest_pdf(str(this)) == this
+    nxt = touch(tmp_path / "FY28 V2MOM Pat Example.pdf", 1_600_000_000)  # next year's, whatever its date
+    assert connector.newest_pdf(str(this)) == nxt
+
+
+def test_an_existing_notebook_gets_the_check_ins_column(tmp_path):
+    from sqlalchemy import text
+    from careeros.storage.db import init_db, make_engine
+    engine = make_engine(tmp_path / "old.db")
+    with engine.begin() as c:
+        c.exec_driver_sql("CREATE TABLE v2mom_version (id INTEGER PRIMARY KEY, doc_id VARCHAR, fiscal_year VARCHAR, "
+                          "published VARCHAR, vision TEXT, \"values\" JSON, obstacles JSON, pulled_at DATETIME)")
+        c.exec_driver_sql("INSERT INTO v2mom_version VALUES (1, 'x', 'FY27', '', '', '[]', '[]', '2026-10-01')")
+    init_db(engine)
+    with engine.connect() as c:
+        assert c.execute(text("SELECT check_ins FROM v2mom_version")).scalar() == "[]"
+
+
 def test_connect_a_pdf_stores_its_absolute_path(tmp_path, pdf, monkeypatch):
     dd, _ = personal(tmp_path)
     monkeypatch.chdir(pdf["path"].parent)

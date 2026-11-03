@@ -257,7 +257,7 @@ The app pulls the text out of the PDF on your laptop (with pypdf), then Claude (
 
 **Or a Google Doc** (still works): open your V2MOM in the V2MOM app, expand each method so its measures show, select the whole page, copy, and paste it into a new Google Doc; the page's extra text is ignored. Then connect the Doc's link instead: `uv run careeros v2mom connect "https://docs.google.com/document/d/…/edit"`. The sync reads it through Claude Code's Google Workspace connector. The Doc has no check-ins or measure comments. Connecting the PDF later keeps your methods and their links.
 
-**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again into the same folder and press **Sync V2MOM** on Home. Each sync reads the newest PDF with "V2MOM" in its name in that folder, so a re-download saved as "… (1).pdf" is picked up without connecting again. If the file is gone, the sync says where to save it. With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
+**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again into the same folder and press **Sync V2MOM** on Home. Each sync reads the newest PDF with "V2MOM" in its name in that folder, so a re-download saved as "… (1).pdf" is picked up without connecting again. The latest fiscal year in the name comes first, so downloading last year's PDF to look back at doesn't replace this year's, and next year's FY28 PDF is picked up by itself. If the file is gone, the sync says where to save it. With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
 
 **The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when your V2MOM was read in the last 31 days, orange when it's older, and grey with a hint when nothing is connected yet. The PDF's path or the Doc's id is kept in `v2mom.json` in the notebook folder, readable only by you (a `v2mom.doc` from before still works). The text passes through Claude Code to be read; the PDF itself stays where it is.
 
@@ -336,7 +336,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `204 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `206 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 
