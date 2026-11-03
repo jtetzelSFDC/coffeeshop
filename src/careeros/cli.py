@@ -627,6 +627,36 @@ def digest_notify(data_dir: Optional[str] = DataOpt) -> None:
     typer.echo(line)
 
 
+daily_app = typer.Typer(no_args_is_help=True, help="Three small tasks a day toward your promotion and V2MOM")
+app.add_typer(daily_app, name="daily")
+
+
+@daily_app.command("suggest")
+def daily_suggest(force: bool = typer.Option(False, "--force", help="Ask again even if today's three exist"),
+                  data_dir: Optional[str] = DataOpt) -> None:
+    """Have Claude suggest today's three tasks (what the 8:30 AM schedule runs). Does nothing if they exist."""
+    from . import daily
+    from .claude_cli import ClaudeError
+    dd, s = _open_personal(data_dir, "The daily three")
+    try:
+        tasks = daily.suggest(s, force=force)
+    except ClaudeError as exc:
+        typer.echo(f"No new tasks today: {exc}")
+        raise typer.Exit(1)
+    for t in tasks:
+        typer.echo(f"{'[x]' if t.done_at else '[ ]'} {t.text}  (~{t.minutes} min, {t.goal})")
+
+
+@daily_app.command("show")
+def daily_show(data_dir: Optional[str] = DataOpt) -> None:
+    """Print today's three."""
+    from . import daily
+    dd, s = _open_personal(data_dir, "The daily three")
+    tasks = daily.today_tasks(s)
+    typer.echo("\n".join(f"{'[x]' if t.done_at else '[ ]'} {t.text}  (~{t.minutes} min, {t.goal})" for t in tasks)
+               or "No tasks yet today. They arrive at 8:30 AM, or run: uv run careeros daily suggest")
+
+
 @app.command("serve")
 def serve(port: int = 8765, data_dir: Optional[str] = DataOpt) -> None:
     """Serve the review UI on loopback only (host is not configurable)."""

@@ -181,6 +181,21 @@ class V2momMethod(Base):
         return f"M{self.position}"
 
 
+class DailyTask(Base):
+    """One of the day's three suggested tasks. Checking it off logs a done record (entry_id)."""
+    __tablename__ = "daily_task"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    day: Mapped[str] = mapped_column(String, index=True)  # YYYY-MM-DD
+    position: Mapped[int] = mapped_column(Integer)  # 1 to 3
+    text: Mapped[str] = mapped_column(Text)
+    why: Mapped[str] = mapped_column(Text, default="")
+    goal: Mapped[str] = mapped_column(String, default="")  # e.g. "V2MOM M4" or "Grade 6: Leads sandbox strategy"
+    minutes: Mapped[int] = mapped_column(Integer, default=5)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    done_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    entry_id: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)  # the record it logged
+
+
 class V2momLink(Base):
     """A win or a notebook entry that advances a V2MOM method. Goes away with the win or entry."""
     __tablename__ = "v2mom_link"
