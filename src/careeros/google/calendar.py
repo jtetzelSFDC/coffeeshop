@@ -11,11 +11,11 @@ from datetime import date, datetime, timedelta, timezone
 import httpx
 import icalendar
 import recurring_ical_events
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..config import DataDir, write_private
-from ..storage.models import JournalAttachment, JournalEntry
+from ..storage.models import GuideLink, JournalAttachment, JournalEntry
 
 SOURCE = "calendar"
 MAX_ICS_BYTES = 20_000_000
@@ -128,6 +128,7 @@ def sync(s: Session, events: list[Event], first: date, last: date) -> dict[str, 
     from ..storage.removal import built_on
     for gone in existing.values():
         if not built_on(s, gone):  # any attachment counts: notes links and summaries are worth keeping
+            s.execute(delete(GuideLink).where(GuideLink.entry_id == gone.id))  # Claude's picks; no cascade
             s.delete(gone)
             removed += 1
     from ..storage.sync_log import record

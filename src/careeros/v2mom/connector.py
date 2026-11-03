@@ -91,9 +91,10 @@ def _fy(name: str) -> int:
     return int(n[2:]) if n else 0
 
 
-def _owner(name: str) -> str:
-    """The part of a V2MOM PDF's name that says whose it is: "FY27 V2MOM Pat Example (1).pdf" -> "v2mom pat example"."""
-    return " ".join(re.sub(r"fy\s*\d{2,4}|\(\d+\)|\.pdf$", " ", name.lower()).split())
+def _owner(name: str) -> frozenset[str]:
+    """The words of a V2MOM PDF's name that say whose it is, in any order or punctuation: "FY27 V2MOM Pat Example
+    (1).pdf" and "Pat_Example-FY28-V2MOM.pdf" both give {v2mom, pat, example}."""
+    return frozenset(w for w in re.findall(r"[a-z0-9]+", name.lower()) if not re.fullmatch(r"fy\d*|\d+|pdf", w))
 
 
 def newest_pdf(stored: str) -> Path | None:
