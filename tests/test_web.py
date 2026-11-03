@@ -339,6 +339,9 @@ def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
     monkeypatch.setattr(syncs, "run_review", lambda j, S: (ran.append(1), j.finish("ok")))
     r = c.post("/sheet/ai", data={"csrf": app.state.csrf_token}, headers={"X-Sync": "1"})
     assert r.json() == {"started": True}
+    r = c.post("/sheet/ai", data={"csrf": app.state.csrf_token, "ret": "show=ai&source=slack&page=2"},
+               follow_redirects=False)
+    assert r.headers["location"].startswith("/sheet?show=ai&source=slack") and "page=2" in r.headers["location"]
     for _ in range(50):
         if ran:
             break

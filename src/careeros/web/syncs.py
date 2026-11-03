@@ -35,7 +35,8 @@ def run_review(job: Job, Session_) -> None:
     takes minutes, and the review re-checks each record before it saves."""
     with Session_() as s:
         n = _link_new(job, 0, s)
-    job.finish(f"Claude read {_plural(n, 'record')}. Everything it picked is marked AI.")
+    job.finish(f"Claude read {_plural(n, 'record')}. Everything it picked is marked AI." if n
+               else "Claude didn't read anything new, so nothing changed.")
 
 
 def _link_new(job: Job, i: int, s) -> int:
@@ -128,7 +129,6 @@ def run_google(job: Job, Session_, lock) -> None:
 
 
 def run_promo(job: Job, Session_, start: str, end: str, name: str) -> None:
-    """Write my promo case: one Claude draft per section from the numbered evidence, saved as a new version."""
     """Write a promo case draft: one step per section, ticked as each comes back."""
     from ..promo import write as pw
     keys = [k for k, *_ in pw.SECTIONS]
@@ -157,7 +157,6 @@ def run_promo(job: Job, Session_, start: str, end: str, name: str) -> None:
 
 
 def run_rewrite(job: Job, Session_, vid: int, key: str) -> None:
-    """Rewrite one section of a promo draft, as a new version."""
     """Claude redoes one section of a draft; the result is saved as a new draft."""
     from ..promo import write as pw
     from ..storage.models import PromoVersion
@@ -178,7 +177,6 @@ GDOC_STEPS = ["Send the copy with sources", "Send the clean copy for sharing"]
 
 
 def run_gdoc(job: Job, Session_, dd: DataDir, vid: int) -> None:
-    """Send to Google Docs: a copy with sources for you and a clean one for your manager."""
     """Send a draft to Google Docs twice (with sources, and clean), reading each back to check every word arrived."""
     from sqlalchemy import select
     from ..google import docs_export
