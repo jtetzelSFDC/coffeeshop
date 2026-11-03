@@ -359,3 +359,9 @@ def test_all_three_done_and_the_suggest_button_starts_a_job(nb, monkeypatch):
             break
         time.sleep(0.02)
     assert started == [True]
+
+
+def test_the_prompt_asks_for_shorter_lines_than_validate_allows():
+    import re
+    text, why = map(int, re.findall(r"at most (\d+) characters", daily.PROMPT))
+    assert text < daily.MAX_TEXT and why < daily.MAX_WHY

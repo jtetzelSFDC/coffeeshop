@@ -19,7 +19,7 @@ from .storage.models import DailyTask, JournalEntry, Win
 SOURCE = "daily"  # its runs show as the Daily chip
 TASKS = 3
 RECENT_DAYS = 14
-MAX_TEXT, MAX_WHY, MAX_MINUTES = 110, 90, 10
+MAX_TEXT, MAX_WHY, MAX_MINUTES = 110, 90, 10  # the prompt asks for less, since Claude aims right at a stated limit
 MAX_CONTEXT = 8_000
 MAX_RECENT = 40
 MAX_GOALS = 15
@@ -34,7 +34,7 @@ Suggest exactly 3 small tasks for today. Each must:
 - move ONE goal a small step (use 3 different goals when you can);
 - be concrete and specific to their work (name the doc, release, or person-role when the titles allow), not generic;
 - not repeat something the recent titles show is already done.
-Write "text" as one plain line, at most 110 characters, starting with a verb. "why" is at most 90 characters.
+Write "text" as one plain line, at most 90 characters, starting with a verb. "why" is at most 75 characters.
 
 Reply with only JSON: {"tasks": [{"text": "...", "minutes": 5, "goal": "one goal id from the list", \
 "why": "..."}]}"""
