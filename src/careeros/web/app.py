@@ -773,9 +773,9 @@ def create_app(dd: DataDir) -> FastAPI:
         return sheet_back(request, s, ret, eid)
 
     @app.post("/sheet/ai", dependencies=[Depends(check_csrf)])
-    def sheet_ai(request: Request):
+    def sheet_ai(request: Request, ret: str = Form("")):
         """Have Claude read every record it hasn't read yet against the guide, in the background."""
-        return start_sync(request, "review", to="/sheet")
+        return start_sync(request, "review", to=f"/sheet?{urlencode(parse_ret(ret))}")
 
     @app.get("/promo", response_class=HTMLResponse)
     def promo_page(request: Request, msg: str | None = None, s: Session = Depends(db)):

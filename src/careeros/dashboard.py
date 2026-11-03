@@ -33,7 +33,8 @@ def momentum(s: Session, today: date) -> list[dict]:
 
 
 def build(s: Session, today: date | None = None) -> dict:
-    """Everything Home's progress card shows: grade readiness, skills, wins, kudos, records to check, momentum."""
+    """Everything Home's progress card shows: grade readiness, skills, wins and kudos this half, records to check,
+    weekly momentum, the V2MOM's active methods, and the next guide item to aim for."""
     from .guide.service import CURRENT_GRADE, has_guide, promo_map
     from .v2mom import report
     today = today or date.today()

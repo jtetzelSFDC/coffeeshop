@@ -218,7 +218,7 @@ ol.sources{font-size:.85rem;color:var(--muted);padding-left:1.6rem}ol.sources li
 <header class="top">
   <a class="brand" href="/">Career Tracker</a>
   <form method="post" action="/theme"><input type="hidden" name="csrf" value="{{ csrf }}">
-    <input type="hidden" name="next" value="{{ here or page }}">
+    <input type="hidden" name="next" value="{{ here }}">
     <input type="hidden" name="theme" value="{{ 'light' if theme == 'dark' else 'dark' }}">
     <button class="icon" title="{{ 'Switch to light' if theme == 'dark' else 'Switch to dark' }}" aria-label="{{ 'Switch to light' if theme == 'dark' else 'Switch to dark' }}">{{ '☀' if theme == 'dark' else '☾' }}</button></form>
 </header>

@@ -284,3 +284,9 @@ def test_doc_mode_still_reads_through_the_connector(tmp_path, monkeypatch):
                         and answer(*TWO))
     parsed, origin = connector.read(SRC)
     assert seen == dict(doc=DOC_ID, prompt=connector.PROMPT) and origin == DOC_ID and len(parsed["methods"]) == 2
+
+
+def test_your_v2mom_is_found_whatever_the_word_order_or_separators(tmp_path):
+    mine = touch(tmp_path / "FY27 V2MOM Pat Example.pdf", 1_700_000_000)
+    nxt = touch(tmp_path / "Pat_Example-FY28-V2MOM.pdf", 1_600_000_000)
+    assert connector.newest_pdf(str(mine)) == nxt
