@@ -155,6 +155,19 @@ uv run careeros slack connect <canvas link>
 
 **Importing a saved canvas** (for example one of your old Weekly Contributions canvases): save its text to a file, then run `uv run careeros slack import <file>`. The 2025 Weekly Contributions canvases are already imported.
 
+## Daily three
+
+Once a day Claude suggests **three small tasks**, each ten minutes or less, that each move one of your goals a step. Goals are offered in this order: V2MOM methods that are quiet, unstarted, or behind; the Promo map's Aim for next; V2MOM methods on track but with measures still open; Grade 6 or 7 key experiences that are gaps; and skills with little or no evidence. It reads only short summaries: the goals (names, status, progress, open measures) and the titles of your last two weeks of work. Never your pasted notes or transcripts.
+
+```
+cd ~/Documents/career-os
+uv run careeros daily suggest           # today's three (does nothing if they already exist)
+uv run careeros daily suggest --force   # a new three, keeping any you've already done
+uv run careeros daily show              # print today's three
+```
+
+Each task names its goal, like `V2MOM M4` or `Grade 6: …`. If Claude's answer doesn't fit (not exactly three, longer than ten minutes, or tied to a goal that wasn't offered), nothing is saved and the command says why. With no leveling guide and no V2MOM loaded there's nothing to aim at, so it says that instead.
+
 ## Weekly digest
 
 **Weekly digest** in the Menu shows the last seven days: how many records came in (and from where), the wins and kudos, the leveling guide items that gained evidence, and the week's activity counts next to this half's totals. **Week before** and **Week after** step through earlier weeks.
@@ -336,7 +349,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `207 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `221 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 
