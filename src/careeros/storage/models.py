@@ -184,6 +184,7 @@ class V2momMethod(Base):
 class DailyTask(Base):
     """One of the day's three suggested tasks. Checking it off logs a done record (entry_id)."""
     __tablename__ = "daily_task"
+    __table_args__ = (UniqueConstraint("day", "position"),)  # two runs at once can't save six
     id: Mapped[int] = mapped_column(primary_key=True)
     day: Mapped[str] = mapped_column(String, index=True)  # YYYY-MM-DD
     position: Mapped[int] = mapped_column(Integer)  # 1 to 3

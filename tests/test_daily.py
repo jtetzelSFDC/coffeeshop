@@ -130,3 +130,49 @@ def test_context_keeps_recent_work_even_when_goals_are_many(nb, monkeypatch):
     with session(dd) as s:
         data = daily.context(s, TODAY)
     assert data["recent"] and len(data["goals"]) <= daily.MAX_GOALS and len(json.dumps(data)) <= daily.MAX_CONTEXT
+
+
+def test_quiet_v2mom_methods_come_before_on_track_ones(nb):
+    from test_v2mom_views import link
+    dd, *_ = nb
+    setup(dd)
+    with session(dd) as s:
+        from careeros.v2mom import store
+        m1, m2 = store.methods(s)
+        m2.measures = [dict(text="Ship one template", status="On Track", progress=None, comments="")]
+        e = JournalEntry(day=TODAY.isoformat(), kind="task", text="Shared a template", created_at=datetime.now(),
+                         status="done")
+        s.add(e)
+        s.flush()
+        link(s, m2.id, entry_id=e.id)  # M2 is active (work today); M1 has nothing linked
+        s.commit()
+        ids = [g["id"] for g in daily.goals(s, TODAY)]
+    assert ids.index("V2MOM M1") < ids.index("V2MOM M2")
+    aim = next(i for i, g in enumerate(ids) if g.startswith("Grade "))
+    assert ids.index("V2MOM M1") < aim < ids.index("V2MOM M2")
+
+
+def test_force_with_all_three_done_doesnt_ask(nb):
+    dd, *_ = nb
+    setup(dd)
+    with session(dd) as s:
+        ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
+        for t in daily.suggest(s, TODAY, reader=lambda p, d: reply(ids)):
+            t.done_at = datetime.now()
+        s.commit()
+        assert len(daily.suggest(s, TODAY, force=True, reader=lambda p, d: pytest.fail("asked"))) == 3
+
+
+def test_two_runs_at_once_keep_one_three(nb):
+    dd, *_ = nb
+    setup(dd)
+    with session(dd) as s:
+        ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
+
+    def racing(p, d):  # while this run waits on Claude, another run saves today's three
+        with session(dd) as other:
+            daily.suggest(other, TODAY, reader=lambda p2, d2: reply(ids, text="The other run"))
+        return reply(ids, text="This run")
+    with session(dd) as s:
+        tasks = daily.suggest(s, TODAY, reader=racing)
+        assert [t.text for t in tasks] == ["The other run"] * 3 and s.query(DailyTask).count() == 3

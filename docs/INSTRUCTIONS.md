@@ -157,7 +157,7 @@ uv run careeros slack connect <canvas link>
 
 ## Daily three
 
-Once a day Claude suggests **three small tasks**, each ten minutes or less, that each move one of your goals a step: a V2MOM method that's behind, quiet, or unstarted, a Grade 6 or 7 key experience that's still a gap, or a skill with no evidence yet. It reads only short summaries: the goals (names, status, progress, open measures) and the titles of your last two weeks of work. Never your pasted notes or transcripts.
+Once a day Claude suggests **three small tasks**, each ten minutes or less, that each move one of your goals a step. Goals are offered in this order: V2MOM methods that are quiet, unstarted, or behind; the Promo map's Aim for next; V2MOM methods on track but with measures still open; Grade 6 or 7 key experiences that are gaps; and skills with little or no evidence. It reads only short summaries: the goals (names, status, progress, open measures) and the titles of your last two weeks of work. Never your pasted notes or transcripts.
 
 ```
 cd ~/Documents/career-os
@@ -349,7 +349,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `218 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `221 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

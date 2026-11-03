@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from typing import Callable
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .claude_cli import ClaudeError, ask
@@ -43,11 +44,13 @@ def _clip(text: str, n: int) -> str:
 
 
 def goals(s: Session, today: date) -> list[dict]:
-    """What needs work, most useful first: V2MOM methods that are behind, quiet, or unstarted; Promo map experiences
-    that are gaps or only started; skills with no evidence yet. Each has a short stable id Claude must pick from."""
+    """What needs work, most useful first: V2MOM methods that are quiet, unstarted, or behind; the Promo map's Aim for
+    next; V2MOM methods still on track with open measures; Promo map gaps; skills with little or no evidence. Each has
+    a short stable id Claude must pick from."""
     from .guide.service import has_guide, promo_map
     from .v2mom import report
     out: list[dict] = []
+    needy, on_track = [], []
     r = report.build(s, today)
     for x in (r or {}).get("methods", []):
         m = x["m"]
@@ -55,13 +58,20 @@ def goals(s: Session, today: date) -> list[dict]:
             continue
         open_measures = [_clip(ms["text"], 90) for ms in m.measures if ms.get("status", "").lower() != "completed"]
         state = {"none": "nothing linked yet", "quiet": "no work in 30 days", "active": "active"}[x["state"]]
-        out.append(dict(id=f"V2MOM {m.label}", what=_clip(m.name, 90), status=m.status or "",
-                        progress=m.progress, state=state, open_measures=open_measures[:3]))
-    if has_guide(s):
-        pm = promo_map(s)
+        g = dict(id=f"V2MOM {m.label}", what=_clip(m.name, 90), status=m.status or "", progress=m.progress,
+                 state=state, open_measures=open_measures[:3])
+        if x["state"] != "active" or m.status.lower() in report.LATE_STATUS:
+            needy.append(g)
+        elif open_measures:
+            on_track.append(g)
+    out += needy
+    pm = promo_map(s) if has_guide(s) else None
+    if pm:
         for n in pm["next"][:4]:
             out.append(dict(id=f"Grade {n['grade']}: {_clip(n['item'].name, 60)}", what=_clip(n["item"].name, 120),
                             state="aim for next", idea=_clip(n["idea"], 120)))
+    out += on_track
+    if pm:
         for row in pm["rows"]:
             for gr in pm["grades"]:
                 for c in row["cells"][gr]:
@@ -137,7 +147,7 @@ def suggest(s: Session, today: date | None = None, *, force: bool = False,
     leaves today's tasks as they were."""
     today = today or date.today()
     have = today_tasks(s, today)
-    if have and not force:
+    if have and (not force or all(t.done_at for t in have)):
         return have
     data = context(s, today)
     if not data["goals"]:
@@ -152,7 +162,11 @@ def suggest(s: Session, today: date | None = None, *, force: bool = False,
     kept = [t for t in have if t.done_at]
     for i, t in enumerate(kept, 1):
         t.position = i
+    s.flush()  # done tasks take positions 1.. before the new ones are added
     for i, t in enumerate(tasks[: TASKS - len(kept)], len(kept) + 1):
         s.add(DailyTask(day=today.isoformat(), position=i, created_at=datetime.now(), **t))
-    s.commit()
+    try:
+        s.commit()
+    except IntegrityError:  # another run (the schedule and a button press) saved today's three first; keep those
+        s.rollback()
     return today_tasks(s, today)

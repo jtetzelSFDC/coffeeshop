@@ -634,7 +634,7 @@ app.add_typer(daily_app, name="daily")
 @daily_app.command("suggest")
 def daily_suggest(force: bool = typer.Option(False, "--force", help="Ask again even if today's three exist"),
                   data_dir: Optional[str] = DataOpt) -> None:
-    """Have Claude suggest today's three tasks (what the 8:30 AM schedule runs). Does nothing if they exist."""
+    """Have Claude suggest today's three tasks. Does nothing if they already exist."""
     from . import daily
     from .claude_cli import ClaudeError
     dd, s = _open_personal(data_dir, "The daily three")
@@ -643,8 +643,7 @@ def daily_suggest(force: bool = typer.Option(False, "--force", help="Ask again e
     except ClaudeError as exc:
         typer.echo(f"No new tasks today: {exc}")
         raise typer.Exit(1)
-    for t in tasks:
-        typer.echo(f"{'[x]' if t.done_at else '[ ]'} {t.text}  (~{t.minutes} min, {t.goal})")
+    typer.echo("\n".join(_task_line(t) for t in tasks))
 
 
 @daily_app.command("show")
@@ -653,8 +652,11 @@ def daily_show(data_dir: Optional[str] = DataOpt) -> None:
     from . import daily
     dd, s = _open_personal(data_dir, "The daily three")
     tasks = daily.today_tasks(s)
-    typer.echo("\n".join(f"{'[x]' if t.done_at else '[ ]'} {t.text}  (~{t.minutes} min, {t.goal})" for t in tasks)
-               or "No tasks yet today. They arrive at 8:30 AM, or run: uv run careeros daily suggest")
+    typer.echo("\n".join(_task_line(t) for t in tasks) or "No tasks yet today. Run: uv run careeros daily suggest")
+
+
+def _task_line(t) -> str:
+    return f"{'[x]' if t.done_at else '[ ]'} {t.text}  (~{t.minutes} min, {t.goal})"
 
 
 @app.command("serve")
