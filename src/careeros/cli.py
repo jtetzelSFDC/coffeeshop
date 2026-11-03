@@ -634,7 +634,7 @@ app.add_typer(daily_app, name="daily")
 @daily_app.command("suggest")
 def daily_suggest(force: bool = typer.Option(False, "--force", help="Ask again even if today's three exist"),
                   data_dir: Optional[str] = DataOpt) -> None:
-    """Have Claude suggest today's three tasks. Does nothing if they already exist."""
+    """Have Claude suggest today's three tasks (the morning sync does this too). Does nothing if they exist."""
     from . import daily
     from .claude_cli import ClaudeError
     dd, s = _open_personal(data_dir, "The daily three")
@@ -652,7 +652,7 @@ def daily_show(data_dir: Optional[str] = DataOpt) -> None:
     from . import daily
     dd, s = _open_personal(data_dir, "The daily three")
     tasks = daily.today_tasks(s)
-    typer.echo("\n".join(_task_line(t) for t in tasks) or "No tasks yet today. Run: uv run careeros daily suggest")
+    typer.echo("\n".join(_task_line(t) for t in tasks) or "No tasks yet today. They come with the morning sync, or run: uv run careeros daily suggest")
 
 
 def _task_line(t) -> str:

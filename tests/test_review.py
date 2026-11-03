@@ -249,7 +249,7 @@ def test_last_pulled_status(nb):
     assert 'class="chip-sync ok" title="Google Calendar: last pulled today at' in html and "Slack tracker: last pulled" in html
     assert "last pulled" not in html.split('title="')[0]  # no long status lines, only chips with tooltips
     sheet = c.get("/sheet").text
-    assert sheet.count('class="chip-sync') == 7 and "GitHub pull requests: last pulled never" in sheet
+    assert sheet.count('class="chip-sync') == 8 and "GitHub pull requests: last pulled never" in sheet
 
 
 TASKS_TEXT = """Tasks in list L1 for me@example.com:

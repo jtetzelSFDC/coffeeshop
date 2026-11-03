@@ -43,6 +43,7 @@ def fake_syncs(monkeypatch, fail=None):
     monkeypatch.setattr(sync_all.syncs, "run_slack", runner("slack", "slack"))
     monkeypatch.setattr(sync_all.syncs, "run_google", runner("google", "calendar"))
     monkeypatch.setattr(sync_all.syncs, "run_github", runner("github", "github"))
+    monkeypatch.setattr(sync_all, "_daily_due", lambda Session_, now: False)  # covered in test_daily
     return calls
 
 

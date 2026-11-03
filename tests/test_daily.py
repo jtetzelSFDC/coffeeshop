@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 from careeros import daily
 from careeros.claude_cli import ClaudeError
 from careeros.cli import app as cli
+from careeros.sync_all import _daily_due as _real_daily_due
 from careeros.storage.models import DailyTask, JournalAttachment, JournalEntry
 
 from test_guide import nb, session  # noqa: F401
@@ -176,3 +177,67 @@ def test_two_runs_at_once_keep_one_three(nb):
     with session(dd) as s:
         tasks = daily.suggest(s, TODAY, reader=racing)
         assert [t.text for t in tasks] == ["The other run"] * 3 and s.query(DailyTask).count() == 3
+
+
+def test_a_successful_run_lights_the_daily_chip(nb):
+    from careeros.storage.sync_log import status
+    dd, *_ = nb
+    setup(dd)
+    with session(dd) as s:
+        assert status(s)["daily"]["ok"] is False and "morning sync" in status(s)["daily"]["hint"]
+        ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
+        daily.suggest(s, TODAY, reader=lambda p, d: reply(ids))
+        st = status(s)["daily"]
+        assert st["ok"] is True and st["added"] == 3
+
+
+def test_the_morning_sync_suggests_the_three_last_once_a_day(nb, monkeypatch):
+    from careeros import sync_all
+    from test_schedule import fake_syncs
+    dd, *_ = nb
+    setup(dd)
+    calls = fake_syncs(monkeypatch)
+    monkeypatch.setattr(sync_all, "_daily_due", _real_daily_due)  # fake sources, but the real daily step
+    with session(dd) as s:
+        ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
+    order = []
+    monkeypatch.setattr(daily, "ask", lambda p, d, timeout=0: order.append("daily") or reply(ids))
+    notes = []
+    at = datetime.combine(TODAY, datetime.min.time()).replace(hour=8, minute=1)
+    assert sync_all.run(dd, force=True, now=at, notify=lambda *a: notes.append(a)) == 0 and not notes
+    assert calls[-1] == "github" and order == ["daily"]  # after every source
+    with session(dd) as s:
+        assert len(daily.today_tasks(s, TODAY)) == 3
+    sync_all.run(dd, force=True, now=at.replace(hour=18), notify=lambda *a: notes.append(a))
+    assert order == ["daily"]  # already done today
+    log = next((dd.root / "logs").glob("sync-*.log")).read_text()
+    assert "Daily three: Suggest today's three tasks: done (3 tasks for today)" in log
+
+
+def test_no_daily_three_before_8_and_a_failure_notifies(nb, monkeypatch):
+    from careeros import sync_all
+    from test_schedule import fake_syncs
+    dd, *_ = nb
+    setup(dd)
+    fake_syncs(monkeypatch)
+    monkeypatch.setattr(sync_all, "_daily_due", _real_daily_due)
+    monkeypatch.setattr(daily, "ask", lambda p, d, timeout=0: "not json")
+    notes = []
+    early = datetime.combine(TODAY, datetime.min.time()).replace(hour=7, minute=30)
+    sync_all.run(dd, force=True, now=early, notify=lambda *a: notes.append(a))
+    assert not notes
+    assert sync_all.run(dd, force=True, now=early.replace(hour=8), notify=lambda *a: notes.append(a)) == 1
+    assert len(notes) == 1 and "Daily three" in notes[0][0] and "didn't fit" in notes[0][1]
+    with session(dd) as s:
+        assert s.query(DailyTask).count() == 0
+
+
+def test_a_notebook_without_goals_never_runs_the_daily_step(tmp_path):
+    from careeros.config import DataDir
+    from careeros.storage.db import init_db, make_engine, make_session_factory
+    dd = DataDir(tmp_path / "empty")
+    dd.init_personal()
+    engine = make_engine(dd.db)
+    init_db(engine)
+    nine = datetime.combine(TODAY, datetime.min.time()).replace(hour=9)
+    assert _real_daily_due(make_session_factory(engine), nine) is False
