@@ -285,13 +285,61 @@ def test_google_tasks_parse_and_merge(nb):
         s.add(JournalEntry(day="2026-10-20", kind="task", text="deploy pine to uat", created_at=datetime.now(),
                            source="tasks", external_id="task:legacy", status="open"))
         s.commit()
-        assert gtasks.merge(s, ts) == dict(added=2, updated=1)
+        assert gtasks.merge(s, ts) == dict(added=0, updated=1)  # only the finished task, updating its legacy open row
         rows = {e.text: e for e in s.scalars(select(JournalEntry).where(JournalEntry.source == "tasks"))}
+        assert list(rows) == ["deploy pine to uat"]
         assert rows["deploy pine to uat"].status == "done" and rows["deploy pine to uat"].external_id == "gtask:T1"
         assert gtasks.merge(s, ts) == dict(added=0, updated=0)
         runs = s.scalars(select(SyncRun).where(SyncRun.source == "tasks")).all()
         gtasks.merge(s, ts, complete=False)  # a list failed: don't move the "last synced" mark forward
         assert len(s.scalars(select(SyncRun).where(SyncRun.source == "tasks")).all()) == len(runs)
+
+
+
+def test_open_google_tasks_saved_before_are_cleared_unless_built_on(nb):  # and kept ones stay out of the queue
+    from careeros.google import tasks as gtasks
+    from careeros.storage.models import JournalAttachment, RemovedEntry, Win
+    dd, c, *_ = nb
+    with session(dd) as s:
+        def task(text, **kw):
+            e = JournalEntry(day="2026-10-20", kind="task", text=text, created_at=datetime.now(), source="tasks",
+                             external_id=f"gtask:{text}", status="open", **kw)
+            s.add(e)
+            s.flush()
+            return e
+        task("zz-plain")
+        task("zz-checked", reviewed=True)
+        s.add(JournalAttachment(entry_id=task("zz-google-note").id, kind="notes", title="Task notes", body="x",
+                                created_at=datetime.now()))
+        s.add(JournalAttachment(entry_id=task("zz-my-note").id, kind="notes", title="What I did", body="y",
+                                created_at=datetime.now()))
+        s.add(Win(title="A win", entry_id=task("zz-a-win").id, day="2026-10-20", created_at=datetime.now()))
+        s.add(JournalEntry(day="2026-10-20", kind="task", text="zz-typed", created_at=datetime.now(), status="open"))
+        s.commit()
+        gtasks.merge(s, [])
+        left = set(s.scalars(select(JournalEntry.text)))
+        assert left == {"zz-checked", "zz-my-note", "zz-a-win", "zz-typed"}
+        assert not s.scalars(select(RemovedEntry)).all()  # not in the Removed list, so the done one can still come in
+        assert s.query(JournalAttachment).filter_by(title="Task notes").count() == 0
+    queue = c.get("/sheet?show=all").text
+    assert "zz-typed" in queue and not any(x in queue for x in ("zz-checked", "zz-my-note", "zz-a-win"))
+
+
+def test_a_task_removed_while_open_comes_in_once_done_and_reopening_takes_it_out(nb):
+    from careeros.google import tasks as gtasks
+    from careeros.storage.removal import remove_entry
+    dd, *_ = nb
+    when = datetime(2026, 10, 27, 9, 0)
+    with session(dd) as s:
+        s.add(JournalEntry(day="2026-10-20", kind="task", text="old open", created_at=datetime.now(), source="tasks",
+                           external_id="gtask:T9", status="open", reviewed=True))
+        s.commit()
+        remove_entry(s, s.scalar(select(JournalEntry.id).where(JournalEntry.text == "old open")))
+        assert gtasks.merge(s, [gtasks.Task("old open", True, when, gid="T9")]) == dict(added=1, updated=0)
+        e = s.scalar(select(JournalEntry).where(JournalEntry.external_id == "gtask:T9"))
+        assert (e.status, e.day) == ("done", "2026-10-27")
+        gtasks.merge(s, [gtasks.Task("old open", False, when, gid="T9")])  # unticked in Google
+        assert s.scalar(select(JournalEntry).where(JournalEntry.external_id == "gtask:T9")) is None
 
 
 def test_sync_google_runs_every_step(nb, monkeypatch):
@@ -330,8 +378,8 @@ def test_sync_google_runs_every_step(nb, monkeypatch):
         time.sleep(0.05)
     assert [st["state"] for st in job["steps"]] == ["done", "error", "done", "done", "done"]
     assert "1 task list couldn't be read" in job["steps"][1]["detail"] and job["state"] == "partial"
-    assert job["message"] == "Google synced: 1 meeting, 3 tasks and 1 file new."
-    assert "5 guide links" in job["steps"][4]["detail"]
+    assert job["message"] == "Google synced: 1 meeting, 1 task and 1 file new."  # the two open tasks stay out
+    assert "3 guide links" in job["steps"][4]["detail"]
     assert job["steps"][3]["detail"] == "1 new file, 1 summarized"
     page = c.get("/").text
     assert 'data-sync="google"' in page and "/static/sync.js" in page and "Sync calendar" not in page

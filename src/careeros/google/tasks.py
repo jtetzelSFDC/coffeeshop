@@ -1,4 +1,4 @@
-"""Google Tasks into the notebook. Title, notes, and done/open state only."""
+"""Google Tasks into the notebook, once they're done in Google. Title, notes, and completion time only."""
 from __future__ import annotations
 
 import hashlib
@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..storage.models import JournalAttachment, JournalEntry
@@ -31,39 +31,6 @@ class Task:
     @property
     def key(self) -> str:
         return "task:" + hashlib.sha1(f"{self.title}|{self.done}|{self.when:%Y-%m-%dT%H:%M}".encode()).hexdigest()[:16]
-
-
-def sync(s: Session, tasks: list[Task]) -> dict[str, int]:
-    """Replace-all for the fetched lists: add new, drop ones that vanished (kept if you attached anything)."""
-    existing = {e.external_id: e for e in s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE))}
-    from ..storage.removal import removed_ids
-    gone_by_user = removed_ids(s, SOURCE)
-    added = removed = 0
-    today = date.today().isoformat()
-    for t in tasks:
-        if existing.pop(t.key, None) is not None or t.key in gone_by_user:
-            continue
-        day = min(t.when.date().isoformat(), today)
-        e = JournalEntry(day=day, kind="task", text=t.title[:500], created_at=datetime.now(), source=SOURCE,
-                         external_id=t.key, status="done" if t.done else "open")
-        s.add(e)
-        s.flush()
-        if t.notes.strip():
-            s.add(JournalAttachment(entry_id=e.id, kind="notes", title="Task notes", body=t.notes.strip(),
-                                    created_at=datetime.now()))
-        added += 1
-    from ..guide.service import keeps_entry
-    for gone in existing.values():
-        if not keeps_entry(s, gone) and not s.scalar(select(JournalAttachment.id).where(
-                JournalAttachment.entry_id == gone.id, JournalAttachment.title != "Task notes").limit(1)):
-            for a in s.scalars(select(JournalAttachment).where(JournalAttachment.entry_id == gone.id)):
-                s.delete(a)
-            s.delete(gone)
-            removed += 1
-    from ..storage.sync_log import record
-    record(s, SOURCE, added)
-    s.commit()
-    return dict(added=added, removed=removed)
 
 
 def _local(ts: str) -> datetime:
@@ -110,23 +77,55 @@ def fetch(since: datetime) -> tuple[list[Task], int]:
     return tasks, len(set(lists) - ok)
 
 
+def _built_on(s: Session, e: JournalEntry) -> bool:
+    from ..storage.models import GuideLink, Win
+    return e.reviewed or e.v2mom_fixed or e.activity_fixed or any(s.scalar(q.limit(1)) for q in (
+        select(Win.id).where(Win.entry_id == e.id),
+        select(GuideLink.id).where(GuideLink.entry_id == e.id, GuideLink.by_ai.is_(False)),
+        select(JournalAttachment.id).where(JournalAttachment.entry_id == e.id, JournalAttachment.title != "Task notes")))
+
+
+def _clear_open(s: Session) -> int:
+    """Open Google Tasks don't belong in the notebook: deletes open ones, unless you built on one (checked it, set
+    its links, made a win, added notes); those stay out of the queue until done. Not through the Removed list, so the
+    finished task still comes in once it's done."""
+    from ..storage.models import GuideLink, V2momLink
+    n = 0
+    for e in list(s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE, JournalEntry.status == "open"))):
+        if _built_on(s, e):
+            continue
+        for model in (JournalAttachment, GuideLink, V2momLink):
+            s.execute(delete(model).where(model.entry_id == e.id))
+        s.delete(e)
+        n += 1
+    s.flush()
+    return n
+
+
 def merge(s: Session, tasks: list[Task], complete: bool = True) -> dict[str, int]:
-    """Adds new tasks and updates ones that changed (an open task that got done). Never deletes: a fetch only
-    covers recently changed lists. An incomplete fetch isn't logged, so the next sync starts from the old mark."""
-    from ..storage.removal import removed_ids
+    """Adds tasks done in Google and updates a kept open record once its task is done. Open tasks are skipped; one
+    reopened in Google goes back to open, and open ones are then cleared (see _clear_open). Never deletes a done one
+    otherwise: a fetch only covers recently changed lists. An incomplete fetch isn't logged, so the next sync starts
+    from the old mark."""
+    from ..storage.models import RemovedEntry
     mine = list(s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE)))
     by_key = {e.external_id: e for e in mine}
-    gone = removed_ids(s, SOURCE)
+    gone = set(s.scalars(select(RemovedEntry.external_id).where(  # removed while open: the finished one may come in
+        RemovedEntry.source == SOURCE, RemovedEntry.status != "open", RemovedEntry.external_id.is_not(None))))
     today = date.today().isoformat()
     added = updated = 0
     for t in tasks:
         ext = f"gtask:{t.gid}"
+        if not t.done:
+            if (e := by_key.get(ext)) is not None and e.status == "done":
+                e.status = "open"
+            continue
         if ext in gone or t.key in gone:
             continue
-        status, day = ("done" if t.done else "open"), min(t.when.date().isoformat(), today)
+        status, day = "done", min(t.when.date().isoformat(), today)
         e = by_key.get(ext) or by_key.get(t.key) or next(
             (x for x in mine if x.text == t.title[:500] and not (x.external_id or "").startswith("gtask:")
-             and ((x.status == "open" and t.done) or (x.status == status and x.day == day))), None)
+             and (x.status == "open" or (x.status == status and x.day == day))), None)
         if e is None:
             e = JournalEntry(day=day, kind="task", text=t.title[:500], created_at=datetime.now(), source=SOURCE,
                              external_id=ext, status=status)
@@ -143,6 +142,7 @@ def merge(s: Session, tasks: list[Task], complete: bool = True) -> dict[str, int
                 updated += 1
             e.external_id = ext
         by_key[ext] = e
+    _clear_open(s)
     if complete:
         from ..storage.sync_log import record
         record(s, SOURCE, added)
