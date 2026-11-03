@@ -27,7 +27,7 @@
 You need a Mac, [uv](https://docs.astral.sh/uv/), and Claude Code signed in to the Google Workspace and Slack connectors.
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros notebook init
 uv run careeros schedule install
 open http://127.0.0.1:8765

@@ -13,7 +13,7 @@ There's also a **practice notebook** of made-up data, for trying things out with
 Your real, permanent notebook lives in `~/Library/Application Support/CareerOS`. It survives restarts. Open Terminal and run:
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros notebook init   # first time only: makes the notebook folder
 uv run careeros serve
 ```
@@ -27,7 +27,7 @@ Don't add `--data-dir` to this command. That flag points the app at a different 
 One command sets up three small macOS scheduled tasks, so you never start the app or press Sync yourself:
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros schedule install
 ```
 
@@ -43,7 +43,7 @@ uv run careeros schedule install
 ## Start the practice notebook (made-up data)
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros demo seed --data-dir /tmp/cos-demo
 uv run careeros serve --data-dir /tmp/cos-demo
 ```
@@ -73,7 +73,7 @@ The app knows the DevOps leveling guide, so your work can be lined up against wh
 **Loading the guide.** The guide lives at `guides/Leveling Guides - DevOps.csv`. That folder is ignored by git, so the guide never goes to GitHub. It's already loaded. When a new version comes out, save it over that file and run:
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros guide import "guides/Leveling Guides - DevOps.csv"
 ```
 
@@ -138,7 +138,7 @@ Purple **AI** marks are Claude's picks: guide links, drafted wins, and type chan
 **Claude's read-through.** Claude has read every record against the Grade 6 and 7 key experiences and skills. It linked each one to the guide items it shows (none for routine standups and status pings), drafted wins for the stand-out ones, and fixed obvious type mix-ups (only for Slack and typed records; calendar items stay meetings and Google Tasks stay tasks). When new records come in, the queue shows a **Have Claude read the N records it hasn't read** button. It runs in the background with a progress box (the same step every sync ends with), so you can keep working. You can also run it in Terminal:
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros guide review
 ```
 
@@ -151,7 +151,7 @@ Your Slack Work Activity Tracker canvas (the one Slackbot fills in every day) co
 **The Sync Slack tracker button** on Home reads the canvas through Claude Code's Slack connector, sorts the new items, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again in Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros slack connect <canvas link>
 ```
 
@@ -162,7 +162,7 @@ uv run careeros slack connect <canvas link>
 Every morning, as the last step of the 8 AM sync (so it sees yesterday's work), Claude suggests **three small tasks**, each ten minutes or less, that each move one of your goals a step. Goals are offered in this order: V2MOM methods that are quiet, unstarted, or behind; the Promo map's Aim for next; V2MOM methods on track but with measures still open; Grade 6 or 7 key experiences that are gaps; and skills with little or no evidence. It reads only short summaries: the goals (names, status, progress, open measures) and the titles of your last two weeks of work. Never your pasted notes or transcripts.
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros daily suggest           # today's three (does nothing if they already exist)
 uv run careeros daily suggest --force   # a new three, keeping any you've already done
 uv run careeros daily show              # print today's three
@@ -224,7 +224,7 @@ The **first pull goes back a year**, which can take several minutes. After that 
 To keep files out by title (Drive's search doesn't show folders, so skipping is by title text):
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros docs skip "Untitled"
 uv run careeros docs skip               # list the rules
 uv run careeros docs unskip "Untitled"
@@ -246,16 +246,16 @@ The scheduled sync (8 AM and 6 PM) also reads your GitHub pull requests on githu
 To pull right away instead of waiting for the schedule:
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros github sync
 ```
 
 To keep a repo (or any title text) out, for example this app's own PRs:
 
 ```
-uv run careeros github skip jmysterio/career-os
+uv run careeros github skip example-org/notes-app
 uv run careeros github skip                    # list the rules
-uv run careeros github unskip jmysterio/career-os
+uv run careeros github unskip example-org/notes-app
 ```
 
 Adding a rule also removes the matching records already in the notebook. **Remove** in the Intake Review Queue works too, and a removed week stays removed.
@@ -270,7 +270,7 @@ The V2MOM app won't let the command line sign in, so the app reads your V2MOM fr
 2. **Connect it** once, with the file's path:
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run careeros v2mom connect ~/Desktop/"FY27 V2MOM Your Name.pdf"
 uv run careeros v2mom sync
 ```
@@ -386,7 +386,7 @@ If something looks wrong or confusing, note what you clicked and what you saw.
 ## Running the automated tests
 
 ```
-cd ~/Documents/career-os
+cd ~/Documents/coffeeshop
 uv run pytest
 ```
 
@@ -426,7 +426,7 @@ Yes, on this laptop. `uv run careeros backup now` copies the notebook into `back
 This uses your calendar's private address, so no Google Cloud setup or admin sign-off is needed, and the data never passes through an AI tool. One-time setup:
 1. In Google Calendar on the web, open Settings, pick your calendar under "Settings for my calendars", and scroll to **Integrate calendar**.
 2. Copy the **Secret address in iCal format**. Treat it like a password: anyone with it can read that calendar.
-3. In Terminal (in `~/Documents/career-os`): `uv run careeros calendar connect`, paste it (nothing shows as you paste), and press Enter.
+3. In Terminal (in `~/Documents/coffeeshop`): `uv run careeros calendar connect`, paste it (nothing shows as you paste), and press Enter.
 4. `uv run careeros calendar sync` pulls the last 14 days (`--days 30` for more, max 60).
 
 Meetings show on the **Meetings** tab with a small calendar icon (hover it for the source, kind, and date). Only the **title and time** are kept; attendees, descriptions, locations, and video links are dropped before anything is saved. All-day items and cancelled meetings are skipped. Running sync again never duplicates; a renamed or moved meeting is updated, and a meeting that disappeared is removed unless you've attached notes to it. Anything you typed yourself is never touched. The address is stored in `calendar.url` in your notebook folder, readable only by you. If you ever reset the secret address in Google, run `connect` again.
