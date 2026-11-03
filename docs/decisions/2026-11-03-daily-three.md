@@ -1,6 +1,6 @@
 # Daily three
 
-**Date:** 2026-11-03. **PRs:** [#35](https://github.com/jmysterio/career-os/pull/35) (engine), [#36](https://github.com/jmysterio/career-os/pull/36) (morning sync), [#37](https://github.com/jmysterio/career-os/pull/37) (Home card).
+**Date:** 2026-11-03. **PRs (on the earlier repo):** #35 (engine), #36 (morning sync), #37 (Home card).
 
 ## Decided
 
