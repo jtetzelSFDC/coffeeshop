@@ -4,7 +4,7 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Career Tracker is your work notebook. It pulls in your Google Calendar meetings, Google Tasks, and Slack tracker items, has Claude sort each one and link it to the DevOps leveling guide, and keeps your wins so the Promo map and promo case reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
+Career Tracker is your work notebook. It pulls in your Google Calendar meetings, Google Tasks, and Slack tracker items, has Claude sort each one and link it to the DevOps leveling guide, and keeps your wins so the Promo map and promo case reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate and `kso connect` on the KSOs page, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 

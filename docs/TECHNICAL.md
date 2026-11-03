@@ -27,6 +27,7 @@ Python 3.12, FastAPI, SQLAlchemy on SQLite, Jinja2, Typer, uv. No JavaScript fra
 | `guide/` | The leveling guide, links to it, grouping records into work, the Promo map, Claude's read-through |
 | `promo/` | The promotion-case writer and its per-sentence checks |
 | `daily.py` | Today's three: context, one Claude ask, strict validation, check and uncheck |
+| `kso/` | KSOs: the yearly framework read (`framework.py`), V2MOM method to part matching (`map.py`), the page's plain math and bonus projection (`progress.py`), and the monthly estimate (`estimate.py`) |
 | `digest.py`, `dashboard.py` | The Friday digest and the Home numbers |
 | `export/` | Markdown and CSV downloads |
 | `storage/` | Tables, removal and skip rules, the sync log behind the status chips |
@@ -50,6 +51,7 @@ flowchart LR
   db <-->|"titles and text, tools off"| claude[Claude headless]
   db --> pages[Local pages on 127.0.0.1]
   pages -->|"your checks and edits"| db
+  sync --> kso[KSO estimate, monthly]
   sync --> daily[Daily three, last step]
   daily --> db
 ```
@@ -58,7 +60,7 @@ Every record lands as a `JournalEntry`. Claude's read-through sets its kind, gui
 
 ## Where data lives
 
-Outside the repo, in `~/Library/Application Support/CareerOS/` (the practice notebook uses `CareerOS-demo/`). That folder holds the database, backups, logs, and connector settings. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Tests and docs use made-up names and data only.
+Outside the repo, in `~/Library/Application Support/CareerOS/` (the practice notebook uses `CareerOS-demo/`). That folder holds the database, backups, logs, and connector settings. The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`; your target incentive lives only in `kso_year`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Tests and docs use made-up names and data only.
 
 ## Security
 
@@ -82,7 +84,10 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 | V2MOM | The V2MOM text, including your manager's check-in comments |
 | Promo case | The numbered evidence list |
 | Send to Google Docs | The whole case, written into a new Doc in your Drive |
-| Daily three | Titles only: goals and recent record and win titles, about 8k characters at most |
+| Daily three | Titles only: goals (including KSO parts) and recent record and win titles, about 8k characters at most |
+| KSO connect (yearly, by hand) | The KSO deck and guide canvases, through the Google and Slack connectors |
+| KSO matching | KSO part names and explanations, and V2MOM method names, descriptions, and measures |
+| KSO estimate (monthly) | The rubric, the matched V2MOM methods with measures and comments, this year's linked work titles (8k cap, shared across parts), and the kudos count. Never your target or any dollar amount |
 
 Prompts tell Claude the data is data, never instructions, and answers are checked before they're saved. A bad one saves nothing, except promo sentences that fail a check: those are kept and flagged **Check this**.
 
@@ -93,7 +98,7 @@ Prompts tell Claude the data is data, never instructions, and answers are checke
 | Agent | When | Runs |
 |---|---|---|
 | `com.careeros.app` | At login, kept alive | `careeros serve` |
-| `com.careeros.sync` | 8 AM, 6 PM, and at login | `careeros sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly), then the daily three (once a day, after 8 AM) |
+| `com.careeros.sync` | 8 AM, 6 PM, and at login | `careeros sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly, and new methods get matched to KSO parts), the KSO estimate (monthly), then the daily three (once a day, after 8 AM) |
 | `com.careeros.digest` | Friday at noon | `careeros digest notify` |
 
 A missed time runs on wake. A failed step doesn't stop the others; each source that fails sends one macOS notification, and the chips on the pages show each source's last run.
