@@ -20,6 +20,7 @@ SOURCE = "kso"
 EVERY = timedelta(days=30)
 MAX_EVIDENCE = 8_000
 MAX_WHY, MAX_STEP, STEPS = 200, 110, 3
+ASK_WHY, ASK_STEP = 160, 90  # asked for less than checked: Claude aims right at a stated limit
 
 PROMPT = """You estimate the 1 to 5 rating a manager would give someone on each of their KSOs (bonus objectives), \
 the way the manager would: against the rubric, and against what their V2MOM (yearly plan) shows. On stdin is JSON: \
@@ -51,12 +52,12 @@ def context(s: Session, fw: KsoFramework, today: date | None = None) -> dict:
     picks = kmap.by_component(s, fw)
     kudos = s.scalar(select(func.count()).select_from(JournalEntry).where(
         JournalEntry.kind == "recognition", JournalEntry.day >= lo, JournalEntry.day <= hi)) or 0
-    budget = MAX_EVIDENCE
+    share = MAX_EVIDENCE // max(1, len(framework.components(fw)))  # one busy part can't crowd out the rest
     out = []
     for k in fw.data["ksos"]:
         comps = []
         for c in k["components"]:
-            methods, work = [], []
+            methods, work, budget = [], [], share
             for m, _ in picks[c["key"]]:
                 methods.append(dict(id=m.label, name=_clip(m.name, 120), status=m.status, progress=m.progress,
                                     measures=[dict(text=_clip(x.get("text", ""), 160), status=x.get("status", ""),
@@ -66,12 +67,14 @@ def context(s: Session, fw: KsoFramework, today: date | None = None) -> dict:
                 e = ev.get(m.id, dict(entries=[], wins=[]))
                 items = [(w.day, f"win: {w.title}") for w in e["wins"]] + \
                         [(x.day, x.text) for x in e["entries"] if x.status != "open"]
-                for day, title in sorted((i for i in items if lo <= i[0] <= hi), reverse=True):
-                    line = f"{day} {m.label}: {_clip(title, 100)}"
-                    if budget - len(line) < 0:
-                        break
-                    budget -= len(line)
-                    work.append(line)
+                work += [(day, f"{day} {m.label}: {_clip(title, 100)}") for day, title in items if lo <= day <= hi]
+            lines = []
+            for _, line in sorted(work, reverse=True):  # newest first across the part's methods
+                if budget < len(line):
+                    break
+                budget -= len(line)
+                lines.append(line)
+            work = lines
             comp = dict(key=c["key"], name=c["name"], what=c["what"], levels=c["levels"], methods=methods, work=work)
             if "feedback" in c["name"].lower():
                 comp["kudos"] = kudos
@@ -92,8 +95,10 @@ def validate(reply: str, fw: KsoFramework) -> list[dict]:
     want = {k["key"]: [c["key"] for c in k["components"]] for k in fw.data["ksos"]}
     got = {}
     for k in ksos:
-        if not isinstance(k, dict) or k.get("key") not in want or k["key"] in got:
+        key = str(k.get("key")) if isinstance(k, dict) else ""
+        if key not in want or key in got:
             raise ValueError("a KSO isn't one of yours, or appears twice")
+        k = dict(k, key=key)
         r, why, steps = k.get("rating"), k.get("why"), k.get("next")
         if isinstance(r, bool) or not isinstance(r, int) or not 1 <= r <= 5:
             raise ValueError(f"KSO {k['key']} has no rating from 1 to 5")
@@ -114,7 +119,7 @@ def estimate(s: Session, fw: KsoFramework, *, reader: Callable[[str, str], str] 
              lock=None) -> KsoEstimate:
     """One ask; a bad answer raises ClaudeError and saves nothing. `lock` is held only while saving."""
     data = context(s, fw)
-    prompt = PROMPT.format(why=MAX_WHY, steps=STEPS, step=MAX_STEP)
+    prompt = PROMPT.format(why=ASK_WHY, steps=STEPS, step=ASK_STEP)
     reply = (reader or (lambda p, d: ask(p, d, timeout=300)))(prompt, json.dumps(data))
     try:
         ksos = validate(reply, fw)

@@ -90,8 +90,9 @@ def goals(s: Session, today: date) -> list[dict]:
 
 
 def _kso_goals(s: Session, today: date) -> list[dict]:
-    from .kso import progress
-    k = progress.build(s, today=today)
+    from .kso import framework, progress
+    fw = framework.for_current(s)  # this year's KSOs only, never last year's while the new deck is pending
+    k = progress.build(s, fw.fiscal_year, today) if fw else None
     parts = [c for x in (k or {}).get("ksos", []) for c in x["components"]]
 
     def goal(c, state):

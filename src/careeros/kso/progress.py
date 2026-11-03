@@ -106,7 +106,7 @@ def build(s: Session, fy: str | None = None, today: date | None = None) -> dict 
     effective = {k: v["rating"] for k, v in guessed.items()} | ratings  # yours win over Claude's
     return dict(fw=fw, ksos=ksos, loose=loose, ratings=ratings, target=row.target_incentive if row else None,
                 projection=projection(fw.data, row.target_incentive if row else None, effective, set(ratings)),
-                estimated_at=est.made_at if est else None,
+                estimated_at=est.made_at if est else None, current=current,
                 choices=[(c["key"], c["name"]) for c in framework.components(fw)],
                 years=list(s.scalars(select(KsoFramework.fiscal_year).order_by(KsoFramework.fiscal_year.desc()))),
                 upcoming=[d for d in fw.data.get("dates", []) if d["date"] >= today.isoformat()])

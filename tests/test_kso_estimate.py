@@ -145,3 +145,40 @@ def test_kso_parts_without_a_goal_become_daily_goals(nb):
         ids = [g["id"] for g in daily.goals(s, date.today())]
     assert "KSO 1.2: Kind Feedback" in ids and "KSO 2.1: New Skills" in ids  # a gap, and the one furthest behind
     assert "KSO 1.1: Plan Kept" not in ids  # 69% isn't the furthest behind
+
+
+def test_a_busy_part_leaves_room_for_the_others(nb):
+    from careeros.storage.models import JournalEntry, V2momLink
+    from test_review import add
+    dd, *_ = nb
+    m = setup(dd)
+    with session(dd) as s:
+        for i in range(400):
+            s.add(V2momLink(method_id=m["M1"], entry_id=add(s, f"Shipped release step number {i} of many"),
+                            created_at=datetime.now()))
+        s.add(V2momLink(method_id=m["M2"], entry_id=add(s, "Finished one course unit"), created_at=datetime.now()))
+        s.commit()
+        data = est.context(s, framework.for_current(s))
+    work = {c["key"]: c["work"] for k in data["ksos"] for c in k["components"]}
+    assert work["1.1"] and len("".join(work["1.1"])) <= est.MAX_EVIDENCE // 4
+    assert any("Finished one course unit" in x for x in work["2.1"])
+
+
+def test_numbers_as_keys_are_fine_and_the_prompt_asks_for_less_than_it_checks(nb):
+    dd, *_ = nb
+    setup(dd)
+    a = json.loads(answer())
+    a["ksos"][0]["key"] = 1
+    with session(dd) as s:
+        assert run(s, json.dumps(a)).data["ksos"][0]["key"] == "1"
+    assert est.ASK_STEP < est.MAX_STEP and est.ASK_WHY < est.MAX_WHY
+
+
+def test_the_daily_three_skips_last_years_ksos(nb):
+    from test_v2mom import TWO
+    from test_v2mom_links import load_v2mom
+    dd, *_ = nb
+    setup(dd)
+    with session(dd) as s:
+        load_v2mom(s, TWO, fy="FY28")  # the new year's V2MOM, before its KSOs are read
+        assert not [g for g in daily.goals(s, date.today()) if g["id"].startswith("KSO")]
