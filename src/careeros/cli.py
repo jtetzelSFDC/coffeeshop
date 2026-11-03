@@ -640,7 +640,7 @@ def github_sync(data_dir: Optional[str] = DataOpt) -> None:
     _run_job(data_dir, "GitHub sync", syncs.GITHUB_STEPS, lambda j, S, lock, dd: syncs.run_github(j, S, lock))
 
 @github_app.command("skip")
-def github_skip(text: Optional[str] = typer.Argument(None, help="Text to skip, e.g. a repo: \"org/coffeeshop\""),
+def github_skip(text: Optional[str] = typer.Argument(None, help="Text to skip, e.g. a repo: \"example-org/notes-app\""),
                 data_dir: Optional[str] = DataOpt) -> None:
     """Never bring in PRs whose title or repo contains TEXT, and remove the ones already here. No TEXT lists them."""
     _skip(data_dir, "github", text, "PRs", "title or repo", "GitHub sync")

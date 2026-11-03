@@ -16,7 +16,7 @@ def pr(n, title, repo=ORG, author="cmorgan-example", closed="2026-10-20T18:00:00
                 repository={"nameWithOwner": repo}, closedAt=closed, updatedAt="2026-10-21T12:00:00Z")
 
 
-MINE = [pr(1, "Add sandbox refresh job"), pr(2, "Career OS thing", repo="jmysterio/career-os")]
+MINE = [pr(1, "Add sandbox refresh job"), pr(2, "Career OS thing", repo="example-org/notes-app")]
 REVIEWED = [pr(7, "Fix deploy gate", author="rvale-example"), pr(1, "Add sandbox refresh job"),
             pr(8, "Still open", author="someone", closed=None),
             pr(9, "Last week", author="someone", closed="2026-10-14T15:00:00Z")]
@@ -81,7 +81,7 @@ def test_reviews_are_searched_a_month_at_a_time(session, fake_gh):
 
 
 def test_skip_rule_and_remove_keep_prs_out(session, fake_gh):
-    add_skip_rule(session, "jmysterio/career-os", "github")
+    add_skip_rule(session, "example-org/notes-app", "github")
     assert pull(session)["skipped"] == 1
     week = next(e for e in entries(session) if "week of Oct 19" in e.text)
     remove_entry(session, week.id)

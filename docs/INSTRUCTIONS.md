@@ -253,9 +253,9 @@ uv run careeros github sync
 To keep a repo (or any title text) out, for example this app's own PRs:
 
 ```
-uv run careeros github skip org/coffeeshop
+uv run careeros github skip example-org/notes-app
 uv run careeros github skip                    # list the rules
-uv run careeros github unskip org/coffeeshop
+uv run careeros github unskip example-org/notes-app
 ```
 
 Adding a rule also removes the matching records already in the notebook. **Remove** in the Intake Review Queue works too, and a removed week stays removed.
