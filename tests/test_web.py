@@ -116,7 +116,7 @@ def test_journal_add_show_and_remove(seeded):
     assert "Met with Sam" not in c.get("/meetings").text
 
 
-def test_journal_needs_csrf_and_ignores_future_or_bad_dates(seeded):
+def test_journal_ignores_future_or_bad_dates(seeded):
     dd, c, token = seeded
     form(c, "/journal/add", token, kind="bogus", text="Back-dated", day="2999-01-01")
     form(c, "/journal/add", token, kind="note", text="Garbled date", day="nope")
