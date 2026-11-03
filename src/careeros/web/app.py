@@ -844,9 +844,12 @@ def create_app(dd: DataDir) -> FastAPI:
         if _kso_fw(s, fy) is None:
             return back("Those KSOs aren't here any more.", "/kso")
         digits = re.sub(r"[$,\s]", "", target)
+        whole = re.fullmatch(r"(\d+)(?:\.\d{1,2})?", digits)
         try:
+            if digits and not whole:
+                raise ValueError
             with _write_lock:
-                kso_progress.set_target(s, fy, int(digits) if digits else None)
+                kso_progress.set_target(s, fy, int(whole.group(1)) if digits else None)
         except ValueError:
             return back("Enter your yearly target incentive in dollars, like 12000.", to)
         return back("Saved. It stays on this laptop." if digits else "Target cleared.", to)

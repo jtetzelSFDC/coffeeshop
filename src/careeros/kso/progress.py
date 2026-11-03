@@ -58,7 +58,7 @@ def projection(fw_data: dict, target: int | None, ratings: dict[str, int]) -> di
         rows.append(dict(key=k["key"], name=k["name"], weight=k["weight"], share=round(share), rating=r,
                          payout=pay[str(r)] if r else None, pays=round(share * pay[str(r)] / 100) if r else None))
     shares = sum(target * k["weight"] / 100 for k in fw_data["ksos"])
-    return dict(target=target, rows=rows, share=round(shares),
+    return dict(rows=rows, share=round(shares),
                 total=sum(x["pays"] for x in rows) if all(x["rating"] for x in rows) else None,
                 scenarios={r: round(shares * pay[r] / 100) for r in SCENARIOS},
                 weight=sum(k["weight"] for k in fw_data["ksos"]))
@@ -70,12 +70,13 @@ def build(s: Session, fy: str | None = None, today: date | None = None) -> dict 
     components, a component with no V2MOM goal counting as 0, because the rating counts it against you too."""
     from ..v2mom import report
     today = today or date.today()
-    fw = framework.get(s, fy) if fy else framework.for_current(s)
+    fw = framework.get(s, fy) if fy else (framework.for_current(s) or framework.get(s))
     if fw is None:
         return None
     _, fy_lo, fy_hi = report.fiscal_year(fw.fiscal_year, today)
     rep = report.build(s, today)
-    counts = {r["m"].id: r["year"] for r in rep["methods"]} if rep and rep["fy"] == fw.fiscal_year else {}
+    current = bool(rep) and rep["fy"] == fw.fiscal_year  # work counts exist only for the current V2MOM's year
+    counts = {r["m"].id: r["year"] for r in rep["methods"]} if current else {}
     kudos = s.scalar(select(func.count()).select_from(JournalEntry).where(
         JournalEntry.kind == "recognition", JournalEntry.day >= fy_lo.isoformat(),
         JournalEntry.day <= min(fy_hi, today).isoformat())) or 0
@@ -84,18 +85,19 @@ def build(s: Session, fy: str | None = None, today: date | None = None) -> dict 
     for k in fw.data["ksos"]:
         comps = []
         for c in k["components"]:
-            methods = [dict(m=m, by_ai=p.by_ai, work=counts.get(m.id, 0)) for m, p in picks[c["key"]]]
+            methods = [dict(m=m, by_ai=p.by_ai) for m, p in picks[c["key"]]]
             pcts = [x["m"].progress for x in methods if x["m"].progress is not None]
-            comps.append(dict(c, methods=methods, bar=_avg(pcts), measured=len(pcts),
-                              work=sum(x["work"] for x in methods),
+            comps.append(dict(c, methods=methods, bar=_avg(pcts),
+                              work=sum(counts.get(x["m"].id, 0) for x in methods) if current else None,
                               kudos=kudos if "feedback" in c["name"].lower() else None, gap=not methods))
         bars = [0 if x["gap"] else x["bar"] for x in comps if x["gap"] or x["bar"] is not None]
         ksos.append(dict(k, components=comps, bar=_avg(bars), gaps=sum(1 for x in comps if x["gap"])))
+    counted = {x["m"].id for k in ksos for c in k["components"] for x in c["methods"]}
+    loose = [r["m"] for r in rep["methods"] if r["m"].id not in counted] if current else []
     row = year(s, fw.fiscal_year)
     ratings = dict(row.ratings) if row and row.ratings else {}
-    return dict(fw=fw, ksos=ksos, ratings=ratings, target=row.target_incentive if row else None,
+    return dict(fw=fw, ksos=ksos, loose=loose, ratings=ratings, target=row.target_incentive if row else None,
                 projection=projection(fw.data, row.target_incentive if row else None, ratings),
                 choices=[(c["key"], c["name"]) for c in framework.components(fw)],
                 years=list(s.scalars(select(KsoFramework.fiscal_year).order_by(KsoFramework.fiscal_year.desc()))),
-                upcoming=[d for d in fw.data.get("dates", []) if d["date"] >= today.isoformat()],
-                fy_lo=fy_lo, fy_hi=fy_hi)
+                upcoming=[d for d in fw.data.get("dates", []) if d["date"] >= today.isoformat()])

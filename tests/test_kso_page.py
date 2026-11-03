@@ -111,3 +111,51 @@ def test_the_practice_notebook_has_made_up_ksos(tmp_path):
         seed(s)
     page = TestClient(create_app(dd), base_url=BASE).get("/kso").text
     assert "KSOs FY27" in page and "Calm Releases" in page
+
+
+def test_a_method_moved_to_no_part_can_be_moved_back(nb):
+    dd, c, token, _ = nb
+    m = setup(dd)
+    form(c, "/kso/map", token, fy="FY27", method_id=m["M2"], component="")
+    page = c.get("/kso").text
+    assert "Not counting toward any KSO part" in page and f'for="map-{m["M2"]}">Counts toward, for M2' in page
+    form(c, "/kso/map", token, fy="FY27", method_id=m["M2"], component="2.2")
+    assert "Not counting toward any KSO part" not in c.get("/kso").text
+
+
+def test_last_years_ksos_stay_in_view_until_this_years_are_read(nb):
+    from test_v2mom import TWO
+    dd, c, *_ = nb
+    setup(dd)
+    with session(dd) as s:
+        load_v2mom(s, TWO, fy="FY28")  # next year's V2MOM, before next year's KSOs are connected
+    page = c.get("/kso").text
+    assert "KSOs FY27" in page and "wins and records in FY27" not in page  # no counts for a year that isn't current
+
+
+def test_a_target_pasted_with_cents_is_kept_in_dollars(nb):
+    dd, c, token, _ = nb
+    setup(dd)
+    form(c, "/kso/target", token, fy="FY27", target="$12,000.50")
+    with session(dd) as s:
+        assert progress.build(s)["target"] == 12000
+    assert "like%2012000" in form(c, "/kso/target", token, fy="FY27", target="12.000.5").headers["location"]
+
+
+def test_an_older_practice_notebook_gets_the_made_up_ksos(tmp_path):
+    from careeros.config import DataDir
+    from careeros.fixtures.demo import seed
+    from careeros.kso import framework
+    from careeros.storage.db import init_db, make_engine, make_session_factory
+    from careeros.storage.models import KsoFramework
+    dd = DataDir(tmp_path / "demo")
+    dd.init_demo()
+    engine = make_engine(dd.db)
+    init_db(engine)
+    with make_session_factory(engine)() as s:
+        seed(s)
+        s.query(KsoFramework).delete()
+        s.commit()
+        seed(s)  # records exist already, so only the KSOs are added
+        seed(s)
+        assert s.query(KsoFramework).count() == 1 and framework.get(s).track == "Delivery"
