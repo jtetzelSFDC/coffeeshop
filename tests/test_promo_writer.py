@@ -185,3 +185,7 @@ def test_a_sentence_about_a_method_passes_the_check(nb):
             assert secs[key].sentences[0]["text"].startswith("Jordan worked on advancing V2MOM method M2")
             assert secs[key].sentences[0]["valid"], secs[key].sentences[0]
     assert "advancing V2MOM method M2 (its name)" in pw.PROMPT
+
+
+def test_prompt_says_to_quote_check_in_comments_as_the_managers_words():
+    assert "check-in piece is the manager's own words: quote them exactly" in pw.PROMPT
