@@ -77,14 +77,22 @@ def fetch(since: datetime) -> tuple[list[Task], int]:
     return tasks, len(set(lists) - ok)
 
 
+def _built_on(s: Session, e: JournalEntry) -> bool:
+    from ..storage.models import GuideLink, Win
+    return e.reviewed or e.v2mom_fixed or e.activity_fixed or any(s.scalar(q.limit(1)) for q in (
+        select(Win.id).where(Win.entry_id == e.id),
+        select(GuideLink.id).where(GuideLink.entry_id == e.id, GuideLink.by_ai.is_(False)),
+        select(JournalAttachment.id).where(JournalAttachment.entry_id == e.id, JournalAttachment.title != "Task notes")))
+
+
 def _clear_open(s: Session) -> int:
-    """Open Google Tasks don't belong in the notebook: deletes the ones saved before, unless you built on one (a win,
-    or notes of your own). Not through the Removed list, so the finished task still comes in once it's done."""
-    from ..storage.models import GuideLink, V2momLink, Win
+    """Open Google Tasks don't belong in the notebook: deletes open ones, unless you built on one (checked it, set
+    its links, made a win, added notes); those stay out of the queue until done. Not through the Removed list, so the
+    finished task still comes in once it's done."""
+    from ..storage.models import GuideLink, V2momLink
     n = 0
     for e in list(s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE, JournalEntry.status == "open"))):
-        if s.scalar(select(Win.id).where(Win.entry_id == e.id).limit(1)) or s.scalar(select(JournalAttachment.id).where(
-                JournalAttachment.entry_id == e.id, JournalAttachment.title != "Task notes").limit(1)):
+        if _built_on(s, e):
             continue
         for model in (JournalAttachment, GuideLink, V2momLink):
             s.execute(delete(model).where(model.entry_id == e.id))
@@ -95,19 +103,24 @@ def _clear_open(s: Session) -> int:
 
 
 def merge(s: Session, tasks: list[Task], complete: bool = True) -> dict[str, int]:
-    """Adds tasks done in Google; open ones are skipped, and open ones saved before are cleared. Updates a kept open
-    record once its task is done. Never deletes a done one: a fetch only covers recently changed lists. An incomplete
-    fetch isn't logged, so the next sync starts from the old mark."""
-    from ..storage.removal import removed_ids
-    _clear_open(s)
+    """Adds tasks done in Google and updates a kept open record once its task is done. Open tasks are skipped; one
+    reopened in Google goes back to open, and open ones are then cleared (see _clear_open). Never deletes a done one
+    otherwise: a fetch only covers recently changed lists. An incomplete fetch isn't logged, so the next sync starts
+    from the old mark."""
+    from ..storage.models import RemovedEntry
     mine = list(s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE)))
     by_key = {e.external_id: e for e in mine}
-    gone = removed_ids(s, SOURCE)
+    gone = set(s.scalars(select(RemovedEntry.external_id).where(  # removed while open: the finished one may come in
+        RemovedEntry.source == SOURCE, RemovedEntry.status != "open", RemovedEntry.external_id.is_not(None))))
     today = date.today().isoformat()
     added = updated = 0
     for t in tasks:
         ext = f"gtask:{t.gid}"
-        if not t.done or ext in gone or t.key in gone:
+        if not t.done:
+            if (e := by_key.get(ext)) is not None and e.status == "done":
+                e.status = "open"
+            continue
+        if ext in gone or t.key in gone:
             continue
         status, day = "done", min(t.when.date().isoformat(), today)
         e = by_key.get(ext) or by_key.get(t.key) or next(
@@ -129,6 +142,7 @@ def merge(s: Session, tasks: list[Task], complete: bool = True) -> dict[str, int
                 updated += 1
             e.external_id = ext
         by_key[ext] = e
+    _clear_open(s)
     if complete:
         from ..storage.sync_log import record
         record(s, SOURCE, added)

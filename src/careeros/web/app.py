@@ -537,7 +537,7 @@ def create_app(dd: DataDir) -> FastAPI:
 
     def sheet_query(f: dict):
         linked = select(GuideLink.entry_id).where(GuideLink.entry_id.is_not(None))
-        q = select(JournalEntry)
+        q = select(JournalEntry).where(~((JournalEntry.source == "tasks") & (JournalEntry.status == "open")))
         if f["source"] != "any":
             q = q.where(JournalEntry.source == f["source"])
         if f["kind"] != "any":
