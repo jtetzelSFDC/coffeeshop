@@ -209,7 +209,7 @@ def create_app(dd: DataDir) -> FastAPI:
         today = date.today()
         from .. import daily as daily_mod, dashboard
         return page_html(request, "today.html", "/", dash=dashboard.build(s, today),
-                         daily=daily_mod.today_tasks(s, today) if personal else [], kinds=KINDS,
+                         daily=daily_mod.today_tasks(s, today), kinds=KINDS,
                          attach_kinds=ATTACH_KINDS, today=today.isoformat(), msg=msg,
                          slack_canvas=slack_imp.load_canvas_id(dd) if personal else None,
                          v2mom_doc=v2mom_conn.load_source(dd) if personal else None, sync=sync_view(s))

@@ -3,7 +3,7 @@
 <p align="center"><em>Do the work. It remembers.</em></p>
 
 <p align="center">
-  <img src="docs/img/home.jpg" width="820" alt="Career Tracker's Home page in dark mode: a latte in the corner, house plants down the side, and one card with Grade 6 and Grade 7 readiness bars, tiles for skills, wins, kudos and records to check, a 12-week evidence chart, and the next step.">
+  <img src="docs/img/home.jpg" width="820" alt="Career Tracker's Home page in dark mode: a latte in the corner, house plants down the side, a Today's three card with three small tasks, and a card with Grade 6 and Grade 7 readiness bars, tiles for skills, wins, kudos and records to check, a 12-week evidence chart, and the next step.">
 </p>
 
 ## What it does

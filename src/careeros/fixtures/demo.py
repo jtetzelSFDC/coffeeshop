@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from ..storage.models import GuideItem, GuideLink, JournalAttachment, JournalEntry, Win
+from ..storage.models import DailyTask, GuideItem, GuideLink, JournalAttachment, JournalEntry, Win
 
 # (days ago, kind, source, text, notes) - notes are shown under the record like a Slack tracker note
 RECORDS = [
@@ -58,6 +58,11 @@ LINKS = {  # record index -> guide names it shows
     9: ["Develops and executes deployment strategies with minimal downtime."],
 }
 
+# The day the practice notebook is made, so Home shows the Today's three card.
+DAILY = [("Write a two-line note on the Pine release for the team channel", "Shows the plan was kept", "KSO 1.1", 5),
+         ("Add a feedback measure to your V2MOM for this quarter", "Every KSO part needs a goal", "KSO 1.2", 10),
+         ("Try an AI helper on one release checklist and note what it saved", "New tools, shared", "KSO 2.2", 10)]
+
 
 def _seed_ksos(s: Session) -> None:
     from ..storage.models import KsoFramework
@@ -106,5 +111,8 @@ def seed(s: Session, today: date | None = None) -> dict[str, int]:
         s.flush()
         for n in LINKS.get(idx, []):
             s.add(GuideLink(item_id=items[n].id, win_id=w.id, created_at=now))
+    for pos, (text, why, goal, minutes) in enumerate(DAILY, 1):
+        s.add(DailyTask(day=today.isoformat(), position=pos, text=text, why=why, goal=goal, minutes=minutes,
+                        created_at=now))
     s.commit()
     return dict(records=len(entries), wins=len(WINS), guide=len(GUIDE))

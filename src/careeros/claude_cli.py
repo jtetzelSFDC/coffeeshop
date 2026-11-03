@@ -82,8 +82,8 @@ def call_tools(prompt: str, tools: list[str], timeout: int = 240, max_turns: int
                 name, args = calls[part["tool_use_id"]]
                 answers.append((name, args, _result_text(part.get("content", ""))))
     if not answers and down:
-        raise ClaudeError(f"Claude Code's {_service(down[0])} connector isn't signed in. Open Claude Code > Settings > "
-                          "Connections, sign in again, then sync again.")
+        raise ClaudeError(f"Claude Code's {_service(down[0])} connector isn't signed in. Sign in to it again in "
+                          "Claude Code's connector settings, then sync again.")
     if not answers:
         raise ClaudeError("Claude didn't get an answer from the connector. Is it signed in for Claude Code?"
                           + (f" ({run.stderr.strip()[:150]})" if run.stderr.strip() else ""))
@@ -104,8 +104,8 @@ def connector_error(text: str, service: str) -> str | None:
     """A plain explanation when the connector answered with a failure instead of data."""
     head = text[:500]
     if "invalid_token" in head or "status 401" in head or "Needs authentication" in head:
-        return (f"Claude Code's {service} sign-in has expired. Open Claude Code's connector settings, sign in to {service} "
-                "again, then press Sync again.")
+        return (f"Claude Code's {service} sign-in has expired. Sign in to {service} again in Claude Code's "
+                "connector settings, then press Sync again.")
     if head.startswith(("MCP tool call failed", "Error")):
         return f"The {service} connector failed: {head[:200]}"
     return None

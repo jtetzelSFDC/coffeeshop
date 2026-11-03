@@ -282,7 +282,8 @@ def test_download_everything_is_a_zip_of_csvs_with_formulas_defused(seeded):
     r = c.get("/export/everything")
     assert r.headers["content-type"] == "application/zip" and ".zip" in r.headers["content-disposition"]
     z = zipfile.ZipFile(io.BytesIO(r.content))
-    assert sorted(z.namelist()) == ["entries.csv", "guide_links.csv", "pasted_notes.csv", "wins.csv"]
+    assert sorted(z.namelist()) == ["entries.csv", "guide_links.csv", "pasted_notes.csv", "promo_drafts.csv",
+                                     "v2mom_links.csv", "wins.csv"]
     read = lambda n: list(csv.DictReader(io.StringIO(z.read(n).decode("utf-8-sig"))))
     entries, notes, wins = read("entries.csv"), read("pasted_notes.csv"), read("wins.csv")
     assert {e["text"] for e in entries} == {"'=HYPERLINK(\"http://evil\")", "Fixed the deploy script"}
@@ -342,3 +343,21 @@ def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
             break
         time.sleep(0.02)
     assert ran
+
+
+def test_the_export_includes_v2mom_links_and_promo_drafts(nb):
+    import csv as _csv
+    import io as _io
+    import zipfile as _zip
+    from careeros.export.csv_all import notebook_zip
+    from helpers import add, draft, link, load_v2mom, open_session
+    dd, *_ = nb
+    with open_session(dd) as s:
+        m = load_v2mom(s)
+        link(s, m["M1"], entry_id=add(s, "Ran a community session"))
+        s.commit()
+        draft(s)
+        z = _zip.ZipFile(_io.BytesIO(notebook_zip(s)))
+    rows = {n: list(_csv.DictReader(_io.StringIO(z.read(n).decode("utf-8-sig")))) for n in ("v2mom_links.csv", "promo_drafts.csv")}
+    assert [(r["method"], r["linked_text"]) for r in rows["v2mom_links.csv"]] == [("M1", "Ran a community session")]
+    assert rows["promo_drafts.csv"] and "[" in rows["promo_drafts.csv"][0]["text"]  # sentences keep their [n] sources
