@@ -21,7 +21,7 @@ Python 3.12, FastAPI, SQLAlchemy on SQLite, Jinja2, Typer, uv. No JavaScript fra
 | `cli.py` | Every `careeros …` command; thin glue over the modules below |
 | `web/` | The pages (`app.py`), background jobs with progress (`jobs.py`, `syncs.py`), templates, static files |
 | `google/` | Calendar, Tasks, Docs, and meeting-note summaries through Claude Code's Google Workspace connector |
-| `slack/` | The activity-tracker canvas, its sorting and import, and kudos from public channels |
+| `slack/` | The activity-tracker canvas, its sorting and import, and kudos from public and private channels (never DMs) |
 | `github/` | Merged PRs and weekly review counts through the `gh` CLI |
 | `v2mom/` | Reading the V2MOM (PDF or Google Doc), stable method ids, links from work, per-method report |
 | `guide/` | The leveling guide, links to it, grouping records into work, the Promo map, Claude's read-through |
@@ -44,7 +44,8 @@ flowchart LR
     gh[gh CLI]
     vm[V2MOM PDF or Doc]
   end
-  sources --> sync[sync all, 8 AM and 6 PM]
+  gw & sl -->|"read through Claude Code"| sync[sync all, 8 AM and 6 PM]
+  gh & vm --> sync
   sync --> db[(SQLite notebook)]
   db <-->|"titles and text, tools off"| claude[Claude headless]
   db --> pages[Local pages on 127.0.0.1]
@@ -63,23 +64,27 @@ Outside the repo, in `~/Library/Application Support/CareerOS/` (the practice not
 
 - **Loopback only.** The server binds to 127.0.0.1, and requests whose Host isn't `127.0.0.1` or `localhost` are refused (DNS-rebinding guard).
 - **Writes are guarded.** Every POST needs the CSRF token (an HMAC of the notebook's secret), and one with a cross-site Origin is refused.
-- **Strict CSP.** `default-src 'none'`, scripts only from the app itself, no frames, forms only post back to the app.
+- **Strict CSP.** `default-src 'none'`, scripts only from the app itself (inline styles allowed), no frames, forms only post back to the app.
 - **Autoescaped templates.** No user or Claude text is rendered as HTML.
 - **Read-only connectors.** The sync reads from Google, Slack, and GitHub; nothing is ever posted, sent, or edited there. The one exception is **Send to Google Docs**, which you press yourself.
-- **Claude with tools off.** `ask()` runs `claude -p --tools ""` with one turn; `call_tools()` allows only the named connector tools.
+- **Claude, boxed in.** `ask()` runs `claude -p --tools ""` with one turn; `call_tools()` allows only the named connector tools. Meeting summaries also allow `Read`, limited to Claude's own saved tool-result folders.
 
 ## What goes to Claude
 
-Only during a sync, the Claude review, or a button that says it asks Claude. Each call sends what that job needs, as data on stdin:
+Claude Code is both the reader and the sorter. Everything the Google and Slack connectors fetch passes through it, and the sorting jobs send it text from the notebook. GitHub (`gh`) and a V2MOM PDF are read locally, but their text is sorted by Claude too. Each job sends only what it needs, as data on stdin or as a tool result:
 
-| Job | Sent |
+| Job | Claude sees |
 |---|---|
-| Sorting records | The records' text and notes, the leveling guide, the V2MOM methods |
-| Meeting and doc summaries | The note or doc text |
+| Google sync | Calendar events and their Gemini notes, tasks, and the Docs, Sheets, and Slides you wrote |
+| Slack sync | The activity-tracker canvas, then its items for sorting |
+| Kudos | Messages that mention you in public and private channels (never DMs), up to 1,500 characters each, with sender and channel |
+| Sorting and grouping | Records' text and notes, the leveling guide, and the V2MOM methods |
+| V2MOM | The V2MOM text, including your manager's check-in comments |
 | Promo case | The numbered evidence list |
-| Daily three | Titles only: goals (V2MOM methods, Promo gaps, skills) and recent record and win titles, about 8k characters at most |
+| Send to Google Docs | The whole case, written into a new Doc in your Drive |
+| Daily three | Titles only: goals and recent record and win titles, about 8k characters at most |
 
-Prompts tell Claude the data is data, never instructions, and every answer is validated before anything is saved. A bad answer saves nothing.
+Prompts tell Claude the data is data, never instructions, and answers are checked before they're saved. A bad one saves nothing, except promo sentences that fail a check: those are kept and flagged **Check this**.
 
 ## Schedules
 
@@ -91,7 +96,7 @@ Prompts tell Claude the data is data, never instructions, and every answer is va
 | `com.careeros.sync` | 8 AM, 6 PM, and at login | `careeros sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly), then the daily three (once a day, after 8 AM) |
 | `com.careeros.digest` | Friday at noon | `careeros digest notify` |
 
-A missed time runs on wake. A failed step sends one macOS notification and changes nothing; the chips on the pages show each source's last run.
+A missed time runs on wake. A failed step doesn't stop the others; each source that fails sends one macOS notification, and the chips on the pages show each source's last run.
 
 ## Database and migrations
 

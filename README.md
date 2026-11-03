@@ -15,20 +15,24 @@
 - It holds your V2MOM, and notes which work moves each method forward.
 - It shows the path: what is shown, what is strong, what is still to come.
 - Each morning it offers three small steps, none longer than ten minutes.
-- When the season comes, it writes your promotion case, each sentence with its source.
+- When the season comes, it writes your promotion case, each sentence with its source, for you to shape and send to Google Docs.
 - On Friday it tells you what the week added.
 - It marks what Claude chose, so that you may decide.
-- It lives on your machine, and nowhere else.
+- Each day it keeps a copy, and you may take everything with you.
+- It lives on your machine. Only what Claude must read leaves it.
 
 ## Begin
 
 You need a Mac, [uv](https://docs.astral.sh/uv/), and Claude Code signed in to the Google Workspace and Slack connectors.
 
 ```
+cd ~/Documents/career-os
 uv run careeros notebook init
 uv run careeros schedule install
 open http://127.0.0.1:8765
 ```
+
+Then load your leveling guide and connect your V2MOM ([INSTRUCTIONS.md](docs/INSTRUCTIONS.md)); without them there is nothing to sort against.
 
 To try it with made-up data: `uv run careeros demo seed --data-dir /tmp/cos-demo && uv run careeros serve --data-dir /tmp/cos-demo`. The screenshot above is that practice notebook.
 
