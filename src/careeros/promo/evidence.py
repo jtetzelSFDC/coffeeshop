@@ -5,6 +5,8 @@ came from. Each section of the case gets its own slice of the pieces.
 """
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -90,6 +92,14 @@ def build(s: Session, start: str, end: str) -> tuple[list[dict], dict[str, list[
                 f"{start} and {end}, for example: " + "; ".join(" ".join(x.split())[:80] for x in examples[:3]) + ".")
         add("v2mom", text, max([w.day for w in mw] + [e.day for e in me]),
             [dict(v2mom=m.id), *(dict(win=w.id) for w in mw), *(dict(entry=e.id) for e in me)], ["summary", "impact"])
+
+    # the manager's own words from the current V2MOM's check-ins
+    v = v2mom_store.current(s)
+    for c in (v.check_ins or []) if v else []:
+        if c.get("manager_comments"):
+            name = re.sub(r"\s*check-?in\s*$", "", c["name"], flags=re.I) or c["name"]
+            add("checkin", f"V2MOM check-in ({name}), manager comments: {' '.join(c['manager_comments'].split())[:600]}",
+                end, [], ["summary", "accomplishments", "behaviors"])
 
     # then wins: the strongest evidence
     won_entries = set()

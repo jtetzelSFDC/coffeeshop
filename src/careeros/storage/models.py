@@ -150,15 +150,16 @@ class GuideItem(Base):
 
 
 class V2momVersion(Base):
-    """The user's V2MOM for one fiscal year, as last read from their Google Doc."""
+    """The user's V2MOM for one fiscal year, as last read from its PDF or Google Doc."""
     __tablename__ = "v2mom_version"
     id: Mapped[int] = mapped_column(primary_key=True)
-    doc_id: Mapped[str] = mapped_column(String)
+    doc_id: Mapped[str] = mapped_column(String)  # the Google Doc's id, or the PDF's path
     fiscal_year: Mapped[str] = mapped_column(String, default="")  # e.g. FY27, or "" when the Doc doesn't say
     published: Mapped[str] = mapped_column(String, default="")  # as the Doc writes it, e.g. "Mar 25, 2026"
     vision: Mapped[str] = mapped_column(Text, default="")
     values: Mapped[list] = mapped_column(JSON, default=list)  # [{name, text}]
-    obstacles: Mapped[list] = mapped_column(JSON, default=list)  # [{name, text, related_method}]
+    obstacles: Mapped[list] = mapped_column(JSON, default=list)  # [{name, text, related_method, related_methods}]
+    check_ins: Mapped[list] = mapped_column(JSON, default=list)  # [{name, manager_comments}]
     pulled_at: Mapped[datetime] = mapped_column(DateTime)
 
 
@@ -172,7 +173,7 @@ class V2momMethod(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String, default="")  # as the Doc says: On Track, At Risk, Completed, …
     progress: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)  # percent, when shown
-    measures: Mapped[list] = mapped_column(JSON, default=list)  # [{text, status}]
+    measures: Mapped[list] = mapped_column(JSON, default=list)  # [{text, status, progress, comments}]
     active: Mapped[bool] = mapped_column(Boolean, default=True)  # False once a pull no longer has it
 
     @property

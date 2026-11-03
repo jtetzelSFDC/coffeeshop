@@ -90,7 +90,7 @@ Colors come from points. A linked entry is worth 1, and a small, medium, or larg
 
 **Write my promo case** (on the Promo map, or at http://127.0.0.1:8765/promo/case) has Claude draft the case itself. Pick who it's about (your first name, remembered for next time) and the window (the last 12 months by default), then press the button; it takes a minute or two, with progress per section. The draft has five sections: **Summary, Key accomplishments, Impact, Behaviors & values, Growth areas**, written in the third person. Claude writes them only from your notebook: wins and why they mattered, pieces of work, linked records, the impact numbers, and the Promo map's gaps and next steps, all dated inside the window. Every sentence ends with small [numbers] that jump to its sources, listed at the bottom as they were when the draft was written. The app then checks each sentence itself: one with no source, or with a number that doesn't appear in its evidence, is marked **Check this** with the reason. The check catches invented numbers and missing sources, not every wrong word, so read the draft before you use it. Every draft is kept. From Terminal: `uv run careeros promo write` (with `--start`, `--end`, `--name`).
 
-**V2MOM alignment.** Once your V2MOM is loaded and records are linked to its methods, the evidence also has one piece per current method with work in the window, like "V2MOM M2 (Build Reusable Pipeline Accelerators, On Track, 50% progress): 3 wins and 12 records between … and …, for example: …", and each win and piece of work says which methods it advances ("Advances V2MOM M2."). These go to the Summary and Impact sections, so the case can say a piece of work was "advancing V2MOM method M2 (its name)", but only when a source it cites says so; the usual check applies. Methods with nothing in the window, and ones dropped from the Doc, are left out. With no V2MOM loaded, the case is written exactly as before.
+**V2MOM alignment.** Once your V2MOM is loaded and records are linked to its methods, the evidence also has one piece per current method with work in the window, like "V2MOM M2 (Build Reusable Pipeline Accelerators, On Track, 50% progress): 3 wins and 12 records between … and …, for example: …", and each win and piece of work says which methods it advances ("Advances V2MOM M2."). These go to the Summary and Impact sections, so the case can say a piece of work was "advancing V2MOM method M2 (its name)", but only when a source it cites says so; the usual check applies. Methods with nothing in the window, and ones dropped from your V2MOM, are left out. When your V2MOM came from the PDF, each check-in with manager comments also becomes a piece, like "V2MOM check-in (Midyear FY27), manager comments: …" (up to about 600 characters), for the Summary, Key accomplishments, and Behaviors & values, so the case can quote your manager's own words. Check-ins without comments are left out. With no V2MOM loaded, the case is written exactly as before.
 
 **Reading a draft.** The top of a draft shows chips for its number and date, the window it's written from, and how many sentences to check (or "every sentence sourced"). The **Sources** list at the bottom is folded; clicking any [number] in the draft opens it at that source.
 
@@ -242,22 +242,24 @@ If `gh` isn't signed in, the sync says so; run `gh auth login`.
 
 ## V2MOM: your Vision, Values, Methods, Obstacles, and Measures
 
-the V2MOM app won't let the command line sign in, so the app reads your V2MOM from a Google Doc you paste it into.
+the V2MOM app won't let the command line sign in, so the app reads your V2MOM from the PDF the V2MOM app exports (recommended: it has every measure's progress and comments, and your check-ins) or from a Google Doc you paste it into.
 
-1. **Paste it into a Google Doc.** The easiest way: open your V2MOM in the V2MOM app, expand each method so its measures show, select the whole page, copy, and paste it into a new Google Doc. The page's extra text (Check-Ins, Success, Helpful Resources, feedback links, filters, "requires your review" banners) is fine; the app ignores it.
-2. **Connect it** once, with the Doc's link:
+1. **Download it as a PDF.** In the V2MOM app, use **download as PDF** and save it to your Desktop. Keep the name it gives you (something like "FY27 V2MOM Your Name.pdf").
+2. **Connect it** once, with the file's path:
 
 ```
 cd ~/Documents/career-os
-uv run careeros v2mom connect "https://docs.google.com/document/d/…/edit"
+uv run careeros v2mom connect ~/Desktop/"FY27 V2MOM Your Name.pdf"
 uv run careeros v2mom sync
 ```
 
-The sync reads the Doc through Claude Code's Google Workspace connector, then Claude (with no tools) picks out the fiscal year, the published date, the vision, the values, each method in order (M1, M2, …) with its description, status (On Track, At Risk, Completed, …), percent, and measures (each with its own status), and the obstacles with the method they relate to. If it can't find any methods, it says so and nothing changes.
+The app pulls the text out of the PDF on your laptop (with pypdf), then Claude (with no tools) picks out the fiscal year, the vision, the values, each method in order (M1, M2, …) with its description and its measures (each with its status, its percent, and any comments), the obstacles with the methods they relate to, and the check-ins with your manager's comments. The PDF doesn't print a method's own status or percent, so the app works them out from its measures: the percent is the average of the measures' percents (a Completed measure counts as 100), and the status is Completed when every measure is, On Track when any has progress or says On Track. If it can't find any methods, it says so and nothing changes.
 
-**Keeping it current.** The scheduled sync re-reads the Doc once a month. After a check-in, paste the updated page over the Doc's text and press **Sync V2MOM** on Home. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
+**Or a Google Doc** (still works): open your V2MOM in the V2MOM app, expand each method so its measures show, select the whole page, copy, and paste it into a new Google Doc; the page's extra text is ignored. Then connect the Doc's link instead: `uv run careeros v2mom connect "https://docs.google.com/document/d/…/edit"`. The sync reads it through Claude Code's Google Workspace connector. The Doc has no check-ins or measure comments. Connecting the PDF later keeps your methods and their links.
 
-**The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when the Doc was read in the last 31 days, orange when it's older, and grey with a hint when no Doc is connected yet. The Doc's id is kept in `v2mom.doc` in the notebook folder, readable only by you. The Doc's text passes through Claude Code to be read.
+**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again into the same folder and press **Sync V2MOM** on Home. Each sync reads the newest PDF with "V2MOM" in its name in that folder, so a re-download saved as "… (1).pdf" is picked up without connecting again. The latest fiscal year in the name comes first, so downloading last year's PDF to look back at doesn't replace this year's, and next year's FY28 PDF is picked up by itself. If the file is gone, the sync says where to save it. With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
+
+**The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when your V2MOM was read in the last 31 days, orange when it's older, and grey with a hint when nothing is connected yet. The PDF's path or the Doc's id is kept in `v2mom.json` in the notebook folder, readable only by you (a `v2mom.doc` from before still works). The text passes through Claude Code to be read; the PDF itself stays where it is.
 
 **Linking your work to methods.** Once the V2MOM is loaded, Claude's read-through of new records (after every sync, and the queue's **Have Claude read** button) also picks the V2MOM methods each record really moves forward: none for routine meetings and status pings, at most two. It's the same read as the leveling-guide links, so it costs no extra Claude time. In the Intake Review Queue they show as purple **AI: V2MOM M2** chips next to the guide chips (hover for the method's name). **Looks right** makes them yours, **&times;** on a chip removes it for good (Claude won't put it back), and **edit** opens the linking page, which now has a **Which V2MOM methods does this move forward?** list at the top. Once you've changed a record's methods, Claude leaves them alone. A chip that says **V2MOM old** points at a method that's no longer in your current V2MOM (dropped, or last year's); it stays so the history makes sense.
 
@@ -272,15 +274,17 @@ It skips records already read against the V2MOM and ones whose methods you set, 
 
 ### The V2MOM page
 
-**V2MOM** in the Menu shows your current V2MOM. At the top: the fiscal year, how many methods had work this quarter, when it was published, and when the app last read the Doc. **Vision and values** folds open to the Doc's vision and values.
+**V2MOM** in the Menu shows your current V2MOM. At the top: the fiscal year, how many methods had work this quarter, when it was published, and when the app last read your PDF or Doc. **Vision and values** folds open to its vision and values.
 
-Below, one row per method, in the Doc's order:
+Below, one row per method, in your V2MOM's order:
 
 - **A dot:** green when something was linked in the last 30 days, orange when it has gone quiet (work before, nothing in 30 days), grey when nothing is linked yet.
-- **M1 and the name**, then the **status** from the Doc as a chip (green for Completed, orange for At Risk, Off Track or Behind) and its **percent** as a small bar.
+- **M1 and the name**, then the **status** as a chip (green for Completed, orange for At Risk, Off Track or Behind) and its **percent** as a small bar (from the Doc, or worked out from the measures for a PDF).
 - **The numbers:** wins plus records linked to it **this quarter** (calendar quarters: Jan to Mar, Apr to Jun, Jul to Sep, Oct to Dec) and **in FY27** (Salesforce's fiscal year, Feb 1 to Jan 31; FY27 runs Feb 1, 2026 to Jan 31, 2027), and the date of the latest one. A win made from a linked record counts too, so a record and its win count as two. An open task doesn't count until it's done.
-- **The measures**, each with its own status chip.
-- **About this method** folds open to the description and any obstacles the Doc relates to it. Obstacles that don't name a method are listed at the bottom.
+- **The measures**, each with its own status chip, its percent as a small bar, and **Comments** folded under it when it has any.
+- **About this method** folds open to the description and any obstacles related to it (an obstacle related to two methods shows under both). Obstacles that don't name a method are listed at the bottom.
+
+**Check-ins** (from the PDF) is folded at the bottom: each check-in by name with your manager's comments, or "No manager comments."
 
 **see the work** opens that method's page: its wins and linked records, newest first. To change which methods a record moves forward, use **edit** on its row in the Intake Review Queue.
 
@@ -332,7 +336,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `190 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `206 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

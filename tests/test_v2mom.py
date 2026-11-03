@@ -18,6 +18,7 @@ from careeros.web.app import create_app
 from test_slack import BASE, personal, run_sync
 
 DOC_ID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_abcd"
+SRC = dict(kind="doc", value=DOC_ID)
 # Made up, in the shape of a page copied from the V2MOM app.
 DOC = """## My V2MOM Progress (FY27)
 **Published on** Mar 25, 2026 **Last updated** Oct 2, 2026
@@ -88,7 +89,7 @@ def fake(monkeypatch):
 
 def pull(Session):
     with Session() as s:
-        return store.save(s, connector.read(DOC_ID), DOC_ID)
+        return store.save(s, *connector.read(SRC))
 
 
 def test_connect_saves_the_doc_id_owner_only(tmp_path):
@@ -96,9 +97,17 @@ def test_connect_saves_the_doc_id_owner_only(tmp_path):
     r = CliRunner().invoke(cli, ["v2mom", "connect", f"https://docs.google.com/document/d/{DOC_ID}/edit",
                                  "--data-dir", str(dd.root)])
     assert r.exit_code == 0, r.output
-    assert connector.load_doc_id(dd) == DOC_ID and oct(connector.doc_file(dd).stat().st_mode)[-3:] == "600"
+    assert connector.load_source(dd) == SRC and oct(connector.source_file(dd).stat().st_mode)[-3:] == "600"
     with pytest.raises(ValueError):
-        connector.save_doc_id(dd, "not a doc")
+        connector.save_source(dd, "not a doc")
+
+
+def test_a_doc_connected_before_pdfs_still_counts(tmp_path):
+    dd, _ = personal(tmp_path)
+    (dd.root / connector.DOC_FILE).write_text(DOC_ID + "\n")
+    assert connector.load_source(dd) == SRC
+    connector.save_source(dd, f"https://docs.google.com/document/d/{DOC_ID}/edit")
+    assert not (dd.root / connector.DOC_FILE).exists() and connector.load_source(dd) == SRC
 
 
 def test_a_pull_saves_the_version_methods_measures_and_obstacles(tmp_path, fake):
@@ -115,7 +124,8 @@ def test_a_pull_saves_the_version_methods_measures_and_obstacles(tmp_path, fake)
         assert [(m.label, m.name, m.status, m.progress) for m in ms] == [
             ("M1", "Share Release Know-How Across Teams", "On Track", 69),
             ("M2", "Build Reusable Pipeline Accelerators", "On Track", 50)]
-        assert ms[0].measures == [dict(text="Q2: Present at 2 community sessions", status="Completed")]
+        assert ms[0].measures == [dict(text="Q2: Present at 2 community sessions", status="Completed", progress=None,
+                                       comments="")]
         assert status(s)["v2mom"]["ok"] is True
 
 
@@ -180,16 +190,16 @@ def test_a_new_fiscal_year_starts_a_new_version(tmp_path, fake):
 def test_an_unreadable_answer_is_a_plain_error(tmp_path, fake, reply, why):
     fake["reply"] = reply
     with pytest.raises(ClaudeError, match=why):
-        connector.read(DOC_ID)
+        connector.read(SRC)
 
 
 def test_connector_failures_say_what_to_do(monkeypatch):
     monkeypatch.setattr(connector, "call_tool", lambda *a, **k: 'MCP tool call failed: status 401 {"error": "invalid_token"}')
     with pytest.raises(ClaudeError, match="sign-in has expired"):
-        connector.read(DOC_ID)
+        connector.read(SRC)
     monkeypatch.setattr(connector, "call_tool", lambda *a, **k: json.dumps({"markdown_content": ""}))
     with pytest.raises(ClaudeError, match="looks empty"):
-        connector.read(DOC_ID)
+        connector.read(SRC)
 
 
 def test_monthly_rule(tmp_path):
@@ -211,7 +221,7 @@ def test_sync_all_pulls_the_v2mom_only_when_connected_and_due(tmp_path, monkeypa
     pulled = []
     monkeypatch.setattr(sync_all.syncs, "run_v2mom", lambda job, *a: (pulled.append(1), job.finish("ok")))
     assert sync_all.run(dd, force=True, notify=lambda *a: None) == 0 and not pulled  # not connected
-    connector.save_doc_id(dd, DOC_ID)
+    connector.save_source(dd, DOC_ID)
     sync_all.run(dd, force=True, notify=lambda *a: None)
     assert pulled == [1]
     with Session() as s:
@@ -228,8 +238,8 @@ def test_web_button_and_chips(tmp_path, fake):
     home = c.get("/").text
     assert "v2mom connect" in home and 'action="/sync/v2mom"' in home and "V2MOM" in c.get("/sheet").text
     job = run_sync(c, token, "v2mom")
-    assert job["state"] == "error" and "No V2MOM Doc connected" in job["steps"][0]["detail"]
-    connector.save_doc_id(dd, DOC_ID)
+    assert job["state"] == "error" and "No V2MOM connected" in job["steps"][0]["detail"]
+    connector.save_source(dd, DOC_ID)
     job = run_sync(c, token, "v2mom")
     assert job["message"] == "V2MOM synced: FY27, 2 methods." and [st["state"] for st in job["steps"]] == ["done", "done"]
     home = c.get("/").text
@@ -238,7 +248,7 @@ def test_web_button_and_chips(tmp_path, fake):
 
 def test_cli_sync(tmp_path, fake):
     dd, Session = personal(tmp_path)
-    connector.save_doc_id(dd, DOC_ID)
+    connector.save_source(dd, DOC_ID)
     r = CliRunner().invoke(cli, ["v2mom", "sync", "--data-dir", str(dd.root)])
     assert r.exit_code == 0, r.output
     assert "2 methods, 1 obstacle" in r.output and "V2MOM synced: FY27, 2 methods." in r.output

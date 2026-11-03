@@ -30,6 +30,8 @@ slack_user.json
 slack.canvas
 calendar.url
 v2mom.doc
+v2mom.json
+*.pdf
 
 # Downloads and exports
 career-notebook-*.zip

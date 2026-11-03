@@ -1,5 +1,5 @@
 """`careeros sync all`: back up, then run the same Slack and Google syncs as the buttons, then GitHub, with a log.
-Once a month it also re-reads the V2MOM Doc.
+Once a month it also re-reads the V2MOM.
 
 Run by the scheduled task at 8 AM and 6 PM and at login. A run that's already covered by an earlier one since
 the latest scheduled time does nothing, so the login catch-up is cheap.
@@ -48,9 +48,9 @@ def _covered(Session_, since: datetime) -> bool:
 
 
 def _v2mom_due(dd: DataDir, Session_, now: datetime) -> bool:
-    """Monthly, and only once a V2MOM Doc is connected."""
+    """Monthly, and only once a V2MOM PDF or Doc is connected."""
     from .v2mom import connector, store
-    if not connector.load_doc_id(dd):
+    if not connector.load_source(dd):
         return False
     with Session_() as s:
         return store.due(s, now)

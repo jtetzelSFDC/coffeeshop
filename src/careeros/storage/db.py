@@ -40,6 +40,7 @@ def init_db(engine: Engine) -> None:
         "promo_version": [("slices", "JSON NOT NULL DEFAULT '{}'"), ("note", "VARCHAR NOT NULL DEFAULT ''"),
                           ("google_doc_clean_url", "VARCHAR")],
         "guide_link": [("by_ai", "BOOLEAN NOT NULL DEFAULT 0")],
+        "v2mom_version": [("check_ins", "JSON NOT NULL DEFAULT '[]'")],
     }
     with engine.begin() as c:
         for table, cols in added.items():
