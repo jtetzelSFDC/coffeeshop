@@ -314,3 +314,33 @@ def test_removing_a_chip_that_is_already_gone_never_breaks_the_queue_row(tmp_pat
     r = c.post("/sheet/link/999/delete", data={"csrf": app.state.csrf_token, "ret": ""},
                headers={"X-Sheet": "1"}, follow_redirects=False)
     assert r.status_code == 200 and r.text == ""  # empty: the queue's script reloads instead of swapping a row
+
+
+def test_switching_the_theme_comes_back_to_the_same_page_and_never_leaves_the_app(tmp_path):
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    assert 'name="next" value="/kso?fy=FY26"' in c.get("/kso?fy=FY26&msg=Saved").text
+    for nxt, to in (("/promo/case/12", "/promo/case/12"), ("//evil.example", "/"), ("/\\evil.example", "/")):
+        r = c.post("/theme", data={"csrf": app.state.csrf_token, "theme": "light", "next": nxt}, follow_redirects=False)
+        assert r.headers["location"] == to
+    assert c.get("/static/sync.js").status_code == 200 and c.get("/static/nope.js").status_code == 404
+
+
+def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
+    import time
+    from careeros.web import syncs
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    ran = []
+    monkeypatch.setattr(syncs, "run_review", lambda j, S: (ran.append(1), j.finish("ok")))
+    r = c.post("/sheet/ai", data={"csrf": app.state.csrf_token}, headers={"X-Sync": "1"})
+    assert r.json() == {"started": True}
+    for _ in range(50):
+        if ran:
+            break
+        time.sleep(0.02)
+    assert ran

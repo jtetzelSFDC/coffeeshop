@@ -1,4 +1,5 @@
-"""The two Sync buttons: what each runs, step by step, reporting into a Job."""
+"""The app's background jobs (each Sync button, the scheduled sync, promo writing, the KSO estimate, the daily
+three): what each runs, step by step, reporting progress into a Job that the page's progress box shows."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -19,12 +20,27 @@ def _plural(n: int, word: str) -> str:
 
 
 def _tasks_since(s) -> datetime:
+    """Where the next Google Tasks pull starts: a day before the last one, so a task finished just before it ran
+    isn't missed (the merge skips ones already here); the first pull looks back TASKS_LOOKBACK."""
     from ..storage.sync_log import status
     last = status(s)["tasks"]["at"]
     return (last - timedelta(days=1)) if last else datetime.now() - TASKS_LOOKBACK
 
 
+REVIEW_STEPS = ["Have Claude read the new records"]
+
+
+def run_review(job: Job, Session_) -> None:
+    """The queue's "Have Claude read" button: the same linking step every sync ends with. No write lock: Claude
+    takes minutes, and the review re-checks each record before it saves."""
+    with Session_() as s:
+        n = _link_new(job, 0, s)
+    job.finish(f"Claude read {_plural(n, 'record')}. Everything it picked is marked AI.")
+
+
 def _link_new(job: Job, i: int, s) -> int:
+    """Step `i` of a sync: Claude reads the records it hasn't read against the leveling guide (and V2MOM), then
+    groups new records with earlier work and tags their impact activity. Returns how many records it read."""
     from ..guide import activities, work
     from ..guide.ai_review import pending, review
     from ..guide.service import has_guide
@@ -52,6 +68,7 @@ def _link_new(job: Job, i: int, s) -> int:
 
 
 def run_google(job: Job, Session_, lock) -> None:
+    """Sync Google: calendar, tasks, meeting-note summaries, Docs you wrote, then guide links."""
     from ..google import calendar as gcal, connector, docs as gdocs, summaries, tasks as gtasks
     last = date.today()
     first = last - timedelta(days=1)
@@ -111,6 +128,7 @@ def run_google(job: Job, Session_, lock) -> None:
 
 
 def run_promo(job: Job, Session_, start: str, end: str, name: str) -> None:
+    """Write my promo case: one Claude draft per section from the numbered evidence, saved as a new version."""
     """Write a promo case draft: one step per section, ticked as each comes back."""
     from ..promo import write as pw
     keys = [k for k, *_ in pw.SECTIONS]
@@ -139,6 +157,7 @@ def run_promo(job: Job, Session_, start: str, end: str, name: str) -> None:
 
 
 def run_rewrite(job: Job, Session_, vid: int, key: str) -> None:
+    """Rewrite one section of a promo draft, as a new version."""
     """Claude redoes one section of a draft; the result is saved as a new draft."""
     from ..promo import write as pw
     from ..storage.models import PromoVersion
@@ -159,6 +178,7 @@ GDOC_STEPS = ["Send the copy with sources", "Send the clean copy for sharing"]
 
 
 def run_gdoc(job: Job, Session_, dd: DataDir, vid: int) -> None:
+    """Send to Google Docs: a copy with sources for you and a clean one for your manager."""
     """Send a draft to Google Docs twice (with sources, and clean), reading each back to check every word arrived."""
     from sqlalchemy import select
     from ..google import docs_export
@@ -190,6 +210,7 @@ GITHUB_STEPS = ["Read your GitHub pull requests", "Link new records to the level
 
 
 def run_github(job: Job, Session_, lock) -> None:
+    """Sync GitHub: PRs you merged and a weekly tally of ones you reviewed, then guide links."""
     from ..github import connector as gh
     with Session_() as s:
         job.start(0)
@@ -209,6 +230,7 @@ def run_github(job: Job, Session_, lock) -> None:
 
 
 def run_slack(job: Job, Session_, lock, dd: DataDir) -> None:
+    """Sync Slack: the activity-tracker canvas, sorting its new items, kudos, then guide links."""
     from ..slack.classify import classify
     from ..slack.connector import fetch_canvas
     from ..slack.importer import import_items, load_canvas_id, new_items
@@ -254,6 +276,7 @@ V2MOM_CONNECT = ("No V2MOM connected yet. Download it as a PDF from the V2MOM ap
 
 
 def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
+    """Sync V2MOM: read the PDF or Doc, save methods and measures, and match new methods to KSO parts."""
     from ..v2mom import connector, store
     src = connector.load_source(dd)
     if not src:
@@ -299,6 +322,7 @@ KSO_STEPS = ["Estimate your KSO ratings"]
 
 
 def run_kso(job: Job, Session_, lock) -> None:
+    """Re-estimate: Claude's 1-5 guess per KSO for this year."""
     from ..kso import estimate as kso_est, framework
     job.start(0)
     with Session_() as s:
@@ -322,6 +346,7 @@ DAILY_STEPS = ["Suggest today's three tasks"]
 
 
 def run_daily(job: Job, Session_, lock, force: bool = False) -> None:
+    """Today's three: suggested once a day (or a new three with `force`, keeping the done ones)."""
     from .. import daily
     job.start(0)
     with Session_() as s:

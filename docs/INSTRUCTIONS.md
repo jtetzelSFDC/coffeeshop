@@ -134,7 +134,7 @@ Buttons in the queue save without reloading the page: a row you check or remove 
 
 Purple **AI** marks are Claude's picks: guide links, drafted wins, and type changes ("AI, was Other"). They count on the Promo map straight away, and the Promo map says how many are still unchecked. Use the **Show** menu for **Changed by Claude**, **Not linked**, **Wins**, or **Checked**.
 
-**Claude's read-through.** Claude has read every record against the Grade 6 and 7 key experiences and skills. It linked each one to the guide items it shows (none for routine standups and status pings), drafted wins for the stand-out ones, and fixed obvious type mix-ups (only for Slack and typed records; calendar items stay meetings and Google Tasks stay tasks). When new records come in, the queue shows a **Have Claude read the N records it hasn't read** button. You can also run it in Terminal:
+**Claude's read-through.** Claude has read every record against the Grade 6 and 7 key experiences and skills. It linked each one to the guide items it shows (none for routine standups and status pings), drafted wins for the stand-out ones, and fixed obvious type mix-ups (only for Slack and typed records; calendar items stay meetings and Google Tasks stay tasks). When new records come in, the queue shows a **Have Claude read the N records it hasn't read** button. It runs in the background with a progress box (the same step every sync ends with), so you can keep working. You can also run it in Terminal:
 
 ```
 cd ~/Documents/career-os
@@ -388,7 +388,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `283 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `285 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 
