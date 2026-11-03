@@ -125,7 +125,7 @@ Sizes: **S** is about an hour, **M** is a few hours, **L** is most of a day.
 
 **You get:** hard evidence of outcomes, added automatically by the daily sync.
 
-- **GitHub pull requests:** the ones you merged, reviewed, or approved, with title, repo, date, and link. This is direct proof for "deployments" and "version control" in the guide. It uses your existing GitHub sign-in (`jtetzelSFDC`) and talks to GitHub directly, without Claude, so only titles and links are stored.
+- **GitHub pull requests:** the ones you merged, reviewed, or approved, with title, repo, date, and link. This is direct proof for "deployments" and "version control" in the guide. It uses your existing GitHub sign-in (your work account) and talks to GitHub directly, without Claude, so only titles and links are stored.
 - **Google Docs you own or edited:** runbooks, SOPs, refresh plans, release notes. Each gets title, date, and link, plus a two-line Claude summary of what the doc is. This feeds the documentation and knowledge-sharing parts of the guide.
 - **Release schedule sheet:** each release row (name, date, status) becomes a record, so the case can say "coordinated 14 releases, all shipped on schedule".
 

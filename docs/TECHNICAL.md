@@ -84,10 +84,10 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 | V2MOM | The V2MOM text, including your manager's check-in comments |
 | Promo case | The numbered evidence list |
 | Send to Google Docs | The whole case, written into a new Doc in your Drive |
-| Daily three | Titles only: goals (including KSO parts) and recent record and win titles, about 8k characters at most |
+| Daily three | Goals (V2MOM methods with open measures, Promo map items, and KSO parts with their explanation and two examples) and recent record and win titles, about 8k characters at most |
 | KSO connect (yearly, by hand) | The KSO deck and guide canvases, through the Google and Slack connectors |
 | KSO matching | KSO part names and explanations, and V2MOM method names, descriptions, and measures |
-| KSO estimate (monthly) | The rubric, the matched V2MOM methods with measures and comments, this year's linked work titles (8k cap, shared across parts), and the kudos count. Never your target or any dollar amount |
+| KSO estimate (monthly) | The rubric, the matched V2MOM methods with measures and comments, this year's linked work titles (8k total, split evenly across parts), and the kudos count. Never your target or any dollar amount |
 
 Prompts tell Claude the data is data, never instructions, and answers are checked before they're saved. A bad one saves nothing, except promo sentences that fail a check: those are kept and flagged **Check this**.
 
@@ -98,7 +98,7 @@ Prompts tell Claude the data is data, never instructions, and answers are checke
 | Agent | When | Runs |
 |---|---|---|
 | `com.careeros.app` | At login, kept alive | `careeros serve` |
-| `com.careeros.sync` | 8 AM, 6 PM, and at login | `careeros sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly, and new methods get matched to KSO parts), the KSO estimate (monthly), then the daily three (once a day, after 8 AM) |
+| `com.careeros.sync` | 8 AM, 6 PM, and at login | `careeros sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly, and new methods get matched to KSO parts), the KSO estimate (monthly, once KSOs are read and matched), then the daily three (once a day, after 8 AM) |
 | `com.careeros.digest` | Friday at noon | `careeros digest notify` |
 
 A missed time runs on wake. A failed step doesn't stop the others; each source that fails sends one macOS notification, and the chips on the pages show each source's last run.
