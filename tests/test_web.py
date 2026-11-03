@@ -217,6 +217,7 @@ def test_tabs_list_by_kind_and_tasks_open_first(tmp_path):
     assert "Rollout sync" in m and "https://docs.google.com/document/d/abc/edit" in m and "ship it" not in m
     t = c.get("/tasks").text
     assert t.index("Still to do") < t.index("write plan") < t.index("ship it") and "from google" not in t
+    assert "2 saved" in t and "showing the newest" not in t  # the open task is on the page too
     assert "write plan" not in c.get("/").text  # open tasks stay off Today
     for path in ("/conversations", "/documents", "/other"):
         assert c.get(path).status_code == 200
@@ -302,3 +303,14 @@ def test_wins_page_works_on_an_existing_notebook(tmp_path):
     con.close()
     c = TestClient(create_app(dd), base_url=BASE)
     assert c.get("/wins").status_code == 200 and 'href="/wins"' in c.get("/").text
+
+
+
+def test_removing_a_chip_that_is_already_gone_never_breaks_the_queue_row(tmp_path):
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    r = c.post("/sheet/link/999/delete", data={"csrf": app.state.csrf_token, "ret": ""},
+               headers={"X-Sheet": "1"}, follow_redirects=False)
+    assert r.status_code == 200 and r.text == ""  # empty: the queue's script reloads instead of swapping a row

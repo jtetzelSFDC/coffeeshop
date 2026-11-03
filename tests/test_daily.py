@@ -365,3 +365,19 @@ def test_the_prompt_asks_for_shorter_lines_than_validate_allows():
     import re
     text, why = map(int, re.findall(r"at most (\d+) characters", daily.PROMPT))
     assert text < daily.MAX_TEXT and why < daily.MAX_WHY
+
+
+def test_untick_keeps_a_record_you_linked_yourself(nb):
+    from sqlalchemy import select
+    from careeros.storage.models import GuideItem, GuideLink
+    dd, *_ = nb
+    setup(dd)
+    tid = _three(dd)[0]
+    with session(dd) as s:
+        t = s.get(DailyTask, tid)
+        e = daily.check(s, t)
+        item = s.scalar(select(GuideItem).limit(1))
+        s.add(GuideLink(item_id=item.id, entry_id=e.id, created_at=datetime.now(), by_ai=False))
+        s.commit()
+        daily.uncheck(s, t)
+        assert s.get(JournalEntry, e.id) is not None and t.done_at is None

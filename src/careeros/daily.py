@@ -222,16 +222,17 @@ def check(s: Session, task: DailyTask, details: str = "") -> JournalEntry:
 
 
 def uncheck(s: Session, task: DailyTask) -> bool:
-    """Not done after all. The record it logged goes too, unless you wrote what you did, checked it in the queue, or
-    made a win from it; then it stays, and ticking again reuses it. Returns whether the record was deleted."""
-    from .storage.models import GuideLink, JournalAttachment, V2momLink
+    """Not done after all. The record it logged goes too, unless you built on it (wrote what you did, checked it,
+    linked it yourself, made a win; see built_on); then it stays, and ticking again reuses it. Returns whether the
+    record was deleted."""
+    from .storage.models import GuideLink, V2momLink
+    from .storage.removal import built_on
     e = s.get(JournalEntry, task.entry_id) if task.entry_id else None
     task.done_at = None
     gone = False
     if e is None:
         task.entry_id = None
-    elif not e.reviewed and not any(s.scalar(select(m.id).where(m.entry_id == e.id).limit(1))
-                                    for m in (Win, JournalAttachment)):
+    elif not built_on(s, e):
         for model in (GuideLink, V2momLink):
             s.execute(delete(model).where(model.entry_id == e.id))
         s.delete(e)

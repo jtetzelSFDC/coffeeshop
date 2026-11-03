@@ -8,15 +8,28 @@ function el(tag, cls, text) {
   return n;
 }
 
+function busy(button, text) {
+  button.dataset.label ??= button.textContent;
+  button.dataset.busy = "1";
+  button.disabled = true;
+  button.textContent = text;
+}
+
 function render(name, job) {
   const box = document.querySelector(`.job[data-job="${name}"]`);
   if (!box) return;
-  const form = document.querySelector(`form[data-sync="${name}"]`);
-  const button = form && form.querySelector("button");
   const running = job.state === "running";
-  if (button) {
-    button.disabled = running;
-    button.textContent = running ? "Syncing…" : button.dataset.label;
+  // A page can have several forms for one job (the promo case has Write, Send, and a Rewrite per section). Only
+  // buttons this script turned off are turned back on, so one the page disabled itself stays off.
+  for (const form of document.querySelectorAll(`form[data-sync="${name}"]`)) {
+    const button = form.querySelector("button");
+    if (!button) continue;
+    if (running && (button.dataset.busy || !button.disabled)) busy(button, "Syncing…");
+    else if (!running && button.dataset.busy) {
+      delete button.dataset.busy;
+      button.disabled = false;
+      button.textContent = button.dataset.label;
+    }
   }
   box.hidden = false;
   box.className = `job ${job.state}`;
@@ -70,8 +83,7 @@ document.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   document.querySelectorAll(".note.flash").forEach((n) => n.remove());
   const button = form.querySelector("button");
-  button.disabled = true;
-  button.textContent = "Starting…";
+  busy(button, "Starting…");
   let why = "Couldn't start it. Is the app still running? Refresh and try again.";
   try {
     const resp = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { "X-Sync": "1" } });
@@ -81,6 +93,7 @@ document.addEventListener("submit", async (ev) => {
       throw new Error(resp.status);
     }
   } catch (e) {
+    delete button.dataset.busy;
     button.disabled = false;
     button.textContent = button.dataset.label;
     const box = document.querySelector(`.job[data-job="${form.dataset.sync}"]`);

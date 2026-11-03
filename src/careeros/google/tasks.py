@@ -77,22 +77,15 @@ def fetch(since: datetime) -> tuple[list[Task], int]:
     return tasks, len(set(lists) - ok)
 
 
-def _built_on(s: Session, e: JournalEntry) -> bool:
-    from ..storage.models import GuideLink, Win
-    return e.reviewed or e.v2mom_fixed or e.activity_fixed or any(s.scalar(q.limit(1)) for q in (
-        select(Win.id).where(Win.entry_id == e.id),
-        select(GuideLink.id).where(GuideLink.entry_id == e.id, GuideLink.by_ai.is_(False)),
-        select(JournalAttachment.id).where(JournalAttachment.entry_id == e.id, JournalAttachment.title != "Task notes")))
-
-
 def _clear_open(s: Session) -> int:
     """Open Google Tasks don't belong in the notebook: deletes open ones, unless you built on one (checked it, set
     its links, made a win, added notes); those stay out of the queue until done. Not through the Removed list, so the
     finished task still comes in once it's done."""
     from ..storage.models import GuideLink, V2momLink
     n = 0
+    from ..storage.removal import built_on
     for e in list(s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE, JournalEntry.status == "open"))):
-        if _built_on(s, e):
+        if built_on(s, e, ignore=("Task notes",)):
             continue
         for model in (JournalAttachment, GuideLink, V2momLink):
             s.execute(delete(model).where(model.entry_id == e.id))

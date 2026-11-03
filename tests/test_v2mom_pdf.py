@@ -125,6 +125,13 @@ def test_last_years_pdf_opened_again_is_not_read(tmp_path):
     assert connector.newest_pdf(str(this)) == nxt
 
 
+
+def test_someone_elses_v2mom_next_to_yours_is_never_read(tmp_path):
+    mine = touch(tmp_path / "FY27 V2MOM Pat Example.pdf", 1_700_000_000)
+    touch(tmp_path / "FY27 V2MOM Sam Other.pdf", 1_700_000_900)  # a colleague's, saved later
+    touch(tmp_path / "FY28 V2MOM Sam Other.pdf", 1_700_000_900)
+    assert connector.newest_pdf(str(mine)) == mine
+
 def test_an_existing_notebook_gets_the_check_ins_column(tmp_path):
     from sqlalchemy import text
     from careeros.storage.db import init_db, make_engine

@@ -166,12 +166,6 @@ def set_links(s: Session, ids: set[int], *, win_id: int | None = None, entry_id:
     s.commit()
 
 
-def keeps_entry(s: Session, e: JournalEntry) -> bool:
-    """True when the user (or Claude) built on this entry, so a sync must not delete it."""
-    return e.reviewed or s.scalar(select(Win.id).where(Win.entry_id == e.id).limit(1)) is not None or \
-        s.scalar(select(GuideLink.id).where(GuideLink.entry_id == e.id).limit(1)) is not None
-
-
 def confirm(s: Session, entry_id: int) -> None:
     """The user checked this row: Claude's picks for it (links, V2MOM methods, type, drafted win) become the user's own."""
     e = s.get(JournalEntry, entry_id)

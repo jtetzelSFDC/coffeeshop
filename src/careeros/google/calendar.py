@@ -128,10 +128,9 @@ def sync(s: Session, events: list[Event], first: date, last: date) -> dict[str, 
         elif row.text != headline(ev) or row.day != ev.day:
             row.text, row.day = headline(ev), ev.day
             updated += 1
-    from ..guide.service import keeps_entry
+    from ..storage.removal import built_on
     for gone in existing.values():
-        has_notes = s.scalar(select(JournalAttachment.id).where(JournalAttachment.entry_id == gone.id).limit(1))
-        if not has_notes and not keeps_entry(s, gone):
+        if not built_on(s, gone):  # any attachment counts: notes links and summaries are worth keeping
             s.delete(gone)
             removed += 1
     from ..storage.sync_log import record

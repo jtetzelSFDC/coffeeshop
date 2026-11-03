@@ -234,3 +234,12 @@ def test_cli_install_prints_the_error_instead_of_a_traceback(dd, monkeypatch):
     monkeypatch.setattr(schedule, "install", refuse)
     r = CliRunner().invoke(cli, ["schedule", "install", "--data-dir", str(dd.root)])
     assert r.exit_code == 1 and "wouldn't load" in r.output and "Traceback" not in r.output
+
+
+def test_a_failed_backup_notifies_and_the_syncs_still_run(dd, monkeypatch):
+    calls = fake_syncs(monkeypatch)
+    monkeypatch.setattr(sync_all, "make_backup", lambda dd: (_ for _ in ()).throw(OSError("No space left on device")))
+    notes = []
+    assert sync_all.run(dd, force=True, notify=lambda t, m: notes.append((t, m))) == 1
+    assert calls == ["slack", "google", "github"]
+    assert len(notes) == 1 and "Backup" in notes[0][0] and "No space left" in notes[0][1]

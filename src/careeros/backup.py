@@ -32,6 +32,10 @@ def make_backup(dd: DataDir, today: date | None = None) -> Path:
     out = sqlite3.connect(tmp)
     try:
         src.backup(out)
+    except BaseException:
+        out.close()
+        tmp.unlink(missing_ok=True)  # never leave a half-written copy behind
+        raise
     finally:
         out.close()
         src.close()

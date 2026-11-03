@@ -223,7 +223,7 @@ def create_app(dd: DataDir) -> FastAPI:
                     days.append(dict(day=e["day"], label=day_label(date.fromisoformat(e["day"]), today), entries=[]))
                 days[-1]["entries"].append(e)
             html = env.get_template("list.html").render(
-                title=title, intro=intro, count=count, shown=len(rows), days=days, open_entries=ents[:len(open_rows)],
+                title=title, intro=intro, count=count, shown=len(open_rows) + len(rows), days=days, open_entries=ents[:len(open_rows)],
                 kinds=KINDS, attach_kinds=ATTACH_KINDS, csrf=csrf_token, msg=msg, sync_warning=dd.sync_warning(),
                 theme=theme_of(request), page=path, personal=personal, q="")
             return HTMLResponse(html)
@@ -563,7 +563,9 @@ def create_app(dd: DataDir) -> FastAPI:
                    after: int | None = None) -> Response:
         """A full redirect for plain form posts; for the queue's script, just the redrawn row, or "gone"."""
         f = parse_ret(ret)
-        if request.headers.get("x-sheet") == "1" and eid:
+        if request.headers.get("x-sheet") == "1" and not eid:
+            return Response("")  # nothing to redraw (the link was already gone): the script reloads the page
+        if request.headers.get("x-sheet") == "1":
             s.expire_all()
             e = s.scalar(sheet_query(f).where(JournalEntry.id == eid))
             if e is None:

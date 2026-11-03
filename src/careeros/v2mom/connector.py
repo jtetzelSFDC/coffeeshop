@@ -100,13 +100,20 @@ def _fy(name: str) -> int:
     return int(m.group(1)) if m else 0
 
 
+def _owner(name: str) -> str:
+    """The part of a V2MOM PDF's name that says whose it is: "FY27 V2MOM Pat Example (1).pdf" -> "v2mom pat example"."""
+    return " ".join(re.sub(r"fy\s*\d{2,4}|\(\d+\)|\.pdf$", " ", name.lower()).split())
+
+
 def newest_pdf(stored: str) -> Path | None:
-    """The newest *V2MOM*.pdf next to the stored one (so "… (1).pdf" re-downloads count), else the stored file.
-    The latest fiscal year in the name wins over the newest file, so last year's PDF opened again isn't read."""
+    """The newest V2MOM PDF next to the stored one with the same owner in its name (so "… (1).pdf" re-downloads and
+    next year's count, but a colleague's V2MOM saved next to yours doesn't), else the stored file. The latest fiscal
+    year in the name wins over the newest file, so last year's PDF opened again isn't read."""
     p = Path(stored)
     try:
         found = [x for x in p.parent.iterdir()
-                 if x.suffix.lower() == ".pdf" and "v2mom" in x.name.lower() and x.is_file()]
+                 if x.suffix.lower() == ".pdf" and "v2mom" in x.name.lower() and x.is_file()
+                 and _owner(x.name) == _owner(p.name)]
     except OSError:
         found = []
     if found:

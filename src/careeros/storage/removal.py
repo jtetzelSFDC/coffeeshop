@@ -6,7 +6,22 @@ from datetime import datetime
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
-from .models import DailyTask, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, SkipRule, Win
+from .models import DailyTask, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, SkipRule, V2momLink, Win
+
+
+def built_on(s: Session, e: JournalEntry, ignore: tuple[str, ...] = ()) -> bool:
+    """True when you worked on this record, so a sync or an untick must not delete it: you checked it, set its
+    activity, V2MOM methods or grouping, made a win from it, linked it to the guide or a V2MOM method yourself, or
+    attached something (attachments titled in `ignore`, like a source's own notes, don't count). Claude's own picks
+    don't count: a sync can make them again."""
+    if e.reviewed or e.v2mom_fixed or e.activity_fixed or e.work_fixed:
+        return True
+    att = select(JournalAttachment.id).where(JournalAttachment.entry_id == e.id)
+    return any(s.scalar(q.limit(1)) is not None for q in (
+        select(Win.id).where(Win.entry_id == e.id),
+        select(GuideLink.id).where(GuideLink.entry_id == e.id, GuideLink.by_ai.is_(False)),
+        select(V2momLink.id).where(V2momLink.entry_id == e.id, V2momLink.by_ai.is_(False)),
+        att.where(JournalAttachment.title.not_in(ignore)) if ignore else att))
 
 
 def skip_patterns(s: Session, source: str = "calendar") -> list[str]:
