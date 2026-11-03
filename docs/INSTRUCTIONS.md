@@ -342,6 +342,8 @@ It reads the deck through the Google connector and the canvases through the Slac
 
 The practice notebook has made-up KSOs, so you can try the page without real material.
 
+**Claude's estimate.** Once a month, right after the V2MOM step of the sync, Claude reads the rubric against what your V2MOM shows for each part (status, progress, measures, comments), the titles of the work linked to those methods this year, and your kudos count. It then guesses the 1 to 5 your manager would give each KSO. It never sees your target or any dollar amount. Each KSO card shows the guess (marked AI), one line per part on why, and the three next steps that would raise it most. Press **Re-estimate** to run it now, or run `uv run careeros kso estimate`. Until you set your own rating, the pay card uses Claude's guess (marked AI); your rating always wins. A bad answer changes nothing, and the **KSO estimate** chip shows when it last ran. The daily three also offers KSO parts with no V2MOM goal, and the part furthest behind, as goals.
+
 ## Year-end exports
 
 At year end, pick the year on the Wins tab and click **Download as Markdown**. The file opens with your large wins as highlights, then lists everything by theme with its date and why it mattered. Paste it into a promotion doc or use it to pick resume bullets. Removing a notebook entry never removes a win made from it.
@@ -386,7 +388,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `264 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `275 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 

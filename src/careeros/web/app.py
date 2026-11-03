@@ -306,6 +306,8 @@ def create_app(dd: DataDir) -> FastAPI:
                                  lambda j: syncs.run_daily(j, Session_, _write_lock, force=force))
         elif name == "google":
             started = jobs.start("google", syncs.GOOGLE_STEPS, lambda j: syncs.run_google(j, Session_, _write_lock))
+        elif name == "kso":
+            started = jobs.start("kso", syncs.KSO_STEPS, lambda j: syncs.run_kso(j, Session_, _write_lock))
         elif name == "v2mom":
             started = jobs.start("v2mom", syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, _write_lock, dd))
         else:
@@ -830,8 +832,13 @@ def create_app(dd: DataDir) -> FastAPI:
         from ..kso import progress as kso_progress
         html = env.get_template("kso.html").render(
             r=kso_progress.build(s, fy or None), csrf=csrf_token, msg=msg, sync_warning=dd.sync_warning(),
-            theme=theme_of(request), page="/kso", personal=personal, q="")
+            theme=theme_of(request), page="/kso", personal=personal, q="", sync=sync_view(s))
         return HTMLResponse(html)
+
+    @app.post("/kso/estimate", dependencies=[Depends(check_csrf)])
+    def kso_estimate(request: Request):
+        """Have Claude estimate this year's KSO ratings now, in the background."""
+        return start_sync(request, "kso")
 
     def _kso_fw(s: Session, fy: str):
         from ..kso import framework as kso_fw

@@ -58,6 +58,12 @@ def _daily_due(Session_, now: datetime) -> bool:
         return not daily.today_tasks(s, now.date()) and bool(daily.goals(s, now.date()))
 
 
+def _kso_due(Session_, now: datetime) -> bool:
+    from .kso import estimate
+    with Session_() as s:
+        return estimate.due(s, now)
+
+
 def _v2mom_due(dd: DataDir, Session_, now: datetime) -> bool:
     """Monthly, and only once a V2MOM PDF or Doc is connected."""
     from .v2mom import connector, store
@@ -100,6 +106,8 @@ def run(dd: DataDir, *, force: bool = False, now: datetime | None = None,
                 ("GitHub", syncs.GITHUB_STEPS, lambda j: syncs.run_github(j, Session_, lock))]
         if _v2mom_due(dd, Session_, now):
             runs.append(("V2MOM", syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, lock, dd)))
+        if _kso_due(Session_, now):  # after the V2MOM, so it reads this month's progress
+            runs.append(("KSO estimate", syncs.KSO_STEPS, lambda j: syncs.run_kso(j, Session_, lock)))
         if _daily_due(Session_, now):  # last, so the three see the work just synced
             runs.append(("Daily three", syncs.DAILY_STEPS, lambda j: syncs.run_daily(j, Session_, lock)))
         for name, steps, fn in runs:

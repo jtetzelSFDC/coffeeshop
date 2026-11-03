@@ -295,6 +295,29 @@ def _kso_matches(s, lock) -> str:
     return f"; {_plural(r['mapped'], 'new method')} matched to KSOs (marked AI)"
 
 
+KSO_STEPS = ["Estimate your KSO ratings"]
+
+
+def run_kso(job: Job, Session_, lock) -> None:
+    from ..kso import estimate as kso_est, framework
+    job.start(0)
+    with Session_() as s:
+        fw = framework.for_current(s)
+        if fw is None:
+            job.skip(0, "No KSOs for this year yet. Run: uv run careeros kso connect")
+            job.finish("No KSO estimate without KSOs.")
+            return
+        try:
+            row = kso_est.estimate(s, fw, lock=lock)
+        except ClaudeError as exc:
+            job.fail(0, str(exc))
+            job.finish("No new KSO estimate, so nothing changed.")
+            return
+        ratings = ", ".join(f"KSO {k['key']}: {k['rating']}" for k in row.data["ksos"])
+    job.done(0, ratings)
+    job.finish("The KSO estimate is on the KSOs page.")
+
+
 DAILY_STEPS = ["Suggest today's three tasks"]
 
 
