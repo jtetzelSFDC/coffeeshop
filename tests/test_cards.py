@@ -4,8 +4,8 @@ from sqlalchemy import select
 
 from careeros.storage.models import JournalEntry
 
-from test_guide import nb, session  # noqa: F401
-from test_web import form
+from helpers import form, open_session
+
 
 URL = "https://docs.google.com/spreadsheets/d/abc123/edit?usp=drivesdk"
 
@@ -14,7 +14,7 @@ def test_cards_are_one_line_with_labelled_icon_actions_and_named_links(nb):
     dd, c, tok, _ = nb
     form(c, "/journal/add", tok, kind="meeting", text="Release go/no-go", a_kind="link", a_title="Release tracker", a_body=URL)
     form(c, "/journal/add", tok, kind="meeting", text="Bare link meeting", a_kind="link", a_body="https://example.com/x/y")
-    with session(dd) as s:
+    with open_session(dd) as s:
         eid = s.scalar(select(JournalEntry.id).where(JournalEntry.text == "Release go/no-go"))
     html = c.get("/meetings").text
     card = html[html.index("Release go/no-go"):]
@@ -33,7 +33,7 @@ def test_cards_are_one_line_with_labelled_icon_actions_and_named_links(nb):
 def test_card_actions_still_work(nb):
     dd, c, tok, _ = nb
     form(c, "/journal/add", tok, kind="task", text="Wrote the runbook")
-    with session(dd) as s:
+    with open_session(dd) as s:
         eid = s.scalar(select(JournalEntry.id))
     form(c, f"/journal/{eid}/attach", tok, a_kind="notes", a_title="My notes", a_body="Step one, step two")
     html = c.get("/tasks").text

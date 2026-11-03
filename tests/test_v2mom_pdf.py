@@ -14,8 +14,8 @@ from careeros.promo import evidence as pe
 from careeros.v2mom import connector, store
 from careeros.web.app import create_app
 
-from test_slack import BASE, personal
-from test_v2mom import DOC_ID, SRC, TWO, answer
+from helpers import BASE, DOC_ID, SRC, TWO, answer, personal
+
 
 # Made up, in the shape of the V2MOM app's PDF export as pypdf reads it.
 PDF_TEXT = """FY27 V2MOM Pat Example

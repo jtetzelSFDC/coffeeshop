@@ -8,8 +8,8 @@ from careeros.claude_cli import ClaudeError
 from careeros.google import docs_export
 from careeros.storage.models import PromoSection, PromoVersion
 
-from test_guide import nb, session  # noqa: F401
-from test_promo_editing import draft
+from helpers import draft, open_session
+
 
 
 def doc_reply(doc_id="abc123"):
@@ -18,7 +18,7 @@ def doc_reply(doc_id="abc123"):
 
 def test_markdown_sourced_and_clean(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         v = draft(s)
         secs = list(s.scalars(select(PromoSection).where(PromoSection.version_id == v.id).order_by(PromoSection.position)))
         secs[0].sentences = [dict(text="Jordan led it.", sources=[1], valid=True, reason=""),
@@ -33,7 +33,7 @@ def test_markdown_sourced_and_clean(nb):
 
 def test_send_checks_the_doc_that_comes_back(nb, monkeypatch):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         v = draft(s)
         secs = list(s.scalars(select(PromoSection).where(PromoSection.version_id == v.id)))
         calls = []
@@ -58,7 +58,7 @@ def test_send_checks_the_doc_that_comes_back(nb, monkeypatch):
 
 def test_button_saves_both_links(nb, monkeypatch):
     dd, c, token, _ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         vid = draft(s).id
     sent = {}
 
@@ -76,7 +76,7 @@ def test_button_saves_both_links(nb, monkeypatch):
             break
         time.sleep(0.05)
     assert job["state"] == "done" and all("every word checked" in st["detail"] for st in job["steps"]), job
-    with session(dd) as s:
+    with open_session(dd) as s:
         v = s.get(PromoVersion, vid)
         assert v.google_doc_url.endswith("doc1/edit?usp=drivesdk") and "doc2" in v.google_doc_clean_url
     page = c.get(f"/promo/case/{vid}").text

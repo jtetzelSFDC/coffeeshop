@@ -11,14 +11,14 @@ from careeros.cli import app as cli
 from careeros.sync_all import _daily_due as _real_daily_due
 from careeros.storage.models import DailyTask, JournalAttachment, JournalEntry
 
-from test_guide import nb, session  # noqa: F401
-from test_v2mom_links import load_v2mom
+from helpers import fake_syncs, link, load_v2mom, open_session
+
 
 TODAY = date.today()
 
 
 def setup(dd, with_v2mom=True):
-    with session(dd) as s:
+    with open_session(dd) as s:
         e = JournalEntry(day=(TODAY - timedelta(days=2)).isoformat(), kind="meeting", text="Release go/no-go for 4.2",
                          created_at=datetime.now(), source="calendar", status="")
         s.add(e)
@@ -38,7 +38,7 @@ def reply(goal_ids, n=3, minutes=5, text="Write a two-line summary of the 4.2 go
 def test_context_has_goals_and_recent_titles_but_never_notes(nb):
     dd, *_ = nb
     setup(dd)
-    with session(dd) as s:
+    with open_session(dd) as s:
         data = daily.context(s, TODAY)
     ids = [g["id"] for g in data["goals"]]
     assert "V2MOM M1" in ids and "V2MOM M2" in ids
@@ -51,7 +51,7 @@ def test_a_good_answer_saves_three_once_a_day(nb):
     dd, *_ = nb
     setup(dd)
     seen = []
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         tasks = daily.suggest(s, TODAY, reader=lambda p, d: seen.append(d) or reply(ids))
         assert [t.position for t in tasks] == [1, 2, 3] and tasks[0].goal == ids[0] and tasks[0].minutes == 5
@@ -69,7 +69,7 @@ def test_a_good_answer_saves_three_once_a_day(nb):
 def test_a_bad_answer_raises_and_saves_nothing(nb, bad):
     dd, *_ = nb
     setup(dd)
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         with pytest.raises(ClaudeError, match="didn't fit"):
             daily.suggest(s, TODAY, reader=lambda p, d: bad(ids))
@@ -79,7 +79,7 @@ def test_a_bad_answer_raises_and_saves_nothing(nb, bad):
 def test_force_replaces_only_the_ones_not_done(nb):
     dd, *_ = nb
     setup(dd)
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         first = daily.suggest(s, TODAY, reader=lambda p, d: reply(ids, text="First idea"))
         first[1].done_at = datetime.now()
@@ -92,7 +92,7 @@ def test_force_replaces_only_the_ones_not_done(nb):
 def test_no_v2mom_still_works_from_the_guide_and_no_goals_at_all_is_a_clear_error(nb, tmp_path):
     dd, *_ = nb
     setup(dd, with_v2mom=False)
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         assert ids and not any(i.startswith("V2MOM") for i in ids)
         assert len(daily.suggest(s, TODAY, reader=lambda p, d: reply(ids))) == 3
@@ -110,7 +110,7 @@ def test_no_v2mom_still_works_from_the_guide_and_no_goals_at_all_is_a_clear_erro
 def test_cli_suggest_and_show(nb, monkeypatch):
     dd, *_ = nb
     setup(dd)
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
     monkeypatch.setattr(daily, "ask", lambda p, d, timeout=0: reply(ids))
     r = CliRunner().invoke(cli, ["daily", "suggest", "--data-dir", str(dd.root)])
@@ -128,16 +128,15 @@ def test_context_keeps_recent_work_even_when_goals_are_many(nb, monkeypatch):
     setup(dd)
     many = [dict(id=f"Skill: {i} " + "x" * 300, what="y" * 300, state="no evidence yet") for i in range(60)]
     monkeypatch.setattr(daily, "goals", lambda s, today: many)
-    with session(dd) as s:
+    with open_session(dd) as s:
         data = daily.context(s, TODAY)
     assert data["recent"] and len(data["goals"]) <= daily.MAX_GOALS and len(json.dumps(data)) <= daily.MAX_CONTEXT
 
 
 def test_quiet_v2mom_methods_come_before_on_track_ones(nb):
-    from test_v2mom_views import link
     dd, *_ = nb
     setup(dd)
-    with session(dd) as s:
+    with open_session(dd) as s:
         from careeros.v2mom import store
         m1, m2 = store.methods(s)
         m2.measures = [dict(text="Ship one template", status="On Track", progress=None, comments="")]
@@ -156,7 +155,7 @@ def test_quiet_v2mom_methods_come_before_on_track_ones(nb):
 def test_force_with_all_three_done_doesnt_ask(nb):
     dd, *_ = nb
     setup(dd)
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         for t in daily.suggest(s, TODAY, reader=lambda p, d: reply(ids)):
             t.done_at = datetime.now()
@@ -167,14 +166,14 @@ def test_force_with_all_three_done_doesnt_ask(nb):
 def test_two_runs_at_once_keep_one_three(nb):
     dd, *_ = nb
     setup(dd)
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
 
     def racing(p, d):  # while this run waits on Claude, another run saves today's three
-        with session(dd) as other:
+        with open_session(dd) as other:
             daily.suggest(other, TODAY, reader=lambda p2, d2: reply(ids, text="The other run"))
         return reply(ids, text="This run")
-    with session(dd) as s:
+    with open_session(dd) as s:
         tasks = daily.suggest(s, TODAY, reader=racing)
         assert [t.text for t in tasks] == ["The other run"] * 3 and s.query(DailyTask).count() == 3
 
@@ -183,7 +182,7 @@ def test_a_successful_run_lights_the_daily_chip(nb):
     from careeros.storage.sync_log import status
     dd, *_ = nb
     setup(dd)
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert status(s)["daily"]["ok"] is False and "morning sync" in status(s)["daily"]["hint"]
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         daily.suggest(s, TODAY, reader=lambda p, d: reply(ids))
@@ -193,12 +192,11 @@ def test_a_successful_run_lights_the_daily_chip(nb):
 
 def test_the_morning_sync_suggests_the_three_last_once_a_day(nb, monkeypatch):
     from careeros import sync_all
-    from test_schedule import fake_syncs
     dd, *_ = nb
     setup(dd)
     calls = fake_syncs(monkeypatch)
     monkeypatch.setattr(sync_all, "_daily_due", _real_daily_due)  # fake sources, but the real daily step
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
     order = []
     monkeypatch.setattr(daily, "ask", lambda p, d, timeout=0: order.append("daily") or reply(ids))
@@ -206,7 +204,7 @@ def test_the_morning_sync_suggests_the_three_last_once_a_day(nb, monkeypatch):
     at = datetime.combine(TODAY, datetime.min.time()).replace(hour=8, minute=1)
     assert sync_all.run(dd, force=True, now=at, notify=lambda *a: notes.append(a)) == 0 and not notes
     assert calls[-1] == "github" and order == ["daily"]  # after every source
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert len(daily.today_tasks(s, TODAY)) == 3
     sync_all.run(dd, force=True, now=at.replace(hour=18), notify=lambda *a: notes.append(a))
     assert order == ["daily"]  # already done today
@@ -216,7 +214,6 @@ def test_the_morning_sync_suggests_the_three_last_once_a_day(nb, monkeypatch):
 
 def test_no_daily_three_before_8_and_a_failure_notifies(nb, monkeypatch):
     from careeros import sync_all
-    from test_schedule import fake_syncs
     dd, *_ = nb
     setup(dd)
     fake_syncs(monkeypatch)
@@ -228,7 +225,7 @@ def test_no_daily_three_before_8_and_a_failure_notifies(nb, monkeypatch):
     assert not notes
     assert sync_all.run(dd, force=True, now=early.replace(hour=8), notify=lambda *a: notes.append(a)) == 1
     assert len(notes) == 1 and "Daily three" in notes[0][0] and "didn't fit" in notes[0][1]
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.query(DailyTask).count() == 0
 
 
@@ -252,7 +249,7 @@ def _web(nb):
 
 
 def _three(dd):
-    with session(dd) as s:
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         return [t.id for t in daily.suggest(s, TODAY, reader=lambda p, d: reply(ids))]
 
@@ -278,7 +275,7 @@ def test_done_logs_a_record_with_details_and_undo_keeps_your_note(nb):
     r = c.post(f"/daily/{tid}/done", data={"csrf": tok, "details": "Sent it to the team channel."},
                follow_redirects=False)
     assert r.status_code == 303
-    with session(dd) as s:
+    with open_session(dd) as s:
         t = s.get(DailyTask, tid)
         e = s.get(JournalEntry, t.entry_id)
         assert t.done_at and (e.kind, e.status, e.source, e.text) == ("task", "done", "daily", t.text)
@@ -288,10 +285,10 @@ def test_done_logs_a_record_with_details_and_undo_keeps_your_note(nb):
     assert 'aria-label="Mark not done: Write a two-line summary' in home
     c.post(f"/daily/{tid}/done", data={"csrf": tok})  # a double press
     c.post(f"/daily/{tid}/undo", data={"csrf": tok})
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.get(DailyTask, tid).done_at is None and s.get(JournalEntry, eid) is not None  # it has your note
     c.post(f"/daily/{tid}/done", data={"csrf": tok})
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.query(JournalEntry).filter_by(source="daily").count() == 1 and s.get(DailyTask, tid).entry_id == eid
 
 
@@ -301,10 +298,10 @@ def test_undo_without_a_note_takes_the_record_back(nb):
     c, tok = _web(nb)
     tid = _three(dd)[0]
     c.post(f"/daily/{tid}/done", data={"csrf": tok})
-    with session(dd) as s:
+    with open_session(dd) as s:
         eid = s.get(DailyTask, tid).entry_id
     c.post(f"/daily/{tid}/undo", data={"csrf": tok})
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.get(DailyTask, tid).done_at is None and s.get(JournalEntry, eid) is None
 
 
@@ -315,13 +312,13 @@ def test_removing_its_record_unlinks_the_task_so_undo_cant_hit_a_reused_id(nb):
     c, tok = _web(nb)
     tid = _three(dd)[0]
     c.post(f"/daily/{tid}/done", data={"csrf": tok})
-    with session(dd) as s:
+    with open_session(dd) as s:
         eid = s.get(DailyTask, tid).entry_id
         remove_entry(s, eid)
         s.add(JournalEntry(id=eid, day=TODAY.isoformat(), kind="meeting", text="Planning", created_at=datetime.now()))
         s.commit()
     c.post(f"/daily/{tid}/undo", data={"csrf": tok})
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.get(JournalEntry, eid).text == "Planning" and s.get(DailyTask, tid).entry_id is None
 
 
@@ -331,13 +328,13 @@ def test_undo_keeps_a_record_you_already_checked(nb):
     c, tok = _web(nb)
     tid = _three(dd)[0]
     c.post(f"/daily/{tid}/done", data={"csrf": tok})
-    with session(dd) as s:
+    with open_session(dd) as s:
         e = s.get(JournalEntry, s.get(DailyTask, tid).entry_id)
         e.reviewed = True
         s.commit()
         eid = e.id
     c.post(f"/daily/{tid}/undo", data={"csrf": tok})
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.get(DailyTask, tid).done_at is None and s.get(JournalEntry, eid) is not None
 
 
@@ -373,7 +370,7 @@ def test_untick_keeps_a_record_you_linked_yourself(nb):
     dd, *_ = nb
     setup(dd)
     tid = _three(dd)[0]
-    with session(dd) as s:
+    with open_session(dd) as s:
         t = s.get(DailyTask, tid)
         e = daily.check(s, t)
         item = s.scalar(select(GuideItem).limit(1))

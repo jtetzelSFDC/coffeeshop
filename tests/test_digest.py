@@ -7,7 +7,8 @@ from careeros.cli import app as cli
 from careeros.guide.service import experiences
 from careeros.storage.models import GuideLink, JournalEntry, Win
 
-from test_guide import nb, session  # noqa: F401
+from helpers import open_session
+
 
 TODAY = date.today()
 
@@ -40,7 +41,7 @@ def week(s):
 
 def test_the_week_counts_wins_records_kudos_links_and_activity(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         item = week(s)
         d = digest.build(s, TODAY)
     assert d["first"] == TODAY - timedelta(days=6) and [w.title for w in d["wins"]] == ["Shipped Pine 5.1 with no downtime"]
@@ -63,7 +64,7 @@ def test_no_nudges_when_nothing_is_wrong(session):
 def test_quiet_area_and_full_queue_get_nudges(nb):
     dd, *_ = nb
     from careeros.guide.topics import topic_of
-    with session(dd) as s:
+    with open_session(dd) as s:
         topic = topic_of(experiences(s)[1].name)
         old = rec(s, 90, "Planned the spring sandbox refresh")
         w = Win(day=old.day, title="Planned the spring sandbox refresh", impact="No team lost data.", size="large",
@@ -84,7 +85,7 @@ def test_quiet_area_and_full_queue_get_nudges(nb):
 
 def test_every_nudge_link_resolves_and_the_page_shows_the_week(nb):
     dd, c, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         week(s)
         for i in range(digest.QUEUE_NUDGE):
             rec(s, 2, f"Unchecked {i}", reviewed=False)
@@ -101,7 +102,7 @@ def test_every_nudge_link_resolves_and_the_page_shows_the_week(nb):
 
 def test_notify_shows_a_line_written_by_code(nb, monkeypatch):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         week(s)
     shown = []
     monkeypatch.setattr("careeros.sync_all.mac_notify", lambda title, msg: shown.append((title, msg)))

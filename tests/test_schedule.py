@@ -11,6 +11,8 @@ from careeros.config import DataDir
 from careeros.storage.db import init_db, make_engine, make_session_factory
 from careeros.storage.models import SyncRun
 
+from helpers import fake_syncs
+
 
 @pytest.fixture
 def dd(tmp_path):
@@ -18,33 +20,6 @@ def dd(tmp_path):
     d.init_personal()
     init_db(make_engine(d.db))
     return d
-
-
-def fake_syncs(monkeypatch, fail=None):
-    """Replace the two real syncs with ones that log a SyncRun, or fail one step."""
-    calls = []
-
-    def runner(name, source):
-        def run(job, Session_, lock, *rest):
-            calls.append(name)
-            if fail == name:
-                job.fail(0, "Claude Code's Slack sign-in has expired. Sign in again.")
-                for i in range(1, len(job.steps)):
-                    job.skip(i)
-                job.finish("Slack sync couldn't read the tracker, so nothing changed.")
-                return
-            with Session_() as s:
-                s.add(SyncRun(source=source, at=datetime.now(), added=1))
-                s.commit()
-            for i in range(len(job.steps)):
-                job.done(i, "ok")
-            job.finish(f"{name} synced")
-        return run
-    monkeypatch.setattr(sync_all.syncs, "run_slack", runner("slack", "slack"))
-    monkeypatch.setattr(sync_all.syncs, "run_google", runner("google", "calendar"))
-    monkeypatch.setattr(sync_all.syncs, "run_github", runner("github", "github"))
-    monkeypatch.setattr(sync_all, "_daily_due", lambda Session_, now: False)  # covered in test_daily
-    return calls
 
 
 def test_sync_all_backs_up_runs_each_and_logs(dd, monkeypatch):

@@ -7,14 +7,8 @@ from careeros.guide import work
 from careeros.guide.service import evidence, experiences
 from careeros.storage.models import GuideLink, JournalEntry, Win, WorkItem
 
-from test_guide import form, nb, session  # noqa: F401
+from helpers import add, form, open_session
 
-
-def add(s, text, day, kind="note"):
-    e = JournalEntry(day=day, kind=kind, text=text, created_at=datetime.now(), source="slack")
-    s.add(e)
-    s.commit()
-    return e.id
 
 
 def by_text(answers):
@@ -30,7 +24,7 @@ def by_text(answers):
 
 def test_three_records_of_one_deployment_count_once(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "Deploy meeting", "2026-10-20", "meeting")
         b = add(s, "Deploy thread", "2026-10-21", "conversation")
         c = add(s, "Deployed to prod", "2026-10-22", "task")
@@ -57,7 +51,7 @@ def test_three_records_of_one_deployment_count_once(nb):
 
 def test_later_batches_join_earlier_work_and_bad_ids_are_ignored(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         add(s, "Refresh kickoff", "2026-10-01")
         work.group(s, reader=by_text({"Refresh kickoff": {"new": "Full refresh", "key": "n1"}}))
         wid = s.scalar(select(WorkItem.id))
@@ -75,7 +69,7 @@ def test_later_batches_join_earlier_work_and_bad_ids_are_ignored(nb):
 
 def test_a_piece_of_work_cannot_chain_on_for_months(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         add(s, "Sus deploy 1", "2026-08-01")
         work.group(s, reader=by_text({"Sus deploy 1": {"new": "Sustainment release", "key": "k"}}))
         wid = s.scalar(select(WorkItem.id))
@@ -88,7 +82,7 @@ def test_a_piece_of_work_cannot_chain_on_for_months(nb):
 
 def test_dry_run_saves_nothing(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         add(s, "A", "2026-10-01")
         add(s, "B", "2026-10-02")
         r = work.group(s, dry_run=True, reader=by_text({"A": {"new": "Pine", "key": "k"}, "B": {"join": "k"}}))
@@ -98,7 +92,7 @@ def test_dry_run_saves_nothing(nb):
 
 def test_split_and_group_in_the_queue_stick(nb):
     dd, c, token, _ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "Deploy meeting", "2026-10-20")
         b = add(s, "Deploy thread", "2026-10-21")
         x = add(s, "Runbook draft", "2026-10-21")
@@ -109,7 +103,7 @@ def test_split_and_group_in_the_queue_stick(nb):
     assert "AI: Part of: Pine release" in page and "2 records" in page
     form(c, f"/sheet/{b}/split", token, ret="show=all")
     form(c, f"/sheet/{x}/group", token, item=str(wid), ret="show=all")
-    with session(dd) as s:
+    with open_session(dd) as s:
         eb, ex = s.get(JournalEntry, b), s.get(JournalEntry, x)
         assert (eb.work_item_id, eb.work_fixed) == (None, True) and (ex.work_item_id, ex.work_fixed) == (wid, True)
         # a regroup run leaves records you grouped or split by hand alone
@@ -117,7 +111,7 @@ def test_split_and_group_in_the_queue_stick(nb):
         assert s.get(JournalEntry, b).work_item_id is None and s.get(JournalEntry, x).work_item_id == wid
     form(c, f"/sheet/{a}/group", token, title="Brand new piece", ret="show=all")
     form(c, f"/sheet/{x}/split", token, ret="show=all")
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.get(WorkItem, wid) is None  # nobody left in it, so it's gone
         assert s.get(WorkItem, s.get(JournalEntry, a).work_item_id).title == "Brand new piece"
 
@@ -125,7 +119,7 @@ def test_split_and_group_in_the_queue_stick(nb):
 def test_removing_the_last_record_drops_its_group(nb):
     from careeros.storage.removal import remove_entry
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "Only one", "2026-10-01")
         work.group(s, reader=by_text({"Only one": {"new": "Solo", "key": "k"}}))
         remove_entry(s, a)
@@ -134,12 +128,12 @@ def test_removing_the_last_record_drops_its_group(nb):
 
 def test_a_run_skips_records_another_run_grouped_meanwhile(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         add(s, "A", "2026-10-01")
         add(s, "B", "2026-10-02")
 
         def reader(open_work, records):  # the app's own run groups B while this reader is thinking
-            with session(dd) as other:
+            with open_session(dd) as other:
                 work.group(other, reader=by_text({"B": {"new": "Other run's work", "key": "k"}}))
             return {r["id"]: {"new": "Mine", "key": r["id"]} for r in records}
         work.group(s, reader=reader)
@@ -149,7 +143,7 @@ def test_a_run_skips_records_another_run_grouped_meanwhile(nb):
 def test_confirming_a_row_locks_it_even_when_ungrouped(nb):
     from careeros.guide.service import confirm
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "One-off", "2026-10-01")
         work.group(s, reader=by_text({}))
         confirm(s, a)
@@ -164,7 +158,7 @@ def test_dry_run_from_the_cli_never_locks_the_real_notebook(nb, monkeypatch):
     from typer.testing import CliRunner
     from careeros.cli import app
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         add(s, "A", "2026-10-01")
         add(s, "B", "2026-10-02")
     monkeypatch.setattr(work, "BATCH", 1)
@@ -181,5 +175,5 @@ def test_dry_run_from_the_cli_never_locks_the_real_notebook(nb, monkeypatch):
     monkeypatch.setattr(work, "ask", fake_ask)
     r = CliRunner().invoke(app, ["guide", "group", "--dry-run", "--data-dir", str(dd.root)])
     assert r.exit_code == 0 and "nothing was saved" in r.output, r.output
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.scalar(select(WorkItem)) is None

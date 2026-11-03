@@ -14,8 +14,8 @@ from careeros.kso import estimate as est, framework, progress
 from careeros.storage.models import KsoEstimate
 from careeros.storage.sync_log import status
 
-from test_guide import form, nb, session  # noqa: F401
-from test_kso_page import setup
+from helpers import TWO, add, form, kso_setup, load_v2mom, open_session
+
 
 
 def answer(**changes):
@@ -34,10 +34,10 @@ def run(s, reply=None):
 
 def test_the_estimate_reads_the_rubric_and_work_but_never_money(nb):
     dd, c, token, _ = nb
-    setup(dd)
+    kso_setup(dd)
     form(c, "/kso/target", token, fy="FY27", target="98765")
     seen = []
-    with session(dd) as s:
+    with open_session(dd) as s:
         est.estimate(s, framework.for_current(s), reader=lambda p, d: seen.append(d) or answer())
     data = json.loads(seen[0])
     part = data["ksos"][0]["components"]
@@ -54,8 +54,8 @@ def test_the_estimate_reads_the_rubric_and_work_but_never_money(nb):
 ])
 def test_a_bad_estimate_saves_nothing(nb, bad, why):
     dd, *_ = nb
-    setup(dd)
-    with session(dd) as s:
+    kso_setup(dd)
+    with open_session(dd) as s:
         with pytest.raises(ClaudeError, match=why):
             run(s, answer(**bad))
         assert s.scalar(select(KsoEstimate)) is None
@@ -63,28 +63,28 @@ def test_a_bad_estimate_saves_nothing(nb, bad, why):
 
 def test_the_page_shows_the_estimate_and_your_rating_wins(nb):
     dd, c, token, _ = nb
-    setup(dd)
-    with session(dd) as s:
+    kso_setup(dd)
+    with open_session(dd) as s:
         run(s)
     page = c.get("/kso").text
     assert "Claude's estimate: 3 &middot; Mostly there" in page and "Add a feedback measure" in page
     assert "M1 is on plan" in page and 'data-sync="kso"' in page
     form(c, "/kso/target", token, fy="FY27", target="10000")
-    with session(dd) as s:
+    with open_session(dd) as s:
         rows = progress.build(s)["projection"]["rows"]
     assert [(x["rating"], x["ai"]) for x in rows] == [(3, True), (4, True)]
     form(c, "/kso/rating", token, fy="FY27", kso="1", rating="5")
-    with session(dd) as s:
+    with open_session(dd) as s:
         p = progress.build(s)["projection"]
     assert [(x["rating"], x["ai"]) for x in p["rows"]] == [(5, False), (4, True)] and p["total"] == 2400 + 1000
 
 
 def test_it_runs_monthly_once_ksos_are_matched(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert not est.due(s)  # no KSOs yet
-    setup(dd)
-    with session(dd) as s:
+    kso_setup(dd)
+    with open_session(dd) as s:
         assert est.due(s)
         run(s)
         assert not est.due(s) and est.due(s, datetime.now() + timedelta(days=31))
@@ -96,7 +96,7 @@ def test_the_sync_step_and_the_button(nb, monkeypatch):
     from careeros.web.jobs import Job
     from careeros.storage.db import make_engine, make_session_factory
     dd, c, token, _ = nb
-    setup(dd)
+    kso_setup(dd)
     monkeypatch.setattr(est, "ask", lambda p, d, timeout=0: answer())
     job = Job(syncs.KSO_STEPS)
     syncs.run_kso(job, make_session_factory(make_engine(dd.db)), threading.Lock())
@@ -140,19 +140,18 @@ def test_the_morning_sync_estimates_after_the_v2mom(nb, monkeypatch):
 
 def test_kso_parts_without_a_goal_become_daily_goals(nb):
     dd, *_ = nb
-    setup(dd)
-    with session(dd) as s:
+    kso_setup(dd)
+    with open_session(dd) as s:
         ids = [g["id"] for g in daily.goals(s, date.today())]
     assert "KSO 1.2: Kind Feedback" in ids and "KSO 2.1: New Skills" in ids  # a gap, and the one furthest behind
     assert "KSO 1.1: Plan Kept" not in ids  # 69% isn't the furthest behind
 
 
 def test_a_busy_part_leaves_room_for_the_others(nb):
-    from careeros.storage.models import JournalEntry, V2momLink
-    from test_review import add
+    from careeros.storage.models import V2momLink
     dd, *_ = nb
-    m = setup(dd)
-    with session(dd) as s:
+    m = kso_setup(dd)
+    with open_session(dd) as s:
         for i in range(400):
             s.add(V2momLink(method_id=m["M1"], entry_id=add(s, f"Shipped release step number {i} of many"),
                             created_at=datetime.now()))
@@ -166,19 +165,17 @@ def test_a_busy_part_leaves_room_for_the_others(nb):
 
 def test_numbers_as_keys_are_fine_and_the_prompt_asks_for_less_than_it_checks(nb):
     dd, *_ = nb
-    setup(dd)
+    kso_setup(dd)
     a = json.loads(answer())
     a["ksos"][0]["key"] = 1
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert run(s, json.dumps(a)).data["ksos"][0]["key"] == "1"
     assert est.ASK_STEP < est.MAX_STEP and est.ASK_WHY < est.MAX_WHY
 
 
 def test_the_daily_three_skips_last_years_ksos(nb):
-    from test_v2mom import TWO
-    from test_v2mom_links import load_v2mom
     dd, *_ = nb
-    setup(dd)
-    with session(dd) as s:
+    kso_setup(dd)
+    with open_session(dd) as s:
         load_v2mom(s, TWO, fy="FY28")  # the new year's V2MOM, before its KSOs are read
         assert not [g for g in daily.goals(s, date.today()) if g["id"].startswith("KSO")]
