@@ -46,9 +46,9 @@ def _clip(text: str, n: int) -> str:
 
 
 def goals(s: Session, today: date) -> list[dict]:
-    """What needs work, most useful first: V2MOM methods that are quiet, unstarted, or behind; the Promo map's Aim for
-    next; V2MOM methods still on track with open measures; Promo map gaps; skills with little or no evidence. Each has
-    a short stable id Claude must pick from."""
+    """What needs work, most useful first: V2MOM methods that are quiet, unstarted, or behind; KSO parts with no V2MOM
+    goal, and the one furthest behind; the Promo map's Aim for next; V2MOM methods still on track with open measures;
+    Promo map gaps; skills with little or no evidence. Each has a short stable id Claude must pick from."""
     from .guide.service import has_guide, promo_map
     from .v2mom import report
     out: list[dict] = []
@@ -67,6 +67,7 @@ def goals(s: Session, today: date) -> list[dict]:
         elif open_measures:
             on_track.append(g)
     out += needy
+    out += _kso_goals(s, today)
     pm = promo_map(s) if has_guide(s) else None
     if pm:
         for n in pm["next"][:4]:
@@ -86,6 +87,21 @@ def goals(s: Session, today: date) -> list[dict]:
                 out.append(dict(id=f"Skill: {_clip(x['item'].name, 50)}", what=_clip(x["item"].name, 80),
                                 state="no evidence yet" if x["status"] == "gap" else "a little evidence"))
     return out
+
+
+def _kso_goals(s: Session, today: date) -> list[dict]:
+    from .kso import framework, progress
+    fw = framework.for_current(s)  # this year's KSOs only, never last year's while the new deck is pending
+    k = progress.build(s, fw.fiscal_year, today) if fw else None
+    parts = [c for x in (k or {}).get("ksos", []) for c in x["components"]]
+
+    def goal(c, state):
+        return dict(id=f"KSO {c['key']}: {_clip(c['name'], 50)}", what=_clip(c["what"], 160), state=state,
+                    ideas=[_clip(x, 110) for x in c["examples"][:2]])
+    out = [goal(c, "no V2MOM goal yet") for c in parts if c["gap"]]
+    low = min((c for c in parts if not c["gap"] and c["bar"] is not None and c["bar"] < 75),
+              key=lambda c: c["bar"], default=None)
+    return out + ([goal(low, f"{low['bar']}% along")] if low else [])
 
 
 def recent(s: Session, today: date) -> list[str]:

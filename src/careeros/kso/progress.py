@@ -45,7 +45,8 @@ def _avg(xs: list[float]) -> int | None:
     return round(sum(xs) / len(xs)) if xs else None
 
 
-def projection(fw_data: dict, target: int | None, ratings: dict[str, int]) -> dict | None:
+def projection(fw_data: dict, target: int | None, ratings: dict[str, int],
+               mine: set[str] | None = None) -> dict | None:
     """Per KSO: its share of the target (weight %), and what it pays at its rating (payout %). The total, once every
     KSO has a rating, and what all-3s, all-4s and all-5s would pay. None without a target."""
     if not target:
@@ -56,6 +57,7 @@ def projection(fw_data: dict, target: int | None, ratings: dict[str, int]) -> di
         share = target * k["weight"] / 100
         r = ratings.get(k["key"])
         rows.append(dict(key=k["key"], name=k["name"], weight=k["weight"], share=round(share), rating=r,
+                         ai=k["key"] not in mine if mine is not None else False,
                          payout=pay[str(r)] if r else None, pays=round(share * pay[str(r)] / 100) if r else None))
     shares = sum(target * k["weight"] / 100 for k in fw_data["ksos"])
     return dict(rows=rows, share=round(shares),
@@ -94,10 +96,17 @@ def build(s: Session, fy: str | None = None, today: date | None = None) -> dict 
         ksos.append(dict(k, components=comps, bar=_avg(bars), gaps=sum(1 for x in comps if x["gap"])))
     counted = {x["m"].id for k in ksos for c in k["components"] for x in c["methods"]}
     loose = [r["m"] for r in rep["methods"] if r["m"].id not in counted] if current else []
+    from .estimate import latest
+    est = latest(s, fw.fiscal_year)
+    guessed = {k["key"]: k for k in est.data["ksos"]} if est else {}
+    for k in ksos:
+        k["estimate"] = guessed.get(k["key"])
     row = year(s, fw.fiscal_year)
     ratings = dict(row.ratings) if row and row.ratings else {}
+    effective = {k: v["rating"] for k, v in guessed.items()} | ratings  # yours win over Claude's
     return dict(fw=fw, ksos=ksos, loose=loose, ratings=ratings, target=row.target_incentive if row else None,
-                projection=projection(fw.data, row.target_incentive if row else None, ratings),
+                projection=projection(fw.data, row.target_incentive if row else None, effective, set(ratings)),
+                estimated_at=est.made_at if est else None, current=current,
                 choices=[(c["key"], c["name"]) for c in framework.components(fw)],
                 years=list(s.scalars(select(KsoFramework.fiscal_year).order_by(KsoFramework.fiscal_year.desc()))),
                 upcoming=[d for d in fw.data.get("dates", []) if d["date"] >= today.isoformat()])

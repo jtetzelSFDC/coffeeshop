@@ -497,6 +497,23 @@ def kso_show(data_dir: Optional[str] = DataOpt) -> None:
         typer.echo(f"  {c['key']} {c['name']}: {ms}")
 
 
+@kso_app.command("estimate")
+def kso_estimate(data_dir: Optional[str] = DataOpt) -> None:
+    """Have Claude estimate this year's KSO ratings now (it also runs monthly with the sync; marked AI)."""
+    import threading
+    from .web import syncs
+    from .web.jobs import Job
+    dd, s = _open_personal(data_dir, "KSOs")
+    s.close()
+    job = Job(syncs.KSO_STEPS)
+    syncs.run_kso(job, make_session_factory(make_engine(dd.db)), threading.Lock())
+    for st in job.steps:
+        typer.echo(f"{st['label']}: {st['state']}" + (f" ({st['detail']})" if st["detail"] else ""))
+    typer.echo(job.message)
+    if job.state in ("error", "partial"):
+        raise typer.Exit(1)
+
+
 def _kso_summary(fw) -> str:
     pay = ", ".join(f"{r}={p:g}%" for r, p in fw.data["payout"].items())
     ksos = "; ".join(f"KSO {k['key']} {k['name']} ({k['weight']:g}%, {len(k['components'])} parts)"

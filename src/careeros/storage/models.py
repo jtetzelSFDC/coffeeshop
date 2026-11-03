@@ -230,6 +230,15 @@ class KsoYear(Base):
     ratings: Mapped[dict] = mapped_column(JSON, default=dict)  # {"1": 4, "2": 5}
 
 
+class KsoEstimate(Base):
+    """Claude's monthly guess at your 1-5 per KSO, with a reason per part and next steps. Marked AI on the page."""
+    __tablename__ = "kso_estimate"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fiscal_year: Mapped[str] = mapped_column(String, index=True)
+    made_at: Mapped[datetime] = mapped_column(DateTime)
+    data: Mapped[dict] = mapped_column(JSON, default=dict)  # {"ksos": [{key, rating, why: {part: text}, next: [...]}]}
+
+
 class V2momLink(Base):
     """A win or a notebook entry that advances a V2MOM method. Goes away with the win or entry."""
     __tablename__ = "v2mom_link"
