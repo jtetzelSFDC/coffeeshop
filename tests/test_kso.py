@@ -85,7 +85,8 @@ def test_sources_come_from_links_and_stay_private(nb):
 
 def test_fiscal_years_are_named_one_way(nb):
     from careeros.v2mom.report import fiscal_year, fy_name
-    assert [fy_name(x) for x in ("FY2027", "fy 27", "FY27 Q4", "2027")] == ["FY27", "FY27", "FY27", ""]
+    assert [fy_name(x) for x in ("FY2027", "fy 27", "FY27 Q4", "2027", "FY27_V2MOM.pdf", "FY275")] == \
+        ["FY27", "FY27", "FY27", "", "FY27", ""]
     assert fiscal_year("FY2027", date(2027, 3, 1))[0] == "FY27"  # not this year's FY28
     dd, *_ = nb
     with session(dd) as s:
