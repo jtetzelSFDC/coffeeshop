@@ -425,7 +425,7 @@ def test_review_skips_records_removed_or_edited_while_claude_reads(nb):
 def test_a_vanished_meeting_claude_linked_is_removed_without_breaking_the_sync(nb):
     from careeros.storage.models import GuideItem
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         e = JournalEntry(day="2026-10-20", kind="meeting", text="9:00 AM Moved meeting", created_at=datetime.now(),
                          source="calendar", external_id="moved@1")
         s.add(e)
