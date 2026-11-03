@@ -13,10 +13,10 @@ def test_every_page_has_the_app_name_and_no_greeting(nb):
     _, c, *_ = nb
     for path in PAGES:
         html = c.get(path).text
-        assert '<a class="brand" href="/">Career Tracker</a>' in html, path
-        assert re.search(r"<title>Career Tracker( · [^<]+)?</title>", html), path
+        assert '<a class="brand" href="/">coffee shop</a>' in html, path
+        assert re.search(r"<title>Coffee Shop( · [^<]+)?</title>", html), path
         assert not re.search(r"Good (morning|afternoon|evening)|Fresh cup, fresh page", html), path
-    assert "<title>Career Tracker · Wins</title>" in c.get("/wins").text
+    assert "<title>Coffee Shop · Wins</title>" in c.get("/wins").text
 
 
 def test_explanations_are_folded(nb):

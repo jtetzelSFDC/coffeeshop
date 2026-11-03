@@ -9,7 +9,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from .config import DataDir
+from .config import DATA_DIR_ENV, DataDir
 
 APP, SYNC, DIGEST = "com.careeros.app", "com.careeros.sync", "com.careeros.digest"
 DIGEST_AT = {"Weekday": 5, "Hour": 12, "Minute": 0}  # Friday 12:00 PM; a missed one runs on wake
@@ -37,7 +37,7 @@ def plists(dd: DataDir, uv: str, repo: Path = REPO) -> dict[str, dict]:
     """The three launchd agents: the app (kept running), the sync (8 AM, 6 PM, login) and the Friday digest."""
     logs = dd.root / "logs"
     base = ["run", "--project", str(repo), "careeros"]
-    env = {"PATH": PATH, "CAREEROS_DATA_DIR": str(dd.root)}
+    env = {"PATH": PATH, DATA_DIR_ENV: str(dd.root)}
     return {
         APP: dict(Label=APP, ProgramArguments=[uv, *base, "serve"], WorkingDirectory=str(repo), RunAtLoad=True,
                   KeepAlive=True, EnvironmentVariables=env, StandardOutPath=str(logs / "app.log"),

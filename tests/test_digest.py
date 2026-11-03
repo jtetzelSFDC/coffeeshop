@@ -108,5 +108,5 @@ def test_notify_shows_a_line_written_by_code(nb, monkeypatch):
     monkeypatch.setattr("careeros.sync_all.mac_notify", lambda title, msg: shown.append((title, msg)))
     r = CliRunner().invoke(cli, ["digest", "notify", "--data-dir", str(dd.root)])
     assert r.exit_code == 0, r.output
-    assert shown and shown[0][0] == "Career OS: your week"
+    assert shown and shown[0][0] == "Coffee Shop: your week"
     assert shown[0][1].startswith("This week: 1 win, 3 records, 1 kudos,") and "/digest" in shown[0][1]

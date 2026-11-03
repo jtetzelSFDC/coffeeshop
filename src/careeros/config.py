@@ -5,8 +5,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_DEMO_DIR = Path.home() / "Library" / "Application Support" / "CareerOS-demo"
-PERSONAL_DIR = Path.home() / "Library" / "Application Support" / "CareerOS"
+DEFAULT_DEMO_DIR = Path.home() / "Library" / "Application Support" / "coffeeshop-demo"
+PERSONAL_DIR = Path.home() / "Library" / "Application Support" / "coffeeshop"
+DB_NAME = "coffeeshop.db"
+BACKUP_PREFIX = "coffeeshop-"
+DATA_DIR_ENV = "COFFEESHOP_DATA_DIR"
 SYNC_HINTS = ("iCloud", "Mobile Documents", "Dropbox", "Google Drive", "OneDrive")
 
 
@@ -19,7 +22,7 @@ class DataDir:
     root: Path
 
     @property
-    def db(self) -> Path: return self.root / "careeros.db"
+    def db(self) -> Path: return self.root / DB_NAME
     @property
     def secret_file(self) -> Path: return self.root / ".secret"
     @property
@@ -48,7 +51,7 @@ class DataDir:
     def require_known(self) -> None:
         """The web app opens practice notebooks and your personal notebook, nothing else."""
         if self.is_demo == self.is_personal:  # neither, or (corrupt) both
-            raise NotDemoData(f"{self.root} is not a recognized Career OS folder")
+            raise NotDemoData(f"{self.root} is not a recognized Coffee Shop folder")
 
     def init_personal(self) -> None:
         """Make this folder your real notebook; refuses a demo folder or a synced one (iCloud, Dropbox)."""
@@ -74,8 +77,8 @@ class DataDir:
 
 
 def resolve(path: str | None, *, demo: bool = False) -> DataDir:
-    """Explicit path, then CAREEROS_DATA_DIR, then (unless demo=True) the personal notebook if it exists."""
-    chosen = path or os.environ.get("CAREEROS_DATA_DIR")
+    """Explicit path, then COFFEESHOP_DATA_DIR, then (unless demo=True) the personal notebook if it exists."""
+    chosen = path or os.environ.get(DATA_DIR_ENV)
     if not chosen:
         chosen = PERSONAL_DIR if (not demo and (PERSONAL_DIR / ".personal").exists()) else DEFAULT_DEMO_DIR
     return DataDir(Path(chosen).expanduser())

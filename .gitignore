@@ -10,7 +10,7 @@ scratch/
 .env
 .env.*
 
-# Notebook data, in case CAREEROS_DATA_DIR points inside the repo
+# Notebook data, in case COFFEESHOP_DATA_DIR points inside the repo
 *.db
 *.db-wal
 *.db-shm
@@ -34,7 +34,7 @@ kso.json
 *.pdf
 
 # Downloads and exports
-career-notebook-*.zip
+coffeeshop-notebook-*.zip
 my-wins-*.md
 *.csv
 

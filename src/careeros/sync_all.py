@@ -131,7 +131,7 @@ def run(dd: DataDir, *, force: bool = False, now: datetime | None = None,
                 reason = next((st["detail"] for st in job.steps if st["state"] == "error"), job.message)
                 failed.append((name, reason))
         for name, reason in failed:
-            notify(f"Career OS: {name} sync needs a look", reason)
+            notify(f"Coffee Shop: {name} sync needs a look", reason)
         return 1 if failed else 0
     finally:
         log.close()

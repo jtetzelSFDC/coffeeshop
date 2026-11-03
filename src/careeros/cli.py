@@ -16,7 +16,7 @@ from .storage.db import init_db, make_engine, make_session_factory
 app = typer.Typer(no_args_is_help=True)
 demo_app = typer.Typer(no_args_is_help=True, help="The practice notebook (made-up data)")
 app.add_typer(demo_app, name="demo")
-DataOpt = typer.Option(None, "--data-dir", help="Notebook folder (default: CAREEROS_DATA_DIR or your notebook)")
+DataOpt = typer.Option(None, "--data-dir", help="Notebook folder (default: COFFEESHOP_DATA_DIR or your notebook)")
 
 
 @demo_app.command("seed")
@@ -134,7 +134,7 @@ app.add_typer(notebook_app, name="notebook")
 
 
 @notebook_app.command("init")
-def notebook_init(data_dir: Optional[str] = typer.Option(None, "--data-dir", help="Default: ~/Library/Application Support/CareerOS")) -> None:
+def notebook_init(data_dir: Optional[str] = typer.Option(None, "--data-dir", help="Default: ~/Library/Application Support/coffeeshop")) -> None:
     """Create your real, permanent notebook, the one every sync fills."""
     os.umask(0o077)
     dd = DataDir(__import__("pathlib").Path(data_dir).expanduser()) if data_dir else DataDir(PERSONAL_DIR)
@@ -640,7 +640,7 @@ def github_sync(data_dir: Optional[str] = DataOpt) -> None:
     _run_job(data_dir, "GitHub sync", syncs.GITHUB_STEPS, lambda j, S, lock, dd: syncs.run_github(j, S, lock))
 
 @github_app.command("skip")
-def github_skip(text: Optional[str] = typer.Argument(None, help="Text to skip, e.g. a repo: \"jmysterio/career-os\""),
+def github_skip(text: Optional[str] = typer.Argument(None, help="Text to skip, e.g. a repo: \"org/coffeeshop\""),
                 data_dir: Optional[str] = DataOpt) -> None:
     """Never bring in PRs whose title or repo contains TEXT, and remove the ones already here. No TEXT lists them."""
     _skip(data_dir, "github", text, "PRs", "title or repo", "GitHub sync")
@@ -681,7 +681,7 @@ def digest_notify(data_dir: Optional[str] = DataOpt) -> None:
     from .sync_all import mac_notify
     dd, s = _open_personal(data_dir, "The digest")
     line = digest.summary(digest.build(s))
-    mac_notify("Career OS: your week", line)
+    mac_notify("Coffee Shop: your week", line)
     typer.echo(line)
 
 

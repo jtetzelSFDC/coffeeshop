@@ -78,7 +78,7 @@ def test_data_files_are_owner_only(seeded):
     import stat
     dd, c, tok = seeded
     form(c, "/journal/add", tok, kind="note", text="x")
-    for p in [dd.db, dd.secret_file, *dd.root.glob("careeros.db-*")]:
+    for p in [dd.db, dd.secret_file, *dd.root.glob(dd.db.name + "-*")]:
         assert stat.S_IMODE(p.stat().st_mode) == 0o600, p
     assert stat.S_IMODE(dd.root.stat().st_mode) == 0o700
 

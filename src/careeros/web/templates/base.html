@@ -5,7 +5,7 @@
 {% set ns = namespace(here='Search' if page == '/search' else '') %}
 {% for path, label in main_pages %}{% if path == page %}{% set ns.here = label %}{% endif %}{% endfor %}
 {% for path, tab in tabs.items() %}{% if path == page %}{% set ns.here = tab[1] %}{% endif %}{% endfor %}
-<title>Career Tracker{% if ns.here %} · {{ ns.here }}{% endif %}</title>
+<title>Coffee Shop{% if ns.here %} · {{ ns.here }}{% endif %}</title>
 <style>
 /* Latte palette. Light: white subway tile, foam cards, espresso text and buttons. Dark: an espresso bar at night,
    warm charcoal with latte-foam buttons. Accents stay soft caramel, never orange. */
@@ -216,7 +216,7 @@ ol.sources{font-size:.85rem;color:var(--muted);padding-left:1.6rem}ol.sources li
 </style></head><body{% if wide %} class="wide"{% endif %}>
 <div class="decor" aria-hidden="true"><i class="d-cup"></i><i class="d-vine"></i><i class="d-plants"></i></div>
 <header class="top">
-  <a class="brand" href="/">Career Tracker</a>
+  <a class="brand" href="/">coffee shop</a>
   <form method="post" action="/theme"><input type="hidden" name="csrf" value="{{ csrf }}">
     <input type="hidden" name="next" value="{{ here }}">
     <input type="hidden" name="theme" value="{{ 'light' if theme == 'dark' else 'dark' }}">

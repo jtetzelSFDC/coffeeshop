@@ -6,7 +6,7 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
-from .config import DataDir
+from .config import BACKUP_PREFIX, DataDir
 
 DAILY = 30
 MONTHLY = 12
@@ -14,7 +14,7 @@ MONTHLY = 12
 
 def _day(p: Path) -> date | None:
     try:
-        return date.fromisoformat(p.stem.removeprefix("careeros-"))
+        return date.fromisoformat(p.stem.removeprefix(BACKUP_PREFIX))
     except ValueError:
         return None
 
@@ -24,7 +24,7 @@ def make_backup(dd: DataDir, today: date | None = None) -> Path:
     today = today or date.today()
     dd.backups.mkdir(mode=0o700, exist_ok=True)
     os.chmod(dd.backups, 0o700)
-    dest = dd.backups / f"careeros-{today:%Y-%m-%d}.db"
+    dest = dd.backups / f"{BACKUP_PREFIX}{today:%Y-%m-%d}.db"
     tmp = dest.with_suffix(".db.part")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     os.close(fd)
@@ -46,7 +46,7 @@ def make_backup(dd: DataDir, today: date | None = None) -> Path:
 def backups(dd: DataDir) -> list[tuple[date, Path]]:
     if not dd.backups.exists():
         return []
-    return sorted((d, p) for p in dd.backups.glob("careeros-*.db") if (d := _day(p)))
+    return sorted((d, p) for p in dd.backups.glob(f"{BACKUP_PREFIX}*.db") if (d := _day(p)))
 
 
 def prune(dd: DataDir, today: date | None = None, daily: int = DAILY, monthly: int = MONTHLY) -> int:

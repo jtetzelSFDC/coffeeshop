@@ -31,7 +31,7 @@ def rows(db):
 def test_backup_has_the_same_rows_and_is_owner_only(tmp_path):
     dd = notebook(tmp_path)
     path = make_backup(dd, today=date(2026, 10, 28))
-    assert path == dd.backups / "careeros-2026-10-28.db"
+    assert path == dd.backups / "coffeeshop-2026-10-28.db"
     assert rows(path) == ["entry 0", "entry 1", "entry 2"]
     assert stat.S_IMODE(path.stat().st_mode) == 0o600 and stat.S_IMODE(dd.backups.stat().st_mode) == 0o700
     with sqlite3.connect(dd.db) as c:
@@ -60,11 +60,11 @@ def test_prune_keeps_30_days_and_one_per_month(tmp_path):
     dd.backups.mkdir(mode=0o700, exist_ok=True)
     start = date(2025, 9, 1)
     for i in range(420):
-        (dd.backups / f"careeros-{start + timedelta(days=i):%Y-%m-%d}.db").write_bytes(b"x")
+        (dd.backups / f"coffeeshop-{start + timedelta(days=i):%Y-%m-%d}.db").write_bytes(b"x")
     (dd.backups / "notes.txt").write_text("not a backup")
     today = start + timedelta(days=419)  # 2026-10-24
     removed = prune(dd, today=today)
-    kept = sorted(p.stem.removeprefix("careeros-") for p in dd.backups.glob("careeros-*.db"))
+    kept = sorted(p.stem.removeprefix("coffeeshop-") for p in dd.backups.glob("coffeeshop-*.db"))
     daily = [d for d in kept if d >= (today - timedelta(days=29)).isoformat()]
     monthly = [d for d in kept if d not in daily]
     assert len(daily) == 30
@@ -78,7 +78,7 @@ def test_cli_backup_now_and_list(tmp_path):
     r = CliRunner().invoke(cli, ["backup", "now", "--data-dir", str(dd.root)])
     assert r.exit_code == 0 and "Backed up to" in r.output, r.output
     r = CliRunner().invoke(cli, ["backup", "list", "--data-dir", str(dd.root)])
-    assert r.exit_code == 0 and f"careeros-{date.today():%Y-%m-%d}.db" in r.output
+    assert r.exit_code == 0 and f"coffeeshop-{date.today():%Y-%m-%d}.db" in r.output
 
 
 def test_a_failed_backup_leaves_no_half_copy(tmp_path, monkeypatch):

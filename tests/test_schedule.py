@@ -27,7 +27,7 @@ def test_sync_all_backs_up_runs_each_and_logs(dd, monkeypatch):
     notes = []
     assert sync_all.run(dd, force=True, notify=lambda t, m: notes.append((t, m))) == 0
     assert calls == ["slack", "google", "github"] and not notes
-    assert list(dd.backups.glob("careeros-*.db"))
+    assert list(dd.backups.glob("coffeeshop-*.db"))
     log = next((dd.root / "logs").glob("sync-*.log")).read_text()
     assert "slack synced" in log and "google synced" in log and "backup" in log.lower()
 
@@ -98,6 +98,7 @@ def test_plists_have_absolute_paths_and_the_right_schedule(dd, tmp_path):
     assert sync["RunAtLoad"] is True and "KeepAlive" not in sync
     assert str(dd.root / "logs") in app["StandardErrorPath"]
     assert "/.local/bin" in app["EnvironmentVariables"]["PATH"]
+    assert app["EnvironmentVariables"]["COFFEESHOP_DATA_DIR"] == str(dd.root)
 
 
 def test_install_and_uninstall_write_and_remove_only_their_files(dd, tmp_path, monkeypatch):

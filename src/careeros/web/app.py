@@ -1014,7 +1014,7 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.get("/export/everything")
     def export_everything(s: Session = Depends(db)):
-        name = f"career-notebook-{date.today().isoformat()}.zip"
+        name = f"coffeeshop-notebook-{date.today().isoformat()}.zip"
         return Response(notebook_zip(s), media_type="application/zip",
                         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
