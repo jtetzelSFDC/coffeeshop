@@ -30,7 +30,7 @@ from . import syncs
 from .jobs import Jobs
 from ..storage.db import init_db, make_engine, make_session_factory
 from ..guide import activities, work
-from ..storage.models import (GuideItem, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, V2momLink,
+from ..storage.models import (DailyTask, GuideItem, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, V2momLink,
                               V2momMethod, Win, WorkItem)
 
 ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
@@ -195,9 +195,9 @@ def create_app(dd: DataDir) -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def today_page(request: Request, msg: str | None = None, s: Session = Depends(db)):
         today = date.today()
-        from .. import dashboard
+        from .. import daily as daily_mod, dashboard
         html = env.get_template("today.html").render(
-            dash=dashboard.build(s, today), kinds=KINDS, attach_kinds=ATTACH_KINDS, today=today.isoformat(),
+            dash=dashboard.build(s, today), daily=daily_mod.today_tasks(s, today) if personal else [], kinds=KINDS, attach_kinds=ATTACH_KINDS, today=today.isoformat(),
             csrf=csrf_token, msg=msg,
             sync_warning=dd.sync_warning(), theme=theme_of(request), page="/", personal=personal, q="",
             slack_canvas=slack_imp.load_canvas_id(dd) if personal else None,
@@ -296,10 +296,13 @@ def create_app(dd: DataDir) -> FastAPI:
             kind = entry.kind
         return back("Added.", next(p for p, (k, *_rest) in TABS.items() if k == kind))
 
-    def start_sync(request: Request, name: str):
+    def start_sync(request: Request, name: str, force: bool = False):
         if not personal:
             return back("Syncing only works with your personal notebook.", "/")
-        if name == "google":
+        if name == "daily":
+            started = jobs.start("daily", syncs.DAILY_STEPS,
+                                 lambda j: syncs.run_daily(j, Session_, _write_lock, force=force))
+        elif name == "google":
             started = jobs.start("google", syncs.GOOGLE_STEPS, lambda j: syncs.run_google(j, Session_, _write_lock))
         elif name == "v2mom":
             started = jobs.start("v2mom", syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, _write_lock, dd))
@@ -309,6 +312,30 @@ def create_app(dd: DataDir) -> FastAPI:
             return JSONResponse({"started": started})
         return back("Sync started. Refresh this page in a minute or two to see the result." if started
                     else "That sync is already running.", "/")
+
+    @app.post("/daily/suggest", dependencies=[Depends(check_csrf)])
+    def daily_suggest(request: Request, force: str = Form("")):
+        """Ask for today's three now (or a new three, keeping the ones done), in the background."""
+        return start_sync(request, "daily", force=force == "1")
+
+    @app.post("/daily/{tid}/done", dependencies=[Depends(check_csrf)])
+    def daily_done(tid: int, details: str = Form("", max_length=20_000), s: Session = Depends(db)):
+        from .. import daily
+        with _write_lock:
+            t = s.get(DailyTask, tid)
+            if t is None:
+                return back("That task isn't here any more.", "/")
+            daily.check(s, t, details)
+        return back("Done. It's logged as a finished task.", "/")
+
+    @app.post("/daily/{tid}/undo", dependencies=[Depends(check_csrf)])
+    def daily_undo(tid: int, s: Session = Depends(db)):
+        from .. import daily
+        with _write_lock:
+            t = s.get(DailyTask, tid)
+            if t is not None:
+                daily.uncheck(s, t)
+        return back(to="/")
 
     @app.post("/sync/google", dependencies=[Depends(check_csrf)])
     def google_sync(request: Request):

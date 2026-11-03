@@ -3,6 +3,32 @@
 {% from "_entry.html" import attach_fields with context %}
 {% from "_sync.html" import sync_chips %}
 
+{% if personal %}
+<section class="card daily" aria-label="Today's three">
+  <div class="qhead"><h2>Today's three</h2>{{ sync_chips(sync, [("daily", "Daily")]) }}
+    <form method="post" action="/daily/suggest" data-sync="daily" style="margin-left:auto">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="force" value="{{ '1' if daily else '' }}">
+      <button data-label="{{ 'New three' if daily else 'Suggest now' }}" title="{{ 'Swap the ones not done yet for new ideas' if daily else 'Ask Claude now instead of waiting for the morning sync' }}">{{ 'New three' if daily else 'Suggest now' }}</button></form></div>
+  {% for t in daily %}
+  <div class="dt {{ 'done' if t.done_at }}">
+    {% if t.done_at %}
+    <form method="post" action="/daily/{{ t.id }}/undo"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="tick on" title="Mark not done" aria-label="Mark not done: {{ t.text }}">&check;</button></form>
+    {% else %}
+    <details class="act tick-d"><summary class="tick" title="Mark done" aria-label="Mark done: {{ t.text }}"></summary>
+      <form method="post" action="/daily/{{ t.id }}/done" class="stack act-panel"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <b>{{ t.text }}</b>
+        <textarea name="details" maxlength="20000" style="min-height:4.5rem" placeholder="What did you do? (optional)" aria-label="What did you do? (optional)"></textarea>
+        <div><button class="primary">Done</button></div></form></details>
+    {% endif %}
+    <span class="dt-text" title="{{ t.why }}">{{ t.text }}</span>
+    <span class="dt-meta muted" title="{{ t.goal }}">~{{ t.minutes }} min &middot; {{ t.goal|truncate(26, True, '…', 0) }}</span>
+  </div>
+  {% else %}<p class="muted">No three yet today. They come with the morning sync, or press <b>Suggest now</b>.</p>{% endfor %}
+  {% if daily and daily|selectattr("done_at")|list|length == daily|length %}<p class="next">All three done. Nice.</p>{% endif %}
+  <div class="job" data-job="daily" hidden></div>
+</section>
+{% endif %}
+
 <section class="card dash" aria-label="Progress">
   {% if dash.grades %}
   <h2>Grade {{ dash.current }} to {{ dash.grades[0].grade }}, aiming at {{ dash.grades[-1].grade }}</h2>

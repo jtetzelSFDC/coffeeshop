@@ -67,6 +67,14 @@ button.icon{width:2rem;height:2rem;padding:0;border-radius:50%;font-size:1rem;li
 .vm-head{display:flex;flex-wrap:wrap;gap:.25rem .5rem;align-items:center}.vm-head .chip{margin-left:0}.vm-pct{display:inline-flex;gap:.4rem;align-items:center;white-space:nowrap}.vm-pct .bar{width:5rem;height:.4rem;margin:0}
 .vm-nums{margin-left:auto;font-size:.82rem;color:var(--muted)}.vm ul{font-size:.86rem;margin:.3rem 0}.vm li .chip{font-size:.7rem}
 p.next{margin:.8rem 0 0;font-size:.9rem;border-top:1px dashed var(--line);padding-top:.6rem}
+.daily h2{margin:0}.dt{display:flex;gap:.6rem;align-items:center;padding:.4rem 0;border-bottom:1px dashed var(--line);position:relative}
+.dt:last-of-type{border-bottom:0}.dt form{margin:0}.dt-text{flex:1;min-width:0}.dt-meta{font-size:.76rem;white-space:nowrap}
+.tick-d{margin:0}.tick-d>summary::-webkit-details-marker{display:none}.tick-d>summary{list-style:none}
+.dt .tick{display:inline-flex;align-items:center;justify-content:center;width:1.15rem;height:1.15rem;padding:0;border:1.5px solid var(--muted);
+  border-radius:5px;background:transparent;cursor:pointer;color:var(--primary-text);font-size:.8rem;line-height:1;flex:none}
+.dt .tick:hover{border-color:var(--accent)}.dt .tick.on{background:var(--st-strong);border-color:var(--st-strong)}
+.dt.done .dt-text{text-decoration:line-through;color:var(--muted)}
+.dt .act-panel{left:1.8rem;top:calc(100% + .1rem)}
 .howto{margin:.35rem 0 0}
 .stats .late-stat{border-color:var(--st-started);color:var(--text);text-decoration:none}.stats .ok-stat{border-color:var(--st-strong)}
 .sources-d>summary{cursor:pointer}

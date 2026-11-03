@@ -173,3 +173,37 @@ def suggest(s: Session, today: date | None = None, *, force: bool = False,
     except IntegrityError:  # another run (the schedule and a button press) saved today's three first; keep those
         s.rollback()
     return today_tasks(s, today)
+
+
+def check(s: Session, task: DailyTask, details: str = "") -> JournalEntry:
+    """Done: logs a finished task record (with your details as notes) that the rest of the app counts like any other
+    work, linked to the guide and the V2MOM on the next sync."""
+    from .storage.models import JournalAttachment
+    if task.entry_id and (e := s.get(JournalEntry, task.entry_id)):
+        return e
+    e = JournalEntry(day=task.day, kind="task", text=task.text[:500], created_at=datetime.now(), source=SOURCE,
+                     status="done")
+    s.add(e)
+    s.flush()
+    if details.strip():
+        s.add(JournalAttachment(entry_id=e.id, kind="notes", title="What I did", body=details.strip()[:20_000],
+                                created_at=datetime.now()))
+    task.done_at, task.entry_id = datetime.now(), e.id
+    s.commit()
+    return e
+
+
+def uncheck(s: Session, task: DailyTask) -> bool:
+    """Not done after all. The record it logged goes too, unless you've since checked it in the queue or made a win
+    from it. Returns whether the record was deleted."""
+    from .storage.models import GuideLink, JournalAttachment, V2momLink
+    e = s.get(JournalEntry, task.entry_id) if task.entry_id else None
+    task.done_at, task.entry_id = None, None
+    gone = False
+    if e is not None and not e.reviewed and not s.scalar(select(Win.id).where(Win.entry_id == e.id).limit(1)):
+        for model in (JournalAttachment, GuideLink, V2momLink):
+            s.execute(delete(model).where(model.entry_id == e.id))
+        s.delete(e)
+        gone = True
+    s.commit()
+    return gone

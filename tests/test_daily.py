@@ -241,3 +241,87 @@ def test_a_notebook_without_goals_never_runs_the_daily_step(tmp_path):
     init_db(engine)
     nine = datetime.combine(TODAY, datetime.min.time()).replace(hour=9)
     assert _real_daily_due(make_session_factory(engine), nine) is False
+
+
+def _web(nb):
+    from careeros.web.app import create_app
+    from starlette.testclient import TestClient
+    dd, *_ = nb
+    app = create_app(dd)
+    return TestClient(app, base_url="http://127.0.0.1"), app.state.csrf_token
+
+
+def _three(dd):
+    with session(dd) as s:
+        ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
+        return [t.id for t in daily.suggest(s, TODAY, reader=lambda p, d: reply(ids))]
+
+
+def test_home_card_shows_three_ticks_and_the_empty_state(nb):
+    dd, *_ = nb
+    setup(dd)
+    c, _ = _web(nb)
+    home = c.get("/").text
+    assert "Today's three" in home and "No three yet today" in home and 'data-label="Suggest now"' in home
+    _three(dd)
+    home = c.get("/").text
+    assert home.count('aria-label="Mark done: Write a two-line summary') == 3 and "~5 min" in home
+    assert 'data-label="New three"' in home and home.index("Today's three") < home.index('aria-label="Progress"')
+
+
+def test_done_logs_a_record_with_details_and_undo_takes_it_back(nb):
+    from careeros.web.app import create_app  # noqa: F401
+    dd, *_ = nb
+    setup(dd)
+    c, tok = _web(nb)
+    tid = _three(dd)[0]
+    assert c.post(f"/daily/{tid}/done", data={"details": "x"}).status_code == 403  # CSRF
+    r = c.post(f"/daily/{tid}/done", data={"csrf": tok, "details": "Sent it to the team channel."},
+               follow_redirects=False)
+    assert r.status_code == 303
+    with session(dd) as s:
+        t = s.get(DailyTask, tid)
+        e = s.get(JournalEntry, t.entry_id)
+        assert t.done_at and (e.kind, e.status, e.source, e.text) == ("task", "done", "daily", t.text)
+        assert s.query(JournalAttachment).filter_by(entry_id=e.id, body="Sent it to the team channel.").count() == 1
+        eid = e.id
+    home = c.get("/").text
+    assert 'aria-label="Mark not done: Write a two-line summary' in home
+    c.post(f"/daily/{tid}/undo", data={"csrf": tok})
+    with session(dd) as s:
+        assert s.get(DailyTask, tid).done_at is None and s.get(JournalEntry, eid) is None
+
+
+def test_undo_keeps_a_record_you_already_checked(nb):
+    dd, *_ = nb
+    setup(dd)
+    c, tok = _web(nb)
+    tid = _three(dd)[0]
+    c.post(f"/daily/{tid}/done", data={"csrf": tok})
+    with session(dd) as s:
+        e = s.get(JournalEntry, s.get(DailyTask, tid).entry_id)
+        e.reviewed = True
+        s.commit()
+        eid = e.id
+    c.post(f"/daily/{tid}/undo", data={"csrf": tok})
+    with session(dd) as s:
+        assert s.get(DailyTask, tid).done_at is None and s.get(JournalEntry, eid) is not None
+
+
+def test_all_three_done_and_the_suggest_button_starts_a_job(nb, monkeypatch):
+    dd, *_ = nb
+    setup(dd)
+    c, tok = _web(nb)
+    for tid in _three(dd):
+        c.post(f"/daily/{tid}/done", data={"csrf": tok})
+    assert "All three done. Nice." in c.get("/").text
+    started = []
+    monkeypatch.setattr("careeros.web.syncs.run_daily",
+                        lambda job, S, lock, force=False: (started.append(force), job.finish("ok")))
+    assert c.post("/daily/suggest", data={"csrf": tok, "force": "1"}, headers={"X-Sync": "1"}).json() == {"started": True}
+    import time
+    for _ in range(50):
+        if started:
+            break
+        time.sleep(0.02)
+    assert started == [True]
