@@ -71,9 +71,8 @@ def load_user(dd) -> tuple[str, str] | None:
 
 
 def save_user(dd, uid: str, name: str) -> None:
-    p = dd.root / USER_FILE
-    p.write_text(json.dumps(dict(id=uid, name=name)))
-    p.chmod(0o600)
+    from ..config import write_private
+    write_private(dd.root / USER_FILE, json.dumps(dict(id=uid, name=name)))
 
 
 def user(dd) -> tuple[str, str]:
@@ -121,7 +120,7 @@ def parse(raw: str) -> tuple[list[Message], str]:
 
 
 def fetch(uid: str, since: date, today: date | None = None) -> tuple[list[Message], int]:
-    """Messages mentioning you, from people (not you, not bots), a month per search, following extra pages.
+    """Messages mentioning you, from people (not you, not bots), one CHUNK of days per search, following extra pages.
     Returns (messages, weeks not fully read: a search that didn't come back, or more than MAX_PAGES pages)."""
     from ..claude_cli import ClaudeError, call_tools, connector_error
     today = today or date.today()
@@ -167,14 +166,14 @@ def _norm(text: str) -> str:
 
 
 def _read(batch: list[Message], name: str) -> list[tuple[Message, str]]:
-    from ..claude_cli import ClaudeError, ask
+    from ..claude_cli import ClaudeError, ask, reply_json
     data = json.dumps({"messages": [dict(id=f"m{i}", from_=m.who, channel=m.channel, text=_norm(m.text)[:1500])
                                     for i, m in enumerate(batch)]}).replace('"from_"', '"from"')
     raw = ask(FILTER_PROMPT.format(name=(name.split() or ["the user"])[0], full=name or "the user"), data, timeout=300)
-    try:
-        got = json.loads(raw[raw.index("{"):raw.rindex("}") + 1])["results"]
-    except (ValueError, KeyError, TypeError):
-        raise ClaudeError("Claude's answer about the kudos couldn't be read.") from None
+    got = reply_json(raw)
+    if not isinstance(got, dict) or "results" not in got:
+        raise ClaudeError("Claude's answer about the kudos couldn't be read.")
+    got = got["results"]
     out = []
     for r in got if isinstance(got, list) else []:
         i = str(r.get("id", ""))[1:]
@@ -203,9 +202,8 @@ def choose(msgs: list[Message], uid: str, name: str, progress=None) -> list[tupl
 
 
 def since(s: Session) -> date:
-    from ..storage.sync_log import status
-    last = status(s)[SOURCE]["at"]
-    return (last - timedelta(days=2)).date() if last else date.today() - FIRST_LOOKBACK
+    from ..storage.sync_log import pull_from
+    return pull_from(s, SOURCE, FIRST_LOOKBACK)
 
 
 def new(s: Session, msgs: list[Message]) -> list[Message]:

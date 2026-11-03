@@ -5,7 +5,6 @@ Everything Claude decides is saved marked as AI (by_ai / kind_was) so the Intake
 from __future__ import annotations
 
 import json
-import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Callable
@@ -13,7 +12,7 @@ from typing import Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, ask
+from ..claude_cli import ClaudeError, ask, reply_results
 from ..storage.models import GuideLink, JournalAttachment, JournalEntry, Win
 from ..v2mom import links as v2links
 from .service import experiences, skills
@@ -60,6 +59,7 @@ def _context(s: Session, ids: list[int]) -> dict[int, str]:
 
 
 def guide_payload(s: Session) -> tuple[list[dict], dict[str, int]]:
+    """The leveling guide as short ids (E0, S0) for the prompt, and the map back to guide items."""
     rows, ids = [], {}
     for n, g in enumerate(experiences(s)):
         ids[f"E{n}"] = g.id
@@ -71,13 +71,7 @@ def guide_payload(s: Session) -> tuple[list[dict], dict[str, int]]:
 
 
 def _parse(reply: str) -> list[dict]:
-    m = re.search(r"\{.*\}", reply, re.S)
-    try:
-        got = json.loads(m.group(0)) if m else {}
-    except ValueError:
-        return []
-    res = got.get("results") if isinstance(got, dict) else None
-    return [r for r in res if isinstance(r, dict)] if isinstance(res, list) else []
+    return reply_results(reply)
 
 
 def read_batch(guide: list[dict], themes: list[str], records: list[dict],
@@ -134,6 +128,7 @@ def _apply(s: Session, e: JournalEntry, r: dict, ids: dict[str, int], themes: li
 def review(s: Session, *, redo: bool = False, limit: int | None = None,
            reader: Callable[[list[dict], list[str], list[dict]], dict[str, dict]] = read_batch,
            progress: Callable[[int, int], None] | None = None) -> dict[str, int]:
+    """Claude reads records it hasn't read: guide links, V2MOM methods, type fixes, drafted wins, all marked AI."""
     from ..web.app import THEMES
     todo = pending(s, redo)[:limit]
     guide, ids = guide_payload(s)

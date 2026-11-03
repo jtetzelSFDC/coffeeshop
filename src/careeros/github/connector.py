@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..storage.models import JournalAttachment, JournalEntry
+from ..storage.sync_log import local_day
 
 SOURCE = "github"
 FIRST_LOOKBACK = timedelta(days=365)  # the promo case's default window
@@ -63,11 +64,8 @@ def login() -> str:
         raise GitHubError("GitHub isn't signed in. In Terminal run: gh auth login")
 
 
-def _local_day(ts: str) -> date:
-    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().date()
-
-
 def parse(text: str, role: str, me: str) -> list[PR]:
+    """The PRs in one `gh search prs --json` answer for `role`; your own PRs never count as reviews."""
     out = []
     for r in json.loads(text or "[]"):
         if role == "reviewer" and (r.get("author") or {}).get("login", "").lower() == me.lower():
@@ -76,7 +74,7 @@ def parse(text: str, role: str, me: str) -> list[PR]:
         if not ts or str(ts).startswith("0001"):
             ts = r.get("updatedAt")
         out.append(PR(r["repository"]["nameWithOwner"], int(r["number"]), r["title"].strip(), r["url"], role,
-                      _local_day(ts)))
+                      local_day(ts)))
     return out
 
 
@@ -96,9 +94,8 @@ def fetch(since: date, today: date | None = None) -> tuple[str, list[PR]]:
 
 
 def since(s: Session) -> date:
-    from ..storage.sync_log import status
-    last = status(s)[SOURCE]["at"]
-    return (last - timedelta(days=2)).date() if last else date.today() - FIRST_LOOKBACK
+    from ..storage.sync_log import pull_from
+    return pull_from(s, SOURCE, FIRST_LOOKBACK)
 
 
 def week_key(repo: str, monday: date) -> str:
@@ -114,6 +111,7 @@ def _list_body(prs: dict[str, str]) -> str:
 
 
 def _listed(body: str) -> dict[str, str]:
+    """url -> title from the connector's "- Title — https://…" lines."""
     return {line.rsplit(" — ", 1)[1]: line[2:].rsplit(" — ", 1)[0] for line in body.splitlines() if " — " in line}
 
 

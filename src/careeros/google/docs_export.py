@@ -8,12 +8,11 @@ was sent is kept in the notebook's exports/ folder.
 from __future__ import annotations
 
 import difflib
-import os
 import re
 from pathlib import Path
 
 from ..claude_cli import ClaudeError, call_tool, connector_error
-from ..config import DataDir
+from ..config import DataDir, write_private
 
 TOOL = "mcp__plugin_google-workspace_google-workspace__import_to_google_doc"
 READ_TOOL = "mcp__plugin_google-workspace_google-workspace__get_doc_as_markdown"
@@ -50,9 +49,7 @@ def _write(dd: DataDir, name: str, text: str) -> Path:
     folder = dd.root / "exports"
     folder.mkdir(mode=0o700, exist_ok=True)
     path = folder / name
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(text)
+    write_private(path, text)
     return path
 
 

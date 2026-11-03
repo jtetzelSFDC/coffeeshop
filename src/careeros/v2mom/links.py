@@ -3,7 +3,6 @@ evidence behind each method."""
 from __future__ import annotations
 
 import json
-import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Callable
@@ -11,7 +10,7 @@ from typing import Callable
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, ask
+from ..claude_cli import ClaudeError, ask, reply_results
 from ..storage.models import JournalEntry, V2momLink, V2momMethod, Win
 from . import store
 
@@ -133,11 +132,6 @@ def evidence(s: Session) -> dict[int, dict]:
                       wins=sorted(ev["wins"].values(), key=lambda w: w.day, reverse=True)) for mid, ev in out.items()}
 
 
-def counts(s: Session) -> dict[int, dict[str, int]]:
-    """method id -> {entries: n, wins: n}."""
-    return {mid: dict(entries=len(ev["entries"]), wins=len(ev["wins"])) for mid, ev in evidence(s).items()}
-
-
 def pending(s: Session, since: str = "") -> list[JournalEntry]:
     """Records (dated `since` or later, if given) that the guide review already read, or the user checked, and
     Claude hasn't read against the V2MOM. Unread ones get their V2MOM picks in the guide review itself."""
@@ -150,13 +144,7 @@ def pending(s: Session, since: str = "") -> list[JournalEntry]:
 
 def read_batch(methods: list[dict], records: list[dict]) -> dict[str, list]:
     reply = ask(TAG_PROMPT, json.dumps(dict(v2mom=methods, records=records)), timeout=480)
-    m = re.search(r"\{.*\}", reply, re.S)
-    try:
-        got = json.loads(m.group(0)) if m else {}
-    except ValueError:
-        return {}
-    res = got.get("results") if isinstance(got, dict) else None
-    return {str(r.get("id")): r.get("v2mom") for r in res if isinstance(r, dict)} if isinstance(res, list) else {}
+    return {str(r.get("id")): r.get("v2mom") for r in reply_results(reply)}
 
 
 def tag(s: Session, todo: list[JournalEntry],

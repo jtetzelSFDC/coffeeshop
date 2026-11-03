@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import json
-import re
 from concurrent.futures import ThreadPoolExecutor
 
-from ..claude_cli import ClaudeError, ask
+from ..claude_cli import ClaudeError, ask, reply_json
 from .parse import SlackItem
 
 KINDS = ("meeting", "conversation", "document", "task", "note")
@@ -26,11 +25,8 @@ def _batch(items: list[SlackItem]) -> dict[str, str]:
     ids = {f"i{n}": it.key for n, it in enumerate(items)}
     data = json.dumps([{"id": i, "text": f"{it.text}\n{it.body[:1200]}"} for i, it in zip(ids, items)])
     reply = ask(PROMPT, data)
-    m = re.search(r"\{.*\}", reply, re.S)
-    try:
-        got = json.loads(m.group(0)) if m else {}
-    except ValueError:
-        got = {}
+    got = reply_json(reply)
+    got = got if isinstance(got, dict) else {}
     return {key: (got.get(i) if got.get(i) in KINDS else "note") for i, key in ids.items()}
 
 

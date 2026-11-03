@@ -14,14 +14,15 @@ class Base(DeclarativeBase):
 
 
 class JournalEntry(Base):
-    """The user's own day-to-day notes (meetings, conversations, documents). Not evidence, no approvals."""
+    """One record of your work: a meeting, conversation, document, task, kudos, or note, typed by you or pulled in
+    by a sync. Claude sorts it (kind, guide links, V2MOM methods, activity) and marks its picks AI until you check it."""
     __tablename__ = "journal_entry"
     id: Mapped[int] = mapped_column(primary_key=True)
     day: Mapped[str] = mapped_column(String, index=True)  # YYYY-MM-DD
-    kind: Mapped[str] = mapped_column(String)  # meeting | conversation | document | note
+    kind: Mapped[str] = mapped_column(String)  # meeting | conversation | document | task | recognition | note
     text: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime)
-    source: Mapped[str] = mapped_column(String, default="")  # "" = typed by the user | calendar
+    source: Mapped[str] = mapped_column(String, default="")  # "" typed | calendar, tasks, slack, docs, github, kudos, daily
     external_id: Mapped[str | None] = mapped_column(String, index=True, default=None)
     status: Mapped[str] = mapped_column(String, default="")  # tasks only: open | done
     kind_was: Mapped[str] = mapped_column(String, default="")  # the kind before Claude changed it, else ""
@@ -62,7 +63,7 @@ class RemovedEntry(Base):
 
 
 class SyncRun(Base):
-    """One pull from a source (Slack tracker, Google Calendar, Google Tasks), even when nothing new came in."""
+    """One pull or run of a source (see sync_log.SOURCES), even when nothing new came in."""
     __tablename__ = "sync_run"
     id: Mapped[int] = mapped_column(primary_key=True)
     source: Mapped[str] = mapped_column(String, index=True)
@@ -91,7 +92,8 @@ class JournalAttachment(Base):
 
 
 class Win(Base):
-    """An accomplishment the user chose to keep for reviews, promotion cases, and resumes. Written by the user."""
+    """An accomplishment kept for reviews, promotion cases, and resumes: yours, or drafted by Claude (by_ai) until
+    you edit it."""
     __tablename__ = "win"
     id: Mapped[int] = mapped_column(primary_key=True)
     day: Mapped[str] = mapped_column(String, index=True)  # YYYY-MM-DD
@@ -253,7 +255,7 @@ class V2momLink(Base):
 
 
 class GuideLink(Base):
-    """The user's statement that a win or a notebook entry shows a guide item."""
+    """A win or a notebook entry showing a guide item: yours, or Claude's pick (by_ai) until you check it."""
     __tablename__ = "guide_link"
     __table_args__ = (UniqueConstraint("item_id", "win_id", "entry_id"),)
     id: Mapped[int] = mapped_column(primary_key=True)

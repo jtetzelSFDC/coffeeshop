@@ -156,7 +156,7 @@ def test_evidence_counts_wins_made_from_linked_records_and_removal_cleans_up(nb)
         s.commit()
         ev = links.evidence(s)
         assert [e.id for e in ev[m["M1"]]["entries"]] == [b, a] and [x.title for x in ev[m["M1"]]["wins"]] == [w.title]
-        assert links.counts(s) == {m["M1"]: dict(entries=2, wins=1), m["M2"]: dict(entries=0, wins=1)}
+        assert (len(ev[m["M2"]]["entries"]), [x.title for x in ev[m["M2"]]["wins"]]) == (0, [solo.title])
         wid = solo.id
     assert form(c, f"/sheet/{a}/remove", token).status_code == 303
     assert form(c, f"/wins/{wid}/delete", token).status_code == 303

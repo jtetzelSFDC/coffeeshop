@@ -7,13 +7,10 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .guide import activities
 from .storage.models import GuideLink, JournalEntry, Win
 
 WEEKS = 12
-
-
-def _half_start(today: date) -> str:
-    return date(today.year, 1 if today.month <= 6 else 7, 1).isoformat()
 
 
 def momentum(s: Session, today: date) -> list[dict]:
@@ -36,10 +33,11 @@ def momentum(s: Session, today: date) -> list[dict]:
 
 
 def build(s: Session, today: date | None = None) -> dict:
+    """Everything Home's progress card shows: grade readiness, skills, wins, kudos, records to check, momentum."""
     from .guide.service import CURRENT_GRADE, has_guide, promo_map
     from .v2mom import report
     today = today or date.today()
-    half = _half_start(today)
+    half = activities.windows(today)["half"][0]
     pm = promo_map(s) if has_guide(s) else None
     grades = []
     skills = None

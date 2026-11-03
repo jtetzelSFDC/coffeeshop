@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..storage.models import JournalAttachment, JournalEntry
+from ..storage.sync_log import local_day
 
 SOURCE = "docs"
 SEARCH_TOOL = "mcp__plugin_google-workspace_google-workspace__search_drive_files"
@@ -56,14 +57,10 @@ class Doc:
         return f"gdoc:{self.gid}:{self.modified - timedelta(days=self.modified.weekday())}"
 
 
-def _local_day(ts: str) -> date:
-    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().date()
-
-
 def parse(text: str, owned: bool) -> list[Doc]:
     """One search answer. Others' files are kept only when you were the last to edit them."""
     me = (m.group(1).lower() if (m := HEADER.search(text)) else "")
-    return [Doc(gid, name.strip(), TYPES[t], _local_day(mod), link, owned)
+    return [Doc(gid, name.strip(), TYPES[t], local_day(mod), link, owned)
             for name, gid, t, mod, editor, link in ROW.findall(text)
             if t in TYPES and (owned or (me and editor.lower() == me))]
 
@@ -103,9 +100,8 @@ def fetch(since: date, today: date | None = None) -> tuple[list[Doc], int]:
 
 
 def since(s: Session) -> date:
-    from ..storage.sync_log import status
-    last = status(s)[SOURCE]["at"]
-    return (last - timedelta(days=2)).date() if last else date.today() - FIRST_LOOKBACK
+    from ..storage.sync_log import pull_from
+    return pull_from(s, SOURCE, FIRST_LOOKBACK)
 
 
 def _meeting_doc_ids(s: Session) -> set[str]:
@@ -149,6 +145,7 @@ def merge(s: Session, docs: list[Doc], complete: bool = True) -> dict[str, int]:
 
 
 def summarize(gid: str, kind: str, name: str) -> str:
+    """Read one file through the connector, then a two-line summary from Claude with no tools."""
     from ..claude_cli import ClaudeError, ask, call_tool, connector_error
     text = call_tool(f"Call the get_drive_file_content tool once with file_id={gid}. When it returns, reply with "
                      "only DONE.", READ_TOOL, timeout=300)

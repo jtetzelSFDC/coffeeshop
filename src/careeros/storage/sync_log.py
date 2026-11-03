@@ -35,6 +35,7 @@ def short(d: datetime, now: datetime) -> str:
 
 
 def status(s: Session, now: datetime | None = None) -> dict[str, dict]:
+    """Per source: when it last ran, how many came in, and whether that's recent enough (the chips)."""
     now = now or datetime.now()
     out = {}
     for src, label in SOURCES.items():
@@ -65,3 +66,15 @@ def status(s: Session, now: datetime | None = None) -> dict[str, dict]:
                         added=run.added if run else None, estimated=bool(last and not run),
                         newest=when(date.fromisoformat(newest), now) if newest else "", ok=ok, hint=hint)
     return out
+
+
+def local_day(ts: str) -> date:
+    """The local calendar day of a UTC timestamp like 2026-10-27T13:43:50Z."""
+    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone().date()
+
+
+def pull_from(s: Session, source: str, first_lookback: timedelta) -> date:
+    """Where a source's next pull starts: two days before its last one (so nothing at the edge is missed; the
+    import skips what's already here), or `first_lookback` ago the first time."""
+    last = status(s)[source]["at"]
+    return (last - timedelta(days=2)).date() if last else date.today() - first_lookback

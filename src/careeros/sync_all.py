@@ -1,5 +1,6 @@
-"""`careeros sync all`: back up, then run the same Slack and Google syncs as the buttons, then GitHub, with a log.
-Once a month it also re-reads the V2MOM.
+"""`careeros sync all`: back up, then run the same Slack, Google and GitHub syncs as the buttons, with a log.
+Once a month it also re-reads the V2MOM and re-estimates the KSOs, and once a day (from 8 AM) it suggests the daily
+three, last, so it sees the fresh work.
 
 Run by the scheduled task at 8 AM and 6 PM and at login. A run that's already covered by an earlier one since
 the latest scheduled time does nothing, so the login catch-up is cheap.
@@ -34,6 +35,7 @@ def last_scheduled(now: datetime) -> datetime:
 
 
 def mac_notify(title: str, message: str) -> None:
+    """A macOS notification (quoted for AppleScript); never fails the sync."""
     def q(text: str) -> str:
         return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
     try:

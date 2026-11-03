@@ -1,6 +1,7 @@
 """KSOs: reading the framework (one fiscal year per row), and matching V2MOM methods to its components.
 All with fake readers and the made-up framework in careeros.fixtures.kso."""
 import json
+from datetime import date
 import stat
 
 import pytest
@@ -83,7 +84,9 @@ def test_sources_come_from_links_and_stay_private(nb):
 
 
 def test_fiscal_years_are_named_one_way(nb):
-    assert [framework.fiscal_year(x) for x in ("FY2027", "fy 27", "FY27 Q4", "2027")] == ["FY27", "FY27", "FY27", ""]
+    from careeros.v2mom.report import fiscal_year, fy_name
+    assert [fy_name(x) for x in ("FY2027", "fy 27", "FY27 Q4", "2027")] == ["FY27", "FY27", "FY27", ""]
+    assert fiscal_year("FY2027", date(2027, 3, 1))[0] == "FY27"  # not this year's FY28
     dd, *_ = nb
     with session(dd) as s:
         assert connect(s, "FY2027").fiscal_year == "FY27"

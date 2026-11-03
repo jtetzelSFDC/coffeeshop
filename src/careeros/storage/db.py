@@ -10,6 +10,7 @@ from .models import Base
 
 
 def make_engine(db_path: Path | str) -> Engine:
+    """The notebook's SQLite engine: foreign keys on, WAL mode, and a 5-second wait for a busy database."""
     engine = create_engine(f"sqlite:///{db_path}", future=True)
 
     @event.listens_for(engine, "connect")
@@ -24,6 +25,7 @@ def make_engine(db_path: Path | str) -> Engine:
 
 
 def init_db(engine: Engine) -> None:
+    """Create any missing tables, then add columns newer than the notebook (`added`); nothing is dropped."""
     Base.metadata.create_all(engine)
     # create_all never alters an existing table, so add columns introduced after a notebook was made.
     added = {

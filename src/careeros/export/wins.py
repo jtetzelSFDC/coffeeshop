@@ -20,6 +20,7 @@ def _line(w: Win, *, theme: bool) -> str:
 
 
 def wins_markdown(wins: list[Win], year: int, today: date | None = None) -> str:
+    """A year's wins as Markdown, largest first, flagging ones still missing why they mattered."""
     wins = sorted(wins, key=lambda w: (ORDER.get(w.size, 3), w.day))
     counts = {s: sum(1 for w in wins if w.size == s) for s in ORDER}
     missing = sum(1 for w in wins if not w.impact)

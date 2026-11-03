@@ -1,7 +1,6 @@
 """Saves Slack canvas items as notebook entries, tagged as coming from Slack, once each."""
 from __future__ import annotations
 
-import os
 import re
 from datetime import datetime
 from typing import Callable
@@ -9,7 +8,7 @@ from typing import Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import DataDir
+from ..config import DataDir, write_private
 from ..storage.models import JournalAttachment, JournalEntry
 from .parse import TRACKER, SlackItem
 
@@ -25,6 +24,7 @@ def new_items(s: Session, items: list[SlackItem]) -> list[SlackItem]:
 
 
 def import_items(s: Session, items: list[SlackItem], classify: Callable[[list[SlackItem]], dict[str, str]]) -> dict:
+    """Save new tracker items as records, sorted by Claude into kinds; returns counts per kind."""
     todo = new_items(s, items)
     kinds = classify(todo) if todo else {}
     todo = new_items(s, todo)  # classify takes minutes; another sync may have saved some of these meanwhile
@@ -62,9 +62,7 @@ def save_canvas_id(dd: DataDir, value: str) -> str:
     m = re.search(r"\b(F[A-Z0-9]{8,})\b", value.strip())
     if not m:
         raise ValueError("That doesn't look like a canvas link or ID (it starts with F, like F0EXAMPLE01).")
-    fd = os.open(canvas_file(dd), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(m.group(1) + "\n")
+    write_private(canvas_file(dd), m.group(1) + "\n")
     return m.group(1)
 
 

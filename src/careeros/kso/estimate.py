@@ -4,7 +4,6 @@ sees your target incentive or any dollar amount."""
 from __future__ import annotations
 
 import json
-import re
 from contextlib import nullcontext
 from datetime import date, datetime, timedelta
 from typing import Callable
@@ -12,7 +11,7 @@ from typing import Callable
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, ask
+from ..claude_cli import ClaudeError, ask, clip, reply_json
 from ..storage.models import JournalEntry, KsoEstimate, KsoFramework, SyncRun
 from . import framework, map as kmap
 
@@ -37,10 +36,6 @@ weekly habit.
 Reply with only JSON: {{"ksos": [{{"key": "1", "rating": 3, "why": {{"1.1": "..."}}, "next": ["...", "...", "..."]}}]}}"""
 
 
-def _clip(text: str, n: int) -> str:
-    text = " ".join(str(text).split())
-    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
-
 
 def context(s: Session, fw: KsoFramework, today: date | None = None) -> dict:
     """What Claude reads: the rubric, the matched V2MOM methods, and work titles (newest first, capped). No money."""
@@ -59,15 +54,15 @@ def context(s: Session, fw: KsoFramework, today: date | None = None) -> dict:
         for c in k["components"]:
             methods, work, budget = [], [], share
             for m, _ in picks[c["key"]]:
-                methods.append(dict(id=m.label, name=_clip(m.name, 120), status=m.status, progress=m.progress,
-                                    measures=[dict(text=_clip(x.get("text", ""), 160), status=x.get("status", ""),
+                methods.append(dict(id=m.label, name=clip(m.name, 120), status=m.status, progress=m.progress,
+                                    measures=[dict(text=clip(x.get("text", ""), 160), status=x.get("status", ""),
                                                    progress=x.get("progress"),
-                                                   comments=_clip(x.get("comments", ""), 200))
+                                                   comments=clip(x.get("comments", ""), 200))
                                               for x in m.measures[:6]]))
                 e = ev.get(m.id, dict(entries=[], wins=[]))
                 items = [(w.day, f"win: {w.title}") for w in e["wins"]] + \
                         [(x.day, x.text) for x in e["entries"] if x.status != "open"]
-                work += [(day, f"{day} {m.label}: {_clip(title, 100)}") for day, title in items if lo <= day <= hi]
+                work += [(day, f"{day} {m.label}: {clip(title, 100)}") for day, title in items if lo <= day <= hi]
             lines = []
             for _, line in sorted(work, reverse=True):  # newest first across the part's methods
                 if budget < len(line):
@@ -84,11 +79,9 @@ def context(s: Session, fw: KsoFramework, today: date | None = None) -> dict:
 
 
 def validate(reply: str, fw: KsoFramework) -> list[dict]:
-    m = re.search(r"\{.*\}", reply, re.S)
-    try:
-        data = json.loads(m.group(0)) if m else None
-    except ValueError:
-        data = None
+    """Claude's estimate in a fixed shape (every KSO, a 1-5, a reason per part, next steps); ValueError says what's
+    off."""
+    data = reply_json(reply)
     ksos = data.get("ksos") if isinstance(data, dict) else None
     if not isinstance(ksos, list):
         raise ValueError("there's no list of KSOs")
@@ -108,7 +101,7 @@ def validate(reply: str, fw: KsoFramework) -> list[dict]:
         if not isinstance(steps, list) or len(steps) != STEPS or any(
                 not isinstance(x, str) or not x.strip() or len(x) > MAX_STEP for x in steps):
             raise ValueError(f"KSO {k['key']} doesn't have {STEPS} short next steps")
-        got[k["key"]] = dict(key=k["key"], rating=r, why={c: _clip(why[c], MAX_WHY) for c in want[k["key"]]},
+        got[k["key"]] = dict(key=k["key"], rating=r, why={c: clip(why[c], MAX_WHY) for c in want[k["key"]]},
                              next=[" ".join(x.split()) for x in steps])
     if set(got) != set(want):
         raise ValueError("not every KSO has an estimate")

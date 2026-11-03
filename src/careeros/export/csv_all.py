@@ -29,6 +29,7 @@ def _csv(header: list[str], rows) -> bytes:
 
 
 def notebook_zip(s: Session) -> bytes:
+    """Download everything: entries, pasted notes, wins and guide links as CSVs in one zip."""
     entries = list(s.scalars(select(JournalEntry).order_by(JournalEntry.day, JournalEntry.id)))
     text_of = {e.id: (e.day, e.text) for e in entries}
     atts = s.scalars(select(JournalAttachment).order_by(JournalAttachment.entry_id, JournalAttachment.id))

@@ -13,11 +13,18 @@ QUIET_DAYS = 30
 LATE_STATUS = ("at risk", "off track", "behind")
 
 
+def fy_name(text: str) -> str:
+    """FY27 from "FY27", "fy 27", "FY2027" or a file name holding one; "" when there's none. The one way fiscal
+    years are written everywhere, so the V2MOM, KSOs and PDFs always agree."""
+    m = re.search(r"FY\s*(?:20)?(\d{2})\b", text or "", re.I)
+    return f"FY{m.group(1)}" if m else ""
+
+
 def fiscal_year(fy: str, today: date) -> tuple[str, date, date]:
-    """Salesforce's fiscal year runs Feb 1 to Jan 31 and is named for the year it ends in: FY27 is Feb 1, 2026 to
+    """The company's fiscal year runs Feb 1 to Jan 31 and is named for the year it ends in: FY27 is Feb 1, 2026 to
     Jan 31, 2027. Taken from the V2MOM's "FY27" when it has one, else from `today`."""
-    m = re.fullmatch(r"FY(\d{2})", fy.strip().upper())
-    end = 2000 + int(m.group(1)) if m else today.year + (today.month >= 2)
+    name = fy_name(fy)
+    end = 2000 + int(name[2:]) if name else today.year + (today.month >= 2)
     return f"FY{end % 100:02d}", date(end - 1, 2, 1), date(end, 1, 31)
 
 

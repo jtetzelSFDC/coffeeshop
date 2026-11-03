@@ -7,17 +7,14 @@ says so instead.
 """
 from __future__ import annotations
 
-import json
 import re
-import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, _claude
+from ..claude_cli import ClaudeError, ask
 from ..storage.models import JournalAttachment, JournalEntry
 from .calendar import SOURCE, CalendarError
 
@@ -48,18 +45,13 @@ def doc_ids(urls: list[str]) -> list[str]:
 
 
 def summarize(ids: list[str]) -> str:
+    """Claude reads the notes Docs (and only those, plus its own saved copy of a long one) and summarizes them."""
     try:
-        run = subprocess.run(
-            [_claude(), "-p", PROMPT.format(ids=", ".join(ids)), "--tools", "Read", "--allowedTools", TOOL, *READ_SAVED,
-             "--output-format", "json", "--max-turns", str(len(ids) + 8)],
-            capture_output=True, text=True, timeout=TIMEOUT_SECONDS, cwd=Path.home())
-        out = json.loads(run.stdout)
+        text = ask(PROMPT.format(ids=", ".join(ids)), "", TIMEOUT_SECONDS, tools="Read", allowed=[TOOL, *READ_SAVED],
+                   max_turns=len(ids) + 8).strip()
     except ClaudeError as exc:
-        raise CalendarError(str(exc)) from None
-    except (subprocess.TimeoutExpired, ValueError):
-        raise CalendarError("Claude didn't finish a summary.") from None
-    text = str(out.get("result") or "").strip()
-    if out.get("is_error") or not text:
+        raise CalendarError(f"Claude couldn't summarize those notes ({exc}).") from None
+    if not text:
         raise CalendarError("Claude couldn't read those notes.")
     return text[:MAX_SUMMARY]
 
@@ -77,6 +69,7 @@ def pending(s: Session, first: date, last: date) -> dict[int, list[str]]:
 
 
 def summarize_pending(s: Session, first: date, last: date, progress=None) -> dict[str, int]:
+    """Summarize meetings whose notes have no summary yet, a few at a time; a failed one waits for the next sync."""
     todo = pending(s, first, last)
 
     def one(item: tuple[int, list[str]]) -> tuple[int, str | None]:

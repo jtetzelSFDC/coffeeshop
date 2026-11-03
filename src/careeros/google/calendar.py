@@ -5,7 +5,6 @@ and meeting links are dropped here, before anything reaches the database.
 """
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
@@ -15,7 +14,7 @@ import recurring_ical_events
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..config import DataDir
+from ..config import DataDir, write_private
 from ..storage.models import JournalAttachment, JournalEntry
 
 SOURCE = "calendar"
@@ -43,10 +42,7 @@ def save_url(dd: DataDir, url: str) -> None:
     url = url.strip()
     if not url.startswith("https://"):
         raise CalendarError("That doesn't look like a calendar address (it should start with https://).")
-    fd = os.open(url_file(dd), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(url + "\n")
-    os.chmod(url_file(dd), 0o600)
+    write_private(url_file(dd), url + "\n")
 
 
 def load_url(dd: DataDir) -> str:
@@ -57,6 +53,7 @@ def load_url(dd: DataDir) -> str:
 
 
 def fetch_ics(url: str) -> bytes:
+    """Download a secret-address iCal feed (no redirects, size-capped); CalendarError with a plain reason."""
     try:
         with httpx.stream("GET", url, timeout=30, follow_redirects=False) as r:
             if r.status_code != 200:

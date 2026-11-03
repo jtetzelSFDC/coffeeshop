@@ -19,6 +19,7 @@ def _evidence(x: dict) -> list[str]:
 
 
 def promo_markdown(pm: dict, today: date | None = None) -> str:
+    """The Promo map as a Markdown promotion-case draft: each grade's experiences and skills with evidence."""
     grades = pm["grades"]
     out = [f"# Promotion case draft: Grade {pm['current']} to Grade {grades[0]}"
            + (f", with Grade {grades[-1]} evidence" if len(grades) > 1 else ""), "",

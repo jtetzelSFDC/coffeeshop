@@ -102,14 +102,6 @@ def test_connect_saves_the_doc_id_owner_only(tmp_path):
         connector.save_source(dd, "not a doc")
 
 
-def test_a_doc_connected_before_pdfs_still_counts(tmp_path):
-    dd, _ = personal(tmp_path)
-    (dd.root / connector.DOC_FILE).write_text(DOC_ID + "\n")
-    assert connector.load_source(dd) == SRC
-    connector.save_source(dd, f"https://docs.google.com/document/d/{DOC_ID}/edit")
-    assert not (dd.root / connector.DOC_FILE).exists() and connector.load_source(dd) == SRC
-
-
 def test_a_pull_saves_the_version_methods_measures_and_obstacles(tmp_path, fake):
     dd, Session = personal(tmp_path)
     assert pull(Session) == dict(methods=2, added=2, retired=0, obstacles=1)

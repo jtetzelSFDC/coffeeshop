@@ -42,6 +42,7 @@ def parse_lists(text: str) -> list[tuple[str, datetime]]:
 
 
 def parse_tasks(text: str) -> list[Task]:
+    """The tasks in one list_tasks answer: title, done, completion (or due/updated) time, notes, Google's id."""
     out = []
     for block in re.split(r"\n(?=- )", text):
         head = TASK_HEAD.match(block.strip())

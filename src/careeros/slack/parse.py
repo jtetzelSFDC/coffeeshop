@@ -75,6 +75,7 @@ def _plain(s: str) -> str:
 
 
 def parse_tracker(md: str) -> list[SlackItem]:
+    """Items from a Work Activity Tracker canvas: each day's Primary Work bullets."""
     items: list[SlackItem] = []
     for sec in re.split(r"^## ", md, flags=re.M)[1:]:
         head, _, rest = sec.partition("\n")
@@ -140,6 +141,7 @@ def parse_promo(md: str, fallback_day: str | None = None) -> list[SlackItem]:
 
 
 def parse_canvas(raw: str, fallback_day: str | None = None) -> list[SlackItem]:
+    """Items from either canvas format (activity tracker or contributions); CanvasFormatError otherwise."""
     md = canvas_markdown(raw)
     if "**Primary Work**" in md or "slack_date:" in md:
         items = parse_tracker(md)

@@ -6,14 +6,13 @@ marked AI; a record you grouped or split by hand (work_fixed) is never regrouped
 from __future__ import annotations
 
 import json
-import re
 from datetime import date, datetime, timedelta
 from typing import Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, ask
+from ..claude_cli import ClaudeError, ask, reply_results
 from ..storage.models import JournalEntry, WorkItem
 
 WINDOW_DAYS = 14  # a record can join work whose latest record is at most this many days away
@@ -42,13 +41,7 @@ Reply with only JSON: {"results": [{"id": "r0", "work": {"new": "FullData sandbo
 
 
 def _parse(reply: str) -> dict[str, object]:
-    m = re.search(r"\{.*\}", reply, re.S)
-    try:
-        got = json.loads(m.group(0)) if m else {}
-    except ValueError:
-        return {}
-    res = got.get("results") if isinstance(got, dict) else None
-    return {str(r.get("id")): r.get("work") for r in res if isinstance(r, dict)} if isinstance(res, list) else {}
+    return {str(r.get("id")): r.get("work") for r in reply_results(reply)}
 
 
 def read_batch(open_work: list[dict], records: list[dict]) -> dict[str, object]:

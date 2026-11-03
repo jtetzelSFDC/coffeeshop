@@ -4,7 +4,6 @@ to one of those goals. Only titles go to Claude, never pasted notes or transcrip
 from __future__ import annotations
 
 import json
-import re
 from contextlib import nullcontext
 from datetime import date, datetime, timedelta
 from typing import Callable
@@ -13,7 +12,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .claude_cli import ClaudeError, ask
+from .claude_cli import ClaudeError, ask, clip, reply_json
 from .storage.models import DailyTask, JournalEntry, Win
 
 SOURCE = "daily"  # its runs show as the Daily chip
@@ -40,10 +39,6 @@ Reply with only JSON: {"tasks": [{"text": "...", "minutes": 5, "goal": "one goal
 "why": "..."}]}"""
 
 
-def _clip(text: str, n: int) -> str:
-    text = " ".join(str(text).split())
-    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
-
 
 def goals(s: Session, today: date) -> list[dict]:
     """What needs work, most useful first: V2MOM methods that are quiet, unstarted, or behind; KSO parts with no V2MOM
@@ -58,9 +53,9 @@ def goals(s: Session, today: date) -> list[dict]:
         m = x["m"]
         if m.status.lower() == "completed":
             continue
-        open_measures = [_clip(ms["text"], 90) for ms in m.measures if ms.get("status", "").lower() != "completed"]
+        open_measures = [clip(ms["text"], 90) for ms in m.measures if ms.get("status", "").lower() != "completed"]
         state = {"none": "nothing linked yet", "quiet": "no work in 30 days", "active": "active"}[x["state"]]
-        g = dict(id=f"V2MOM {m.label}", what=_clip(m.name, 90), status=m.status or "", progress=m.progress,
+        g = dict(id=f"V2MOM {m.label}", what=clip(m.name, 90), status=m.status or "", progress=m.progress,
                  state=state, open_measures=open_measures[:3])
         if x["state"] != "active" or m.status.lower() in report.LATE_STATUS:
             needy.append(g)
@@ -71,20 +66,20 @@ def goals(s: Session, today: date) -> list[dict]:
     pm = promo_map(s) if has_guide(s) else None
     if pm:
         for n in pm["next"][:4]:
-            out.append(dict(id=f"Grade {n['grade']}: {_clip(n['item'].name, 60)}", what=_clip(n["item"].name, 120),
-                            state="aim for next", idea=_clip(n["idea"], 120)))
+            out.append(dict(id=f"Grade {n['grade']}: {clip(n['item'].name, 60)}", what=clip(n["item"].name, 120),
+                            state="aim for next", idea=clip(n["idea"], 120)))
     out += on_track
     if pm:
         for row in pm["rows"]:
             for gr in pm["grades"]:
                 for c in row["cells"][gr]:
-                    gid = f"Grade {gr}: {_clip(c['item'].name, 60)}"
+                    gid = f"Grade {gr}: {clip(c['item'].name, 60)}"
                     if c["status"] in ("gap", "started") and all(g["id"] != gid for g in out):
-                        out.append(dict(id=gid, what=_clip(c["item"].name, 120),
+                        out.append(dict(id=gid, what=clip(c["item"].name, 120),
                                         state="not shown yet" if c["status"] == "gap" else "started"))
         for x in pm["rising"] + pm["steady"]:
             if x["status"] in ("gap", "started"):
-                out.append(dict(id=f"Skill: {_clip(x['item'].name, 50)}", what=_clip(x["item"].name, 80),
+                out.append(dict(id=f"Skill: {clip(x['item'].name, 50)}", what=clip(x["item"].name, 80),
                                 state="no evidence yet" if x["status"] == "gap" else "a little evidence"))
     return out
 
@@ -96,8 +91,8 @@ def _kso_goals(s: Session, today: date) -> list[dict]:
     parts = [c for x in (k or {}).get("ksos", []) for c in x["components"]]
 
     def goal(c, state):
-        return dict(id=f"KSO {c['key']}: {_clip(c['name'], 50)}", what=_clip(c["what"], 160), state=state,
-                    ideas=[_clip(x, 110) for x in c["examples"][:2]])
+        return dict(id=f"KSO {c['key']}: {clip(c['name'], 50)}", what=clip(c["what"], 160), state=state,
+                    ideas=[clip(x, 110) for x in c["examples"][:2]])
     out = [goal(c, "no V2MOM goal yet") for c in parts if c["gap"]]
     low = min((c for c in parts if not c["gap"] and c["bar"] is not None and c["bar"] < 75),
               key=lambda c: c["bar"], default=None)
@@ -105,12 +100,13 @@ def _kso_goals(s: Session, today: date) -> list[dict]:
 
 
 def recent(s: Session, today: date) -> list[str]:
+    """Titles of what you did in the last RECENT_DAYS days (records and wins, newest first), for the prompt."""
     lo = (today - timedelta(days=RECENT_DAYS)).isoformat()
     rows = [(e.day, e.text) for e in s.scalars(select(JournalEntry).where(
         JournalEntry.day >= lo, JournalEntry.day <= today.isoformat(), JournalEntry.status != "open"))]
     rows += [(w.day, "Win: " + w.title) for w in s.scalars(select(Win).where(Win.day >= lo))]
     rows.sort(reverse=True)
-    return [f"{d}: {_clip(t, 100)}" for d, t in rows[:MAX_RECENT]]
+    return [f"{d}: {clip(t, 100)}" for d, t in rows[:MAX_RECENT]]
 
 
 def context(s: Session, today: date) -> dict:
@@ -131,8 +127,7 @@ def context(s: Session, today: date) -> dict:
 
 def validate(reply: str, goal_ids: set[str]) -> list[dict]:
     """Exactly three well-formed tasks, each tied to a goal that was offered; ValueError says what's off."""
-    m = re.search(r"\{.*\}", reply, re.S)
-    data = json.loads(m.group(0)) if m else None
+    data = reply_json(reply)
     tasks = data.get("tasks") if isinstance(data, dict) else None
     if not isinstance(tasks, list) or len(tasks) != TASKS:
         raise ValueError(f"expected {TASKS} tasks")
