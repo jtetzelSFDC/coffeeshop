@@ -357,7 +357,7 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `231 passed`. A failure means something broke. Don't use the app until it's fixed.
+You should see `232 passed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 
