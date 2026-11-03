@@ -48,8 +48,12 @@ def build(s: Session, today: date | None = None) -> dict | None:
     obstacles: dict[int, list[dict]] = {}
     loose = []
     for o in v.obstacles:
-        mid = by_name.get(store._norm(o.get("related_method") or ""))
-        (obstacles.setdefault(mid, []) if mid else loose).append(o)
+        mids = {by_name.get(store._norm(n)) for n in o.get("related_methods") or [o.get("related_method") or ""]}
+        mids.discard(None)
+        for mid in mids:
+            obstacles.setdefault(mid, []).append(o)
+        if not mids:
+            loose.append(o)
     ev = links.evidence(s)
     rows = []
     for m in methods:

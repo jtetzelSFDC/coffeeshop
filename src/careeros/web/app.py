@@ -201,7 +201,7 @@ def create_app(dd: DataDir) -> FastAPI:
             csrf=csrf_token, msg=msg,
             sync_warning=dd.sync_warning(), theme=theme_of(request), page="/", personal=personal, q="",
             slack_canvas=slack_imp.load_canvas_id(dd) if personal else None,
-            v2mom_doc=v2mom_conn.load_doc_id(dd) if personal else None, sync=sync_view(s))
+            v2mom_doc=v2mom_conn.load_source(dd) if personal else None, sync=sync_view(s))
         return HTMLResponse(html)
 
     def tab_page(path: str):
@@ -322,12 +322,12 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.post("/sync/v2mom", dependencies=[Depends(check_csrf)])
     def v2mom_sync(request: Request):
-        """Re-read the V2MOM Doc (after a check-in, say), in the background."""
+        """Re-read the V2MOM (after a check-in, say), in the background."""
         return start_sync(request, "v2mom")
 
     def sync_view(s: Session) -> dict[str, dict]:
         st = sync_status(s)
-        if personal and not v2mom_conn.load_doc_id(dd):
+        if personal and not v2mom_conn.load_source(dd):
             st["v2mom"].update(ok=None, hint=syncs.V2MOM_CONNECT)
         return st
 
@@ -790,7 +790,7 @@ def create_app(dd: DataDir) -> FastAPI:
     def v2mom_page(request: Request, s: Session = Depends(db)):
         """Each method of the V2MOM with its measures, the work behind it, and whether it has gone quiet."""
         html = env.get_template("v2mom.html").render(
-            r=v2mom_report.build(s), connected=bool(v2mom_conn.load_doc_id(dd)) if personal else False,
+            r=v2mom_report.build(s), connected=bool(v2mom_conn.load_source(dd)) if personal else False,
             csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/v2mom",
             personal=personal, q="")
         return HTMLResponse(html)

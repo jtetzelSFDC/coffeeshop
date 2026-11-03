@@ -248,31 +248,33 @@ def run_slack(job: Job, Session_, lock, dd: DataDir) -> None:
     job.finish(f"Slack synced: {_plural(r['added'], 'new item')}" + (f" and {praised} kudos." if praised else "."))
 
 
-V2MOM_STEPS = ["Read your V2MOM Google Doc", "Save its methods and measures"]
-V2MOM_CONNECT = "No V2MOM Doc connected yet. In Terminal run: uv run careeros v2mom connect <doc link>"
+V2MOM_STEPS = ["Read your V2MOM", "Save its methods and measures"]
+V2MOM_CONNECT = ("No V2MOM connected yet. Download it as a PDF from the V2MOM app, then in Terminal run: "
+                 "uv run careeros v2mom connect <path to the PDF>")
 
 
 def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
     from ..v2mom import connector, store
-    doc = connector.load_doc_id(dd)
-    if not doc:
+    src = connector.load_source(dd)
+    if not src:
         job.fail(0, V2MOM_CONNECT)
         job.skip(1)
         job.finish("V2MOM sync couldn't start.")
         return
     job.start(0)
     try:
-        parsed = connector.read(doc)
+        parsed, origin = connector.read(src)
     except ClaudeError as exc:
         job.fail(0, str(exc))
         job.skip(1)
-        job.finish("V2MOM sync couldn't read the Doc, so nothing changed.")
+        job.finish("V2MOM sync couldn't read your V2MOM, so nothing changed.")
         return
-    job.done(0, f"{_plural(len(parsed['methods']), 'method')}, {_plural(len(parsed['obstacles']), 'obstacle')}")
+    job.done(0, f"{_plural(len(parsed['methods']), 'method')}, {_plural(len(parsed['obstacles']), 'obstacle')}"
+             + (f", {_plural(len(parsed['check_ins']), 'check-in')}" if parsed["check_ins"] else ""))
     job.start(1)
     with Session_() as s, lock:
-        r = store.save(s, parsed, doc)
-    job.done(1, f"{r['added']} new" + (f", {r['retired']} no longer in the Doc (kept, marked inactive)"
+        r = store.save(s, parsed, origin)
+    job.done(1, f"{r['added']} new" + (f", {r['retired']} no longer in your V2MOM (kept, marked inactive)"
                                       if r["retired"] else ""))
     job.finish(f"V2MOM synced: {(parsed['fiscal_year'] + ', ') if parsed['fiscal_year'] else ''}"
                f"{_plural(r['methods'], 'method')}.")

@@ -364,18 +364,21 @@ def slack_pull(data_dir: Optional[str] = DataOpt) -> None:
     _slack_import(dd, s, raw)
 
 
-v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from a Google Doc (read-only)")
+v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from its PDF or a Google Doc (read-only)")
 app.add_typer(v2mom_app, name="v2mom")
 
 
 @v2mom_app.command("connect")
-def v2mom_connect(doc: str = typer.Argument(..., help="Link to the Google Doc you pasted your V2MOM into"),
+def v2mom_connect(doc: str = typer.Argument(..., help="The PDF downloaded from the V2MOM app, or a link to the "
+                                                      "Google Doc you pasted your V2MOM into"),
                   data_dir: Optional[str] = DataOpt) -> None:
-    """Remember which Google Doc holds your V2MOM."""
-    from .v2mom.connector import save_doc_id
+    """Remember where your V2MOM is: its PDF (the newest V2MOM PDF in that folder is read each time) or a Doc."""
+    from .v2mom.connector import save_source
     dd, _ = _open_personal(data_dir, "V2MOM sync")
     try:
-        typer.echo(f"Saved Doc {save_doc_id(dd, doc)}. Now run: uv run careeros v2mom sync")
+        src = save_source(dd, doc)
+        typer.echo(f"Saved {'PDF' if src['kind'] == 'pdf' else 'Doc'} {src['value']}. "
+                   "Now run: uv run careeros v2mom sync")
     except ValueError as exc:
         typer.echo(str(exc))
         raise typer.Exit(1)
@@ -383,7 +386,7 @@ def v2mom_connect(doc: str = typer.Argument(..., help="Link to the Google Doc yo
 
 @v2mom_app.command("sync")
 def v2mom_sync(data_dir: Optional[str] = DataOpt) -> None:
-    """Read the connected Doc and update your V2MOM's methods and measures (the Sync V2MOM button)."""
+    """Read the connected PDF or Doc and update your V2MOM's methods and measures (the Sync V2MOM button)."""
     import threading
     from .web import syncs
     from .web.jobs import Job

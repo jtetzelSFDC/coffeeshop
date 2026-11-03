@@ -47,8 +47,8 @@ def save(s: Session, parsed: dict, doc_id: str) -> dict[str, int]:
     v = _version_for(s, parsed["fiscal_year"], doc_id)
     v.doc_id, v.pulled_at = doc_id, datetime.now()
     v.fiscal_year = parsed["fiscal_year"] or v.fiscal_year
-    v.published, v.vision, v.values, v.obstacles = (parsed["published"], parsed["vision"], parsed["values"],
-                                                    parsed["obstacles"])
+    v.published, v.vision, v.values, v.obstacles, v.check_ins = (
+        parsed["published"], parsed["vision"], parsed["values"], parsed["obstacles"], parsed["check_ins"])
     have = list(s.scalars(select(V2momMethod).where(V2momMethod.version_id == v.id).order_by(V2momMethod.id)))
     by_name = {}
     for m in have:
