@@ -3,7 +3,8 @@ from datetime import date
 
 from careeros.web.app import TABS, short_day
 
-from test_guide import nb  # noqa: F401
+from helpers import open_session
+
 
 PAGES = ["/", "/wins", "/promo", "/sheet", "/digest", "/search?q=refresh", "/promo/case", "/impact/deployment", *TABS]
 
@@ -37,9 +38,8 @@ def test_short_day():
 def test_promo_map_is_compact(nb):
     from datetime import datetime
     from careeros.storage.models import JournalEntry
-    from test_guide import session
     dd, c, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         s.add(JournalEntry(day="2026-10-20", kind="meeting", text="Demo of the pipeline to the customer",
                            created_at=datetime.now()))
         s.commit()

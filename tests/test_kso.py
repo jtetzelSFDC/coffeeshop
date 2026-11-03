@@ -1,6 +1,7 @@
 """KSOs: reading the framework (one fiscal year per row), and matching V2MOM methods to its components.
 All with fake readers and the made-up framework in careeros.fixtures.kso."""
 import json
+from datetime import date
 import stat
 
 import pytest
@@ -13,24 +14,13 @@ from careeros.fixtures.kso import reply as fw_reply
 from careeros.kso import framework, map as kmap
 from careeros.storage.models import KsoFramework, KsoMap
 
-from test_guide import nb, session  # noqa: F401
-from test_v2mom import TWO
-from test_v2mom_links import load_v2mom
+from helpers import KSO_SRC, TWO, connect, load_v2mom, open_session, picks
 
-SRC = dict(decks=["1DeckDeckDeckDeckDeckDeckDeck00"], canvases=["F0MADEUP01"], track="Delivery", manager=False)
-
-
-def connect(s, fy="FY27", **changes):
-    return framework.save(s, framework.parse("material", reader=lambda p, d: json.dumps(fw_reply(fy, **changes))), SRC)
-
-
-def picks(**m):
-    return lambda p, d: json.dumps({"map": m})
 
 
 def test_the_framework_is_read_and_kept_per_fiscal_year(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         fw = connect(s)
         assert fw.fiscal_year == "FY27" and fw.track == "Delivery"
         assert [c["key"] for c in framework.components(fw)] == ["1.1", "1.2", "2.1", "2.2"]
@@ -52,7 +42,7 @@ def test_the_framework_is_read_and_kept_per_fiscal_year(nb):
 ])
 def test_a_bad_framework_answer_saves_nothing(nb, bad, why):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         with pytest.raises(ClaudeError, match=why):
             connect(s, **bad)
         assert s.scalar(select(KsoFramework)) is None
@@ -75,23 +65,26 @@ def test_sources_come_from_links_and_stay_private(nb):
     dd, *_ = nb
     src = framework.sources(["https://docs.google.com/presentation/d/1DeckDeckDeckDeckDeckDeckDeck00/edit"],
                             ["https://example.slack.com/docs/T0TEAM/F0MADEUP01"], "Delivery", False)
-    assert src == SRC and framework.load_sources(dd) is None
+    assert src == KSO_SRC and framework.load_sources(dd) is None
     framework.save_sources(dd, src)
-    assert framework.load_sources(dd) == SRC and stat.S_IMODE(framework.source_file(dd).stat().st_mode) == 0o600
+    assert framework.load_sources(dd) == KSO_SRC and stat.S_IMODE(framework.source_file(dd).stat().st_mode) == 0o600
     with pytest.raises(ValueError):
         framework.sources([], [], "Delivery", False)
 
 
 def test_fiscal_years_are_named_one_way(nb):
-    assert [framework.fiscal_year(x) for x in ("FY2027", "fy 27", "FY27 Q4", "2027")] == ["FY27", "FY27", "FY27", ""]
+    from careeros.v2mom.report import fiscal_year, fy_name
+    assert [fy_name(x) for x in ("FY2027", "fy 27", "FY27 Q4", "2027", "FY27_V2MOM.pdf", "FY275")] == \
+        ["FY27", "FY27", "FY27", "", "FY27", ""]
+    assert fiscal_year("FY2027", date(2027, 3, 1))[0] == "FY27"  # not this year's FY28
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert connect(s, "FY2027").fiscal_year == "FY27"
 
 
 def test_methods_are_matched_once_and_your_picks_stay(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         m = load_v2mom(s)
         fw = connect(s)
         assert kmap.suggest(s, fw, reader=picks(M1="1.1", M2="")) == dict(mapped=1, none=1)
@@ -106,7 +99,7 @@ def test_methods_are_matched_once_and_your_picks_stay(nb):
 
 def test_a_renamed_component_gets_its_methods_matched_again(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         m = load_v2mom(s)
         fw = connect(s)
         kmap.suggest(s, fw, reader=picks(M1="1.1", M2=""))
@@ -121,7 +114,7 @@ def test_a_renamed_component_gets_its_methods_matched_again(nb):
 
 def test_methods_wait_for_their_own_years_ksos(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         load_v2mom(s)  # an FY27 V2MOM
         fw28 = connect(s, "FY28")
         assert kmap.pending(s, fw28) == [] and framework.for_current(s) is None
@@ -132,7 +125,7 @@ def test_methods_wait_for_their_own_years_ksos(nb):
 @pytest.mark.parametrize("answer", ['{"map": {"M1": "9.9", "M2": ""}}', '{"map": {"M1": "1.1"}}', "no JSON"])
 def test_a_bad_match_answer_changes_nothing(nb, answer):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         load_v2mom(s)
         fw = connect(s)
         kmap.suggest(s, fw, reader=picks(M1="1.1", M2=""))
@@ -143,7 +136,7 @@ def test_a_bad_match_answer_changes_nothing(nb, answer):
 
 def test_connect_and_show_from_the_command_line(nb, monkeypatch):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         load_v2mom(s, TWO)
     seen = {}
     monkeypatch.setattr(framework, "fetch", lambda src: seen.setdefault("src", src) and "material")
@@ -153,7 +146,7 @@ def test_connect_and_show_from_the_command_line(nb, monkeypatch):
                                  "F0MADEUP01", "--data-dir", str(dd.root)])
     assert r.exit_code == 0, r.output
     assert "FY27 Delivery: KSO 1 Calm Releases (20%, 2 parts)" in r.output and "Matched 2 V2MOM methods" in r.output
-    assert seen["src"] == SRC
+    assert seen["src"] == KSO_SRC
     r = CliRunner().invoke(cli, ["kso", "show", "--data-dir", str(dd.root)])
     assert "1.1 Plan Kept: M1 (AI)" in r.output and "1.2 Kind Feedback: no V2MOM goal yet" in r.output
     monkeypatch.setattr(framework, "ask", lambda p, d, timeout=0: "not JSON")
@@ -165,7 +158,7 @@ def test_the_v2mom_sync_matches_new_methods_once_ksos_are_connected(nb, monkeypa
     from careeros.web import syncs
     import threading
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         load_v2mom(s)
         assert syncs._kso_matches(s, threading.Lock()) == ""  # no KSOs yet: nothing asked
         connect(s)
@@ -176,7 +169,7 @@ def test_the_v2mom_sync_matches_new_methods_once_ksos_are_connected(nb, monkeypa
 
 def test_a_bad_link_never_replaces_the_saved_ones(nb, monkeypatch):
     dd, *_ = nb
-    framework.save_sources(dd, SRC)
+    framework.save_sources(dd, KSO_SRC)
     monkeypatch.setattr(framework, "fetch", lambda src: (_ for _ in ()).throw(ClaudeError("The canvas wasn't found.")))
     r = CliRunner().invoke(cli, ["kso", "connect", "--canvas", "F0TYPO0000", "--data-dir", str(dd.root)])
-    assert r.exit_code == 1 and framework.load_sources(dd) == SRC
+    assert r.exit_code == 1 and framework.load_sources(dd) == KSO_SRC

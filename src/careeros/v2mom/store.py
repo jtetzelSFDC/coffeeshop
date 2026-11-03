@@ -31,6 +31,8 @@ def methods(s: Session, version: V2momVersion | None = None) -> list[V2momMethod
 
 
 def _version_for(s: Session, fy: str, doc_id: str) -> V2momVersion:
+    """Which V2MOM a pull updates: the one for the same fiscal year; else the latest one when either year is
+    unknown; else (a new year) a new one, so last year's methods and links stay as they were."""
     latest = current(s)
     same = s.scalar(select(V2momVersion).where(V2momVersion.fiscal_year == fy).limit(1)) if fy else None
     v = same or (latest if latest and (not fy or not latest.fiscal_year) else None)

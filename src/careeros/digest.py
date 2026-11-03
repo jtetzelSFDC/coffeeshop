@@ -23,6 +23,7 @@ def week_of(day: date) -> tuple[date, date]:
 
 
 def build(s: Session, week_end: date | None = None) -> dict:
+    """The Friday digest for the week ending `week_end`: new wins, kudos, counts by source and activity, nudges."""
     from .guide.activities import counts, counts_between
     from .guide.service import has_guide, promo_map
     from .guide.topics import topic_of

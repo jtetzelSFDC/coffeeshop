@@ -82,8 +82,8 @@ def call_tools(prompt: str, tools: list[str], timeout: int = 240, max_turns: int
                 name, args = calls[part["tool_use_id"]]
                 answers.append((name, args, _result_text(part.get("content", ""))))
     if not answers and down:
-        raise ClaudeError(f"Claude Code's {_service(down[0])} connector isn't signed in. Open Claude Code > Settings > "
-                          "Connections, sign in again, then sync again.")
+        raise ClaudeError(f"Claude Code's {_service(down[0])} connector isn't signed in. Sign in to it again in "
+                          "Claude Code's connector settings, then sync again.")
     if not answers:
         raise ClaudeError("Claude didn't get an answer from the connector. Is it signed in for Claude Code?"
                           + (f" ({run.stderr.strip()[:150]})" if run.stderr.strip() else ""))
@@ -104,8 +104,8 @@ def connector_error(text: str, service: str) -> str | None:
     """A plain explanation when the connector answered with a failure instead of data."""
     head = text[:500]
     if "invalid_token" in head or "status 401" in head or "Needs authentication" in head:
-        return (f"Claude Code's {service} sign-in has expired. Open Claude Code's connector settings, sign in to {service} "
-                "again, then press Sync again.")
+        return (f"Claude Code's {service} sign-in has expired. Sign in to {service} again in Claude Code's "
+                "connector settings, then press Sync again.")
     if head.startswith(("MCP tool call failed", "Error")):
         return f"The {service} connector failed: {head[:200]}"
     return None
@@ -116,11 +116,14 @@ def call_tool(prompt: str, tool: str, timeout: int = 240, stdin: str | None = No
     return call_tools(prompt, [tool], timeout, stdin=stdin)[-1][2]
 
 
-def ask(prompt: str, data: str, timeout: int = 240) -> str:
-    """Claude's reply to `prompt` about `data` (sent on stdin), with no tools and a single turn."""
+def ask(prompt: str, data: str, timeout: int = 240, *, tools: str = "", allowed: list[str] | None = None,
+        max_turns: int = 1) -> str:
+    """Claude's reply to `prompt` about `data` (sent on stdin). By default no tools and a single turn; `tools` and
+    `allowed` open exactly the ones named (meeting summaries read Docs, and Claude's own saved copies of long ones)."""
+    cmd = [_claude(), "-p", prompt, "--tools", tools, *(["--allowedTools", *allowed] if allowed else []),
+           "--output-format", "json", "--max-turns", str(max_turns)]
     try:
-        run = subprocess.run([_claude(), "-p", prompt, "--tools", "", "--output-format", "json", "--max-turns", "1"],
-                             input=data, capture_output=True, text=True, timeout=timeout, cwd=Path.home())
+        run = subprocess.run(cmd, input=data, capture_output=True, text=True, timeout=timeout, cwd=Path.home())
         out = json.loads(run.stdout)
     except subprocess.TimeoutExpired:
         raise ClaudeError("Claude took too long to answer.") from None
@@ -130,3 +133,34 @@ def ask(prompt: str, data: str, timeout: int = 240) -> str:
     if out.get("is_error") or not out.get("result"):
         raise ClaudeError(f"Claude couldn't answer ({str(out.get('result') or out.get('subtype') or '')[:150]}).")
     return str(out["result"])
+
+
+def reply_json(reply: str) -> object | None:
+    """The JSON object in a Claude reply (it sometimes wraps one in a sentence or a code fence), or None."""
+    m = re.search(r"\{.*\}", reply, re.S)
+    try:
+        return json.loads(m.group(0)) if m else None
+    except ValueError:
+        return None
+
+
+def reply_results(reply: str, key: str = "results") -> list[dict]:
+    """The list of objects under `key` in a Claude reply; [] when it isn't there."""
+    got = reply_json(reply)
+    res = got.get(key) if isinstance(got, dict) else None
+    return [r for r in res if isinstance(r, dict)] if isinstance(res, list) else []
+
+
+def clip(text: str, n: int) -> str:
+    """One line of at most `n` characters, for a prompt: whitespace collapsed, an ellipsis when cut."""
+    text = " ".join(str(text).split())
+    return text if len(text) <= n else text[: n - 1].rstrip() + "…"
+
+
+def markdown_of(raw: str) -> str:
+    """The text of a connector answer that wraps it as {"markdown_content": ...} (Docs, canvases), else as is."""
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        return raw
+    return str(data.get("markdown_content") or raw) if isinstance(data, dict) else raw

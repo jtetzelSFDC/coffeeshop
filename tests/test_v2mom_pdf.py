@@ -14,8 +14,8 @@ from careeros.promo import evidence as pe
 from careeros.v2mom import connector, store
 from careeros.web.app import create_app
 
-from test_slack import BASE, personal
-from test_v2mom import DOC_ID, SRC, TWO, answer
+from helpers import BASE, DOC_ID, SRC, TWO, answer, personal
+
 
 # Made up, in the shape of the V2MOM app's PDF export as pypdf reads it.
 PDF_TEXT = """FY27 V2MOM Pat Example
@@ -124,6 +124,13 @@ def test_last_years_pdf_opened_again_is_not_read(tmp_path):
     nxt = touch(tmp_path / "FY28 V2MOM Pat Example.pdf", 1_600_000_000)  # next year's, whatever its date
     assert connector.newest_pdf(str(this)) == nxt
 
+
+
+def test_someone_elses_v2mom_next_to_yours_is_never_read(tmp_path):
+    mine = touch(tmp_path / "FY27 V2MOM Pat Example.pdf", 1_700_000_000)
+    touch(tmp_path / "FY27 V2MOM Sam Other.pdf", 1_700_000_900)  # a colleague's, saved later
+    touch(tmp_path / "FY28 V2MOM Sam Other.pdf", 1_700_000_900)
+    assert connector.newest_pdf(str(mine)) == mine
 
 def test_an_existing_notebook_gets_the_check_ins_column(tmp_path):
     from sqlalchemy import text
@@ -277,3 +284,9 @@ def test_doc_mode_still_reads_through_the_connector(tmp_path, monkeypatch):
                         and answer(*TWO))
     parsed, origin = connector.read(SRC)
     assert seen == dict(doc=DOC_ID, prompt=connector.PROMPT) and origin == DOC_ID and len(parsed["methods"]) == 2
+
+
+def test_your_v2mom_is_found_whatever_the_word_order_or_separators(tmp_path):
+    mine = touch(tmp_path / "FY27 V2MOM Pat Example.pdf", 1_700_000_000)
+    nxt = touch(tmp_path / "Pat_Example-FY28-V2MOM.pdf", 1_600_000_000)
+    assert connector.newest_pdf(str(mine)) == nxt

@@ -38,9 +38,7 @@ ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
 CSP = ("default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self'; "
        "form-action 'self'; "
        "base-uri 'none'; frame-ancestors 'none'")
-SHEET_JS = (Path(__file__).parent / "static" / "sheet.js").read_text()
-SYNC_JS = (Path(__file__).parent / "static" / "sync.js").read_text()
-PAGE_JS = (Path(__file__).parent / "static" / "page.js").read_text()
+SCRIPTS = {n: (Path(__file__).parent / "static" / f"{n}.js").read_text() for n in ("page", "sheet", "sync")}
 IMG_DIR = Path(__file__).parent / "static" / "img"
 IMG_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 _write_lock = threading.Lock()
@@ -156,6 +154,16 @@ def create_app(dd: DataDir) -> FastAPI:
     async def _forbidden(_r, _e):
         return JSONResponse({"error": "bad csrf token"}, status_code=403)
 
+    def page_html(request: Request, tpl: str, page: str, **ctx) -> HTMLResponse:
+        """A full page. Every page gets the CSRF token, the theme, the sync warning, which Menu item to highlight
+        (`page`), and its own address (`here`) so the theme switch comes back to it."""
+        ctx.setdefault("msg", None)
+        here = request.url.path + (f"?{urlencode([(k, v) for k, v in request.query_params.multi_items() if k != 'msg'])}"
+                                   if any(k != "msg" for k in request.query_params) else "")
+        return HTMLResponse(env.get_template(tpl).render({
+            "csrf": csrf_token, "personal": personal, "sync_warning": dd.sync_warning(), "theme": theme_of(request),
+            "page": page, "here": here, **ctx}))
+
     def back(msg: str | None = None, to: str = "/") -> RedirectResponse:
         sep = "&" if "?" in to else "?"
         return RedirectResponse(to + (f"{sep}msg={quote(msg[:300])}" if msg else ""), status_code=303)
@@ -164,6 +172,8 @@ def create_app(dd: DataDir) -> FastAPI:
         return "light" if request.cookies.get("theme") == "light" else "dark"
 
     def entry_dicts(s: Session, rows: list) -> list[dict]:
+        """What a record card or queue row shows: its attachments (links only when http/https), guide chips, a
+        suggested guide item when Claude hasn't read it yet, and whether its meeting notes are summarized."""
         atts: dict[int, list] = {}
         for a in s.scalars(select(JournalAttachment).where(
                 JournalAttachment.entry_id.in_([e.id for e in rows])).order_by(JournalAttachment.id)):
@@ -198,13 +208,11 @@ def create_app(dd: DataDir) -> FastAPI:
     def today_page(request: Request, msg: str | None = None, s: Session = Depends(db)):
         today = date.today()
         from .. import daily as daily_mod, dashboard
-        html = env.get_template("today.html").render(
-            dash=dashboard.build(s, today), daily=daily_mod.today_tasks(s, today) if personal else [], kinds=KINDS, attach_kinds=ATTACH_KINDS, today=today.isoformat(),
-            csrf=csrf_token, msg=msg,
-            sync_warning=dd.sync_warning(), theme=theme_of(request), page="/", personal=personal, q="",
-            slack_canvas=slack_imp.load_canvas_id(dd) if personal else None,
-            v2mom_doc=v2mom_conn.load_source(dd) if personal else None, sync=sync_view(s))
-        return HTMLResponse(html)
+        return page_html(request, "today.html", "/", dash=dashboard.build(s, today),
+                         daily=daily_mod.today_tasks(s, today), kinds=KINDS,
+                         attach_kinds=ATTACH_KINDS, today=today.isoformat(), msg=msg,
+                         slack_canvas=slack_imp.load_canvas_id(dd) if personal else None,
+                         v2mom_doc=v2mom_conn.load_source(dd) if personal else None, sync=sync_view(s))
 
     def tab_page(path: str):
         kind, _name, title, intro = TABS[path]
@@ -222,11 +230,9 @@ def create_app(dd: DataDir) -> FastAPI:
                 if not days or days[-1]["day"] != e["day"]:
                     days.append(dict(day=e["day"], label=day_label(date.fromisoformat(e["day"]), today), entries=[]))
                 days[-1]["entries"].append(e)
-            html = env.get_template("list.html").render(
-                title=title, intro=intro, count=count, shown=len(rows), days=days, open_entries=ents[:len(open_rows)],
-                kinds=KINDS, attach_kinds=ATTACH_KINDS, csrf=csrf_token, msg=msg, sync_warning=dd.sync_warning(),
-                theme=theme_of(request), page=path, personal=personal, q="")
-            return HTMLResponse(html)
+            return page_html(request, "list.html", path, title=title, intro=intro, count=count,
+                             shown=len(open_rows) + len(rows), days=days, open_entries=ents[:len(open_rows)],
+                             kinds=KINDS, attach_kinds=ATTACH_KINDS, msg=msg)
         return view
 
     for _path in TABS:
@@ -269,10 +275,7 @@ def create_app(dd: DataDir) -> FastAPI:
                 if all(t.lower() in f"{w.title}\n{w.impact}\n{w.theme}".lower() for t in terms):
                     hits.append(dict(day=w.day, kind_label="Win", text=w.title, snippets=[]))
             hits.sort(key=lambda h: h["day"], reverse=True)
-        html = env.get_template("search.html").render(
-            q=q, hits=hits, csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(), theme=theme_of(request),
-            page="/search", personal=personal)
-        return HTMLResponse(html)
+        return page_html(request, "search.html", "/search", q=q, hits=hits)
 
     @app.post("/journal/add", dependencies=[Depends(check_csrf)])
     def journal_add(kind: str = Form(...), text: str = Form(..., max_length=500),
@@ -298,24 +301,29 @@ def create_app(dd: DataDir) -> FastAPI:
             kind = entry.kind
         return back("Added.", next(p for p, (k, *_rest) in TABS.items() if k == kind))
 
-    def start_sync(request: Request, name: str, force: bool = False):
-        if not personal:
-            return back("Syncing only works with your personal notebook.", "/")
-        if name == "daily":
-            started = jobs.start("daily", syncs.DAILY_STEPS,
-                                 lambda j: syncs.run_daily(j, Session_, _write_lock, force=force))
-        elif name == "google":
-            started = jobs.start("google", syncs.GOOGLE_STEPS, lambda j: syncs.run_google(j, Session_, _write_lock))
-        elif name == "kso":
-            started = jobs.start("kso", syncs.KSO_STEPS, lambda j: syncs.run_kso(j, Session_, _write_lock))
-        elif name == "v2mom":
-            started = jobs.start("v2mom", syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, _write_lock, dd))
-        else:
-            started = jobs.start("slack", syncs.SLACK_STEPS, lambda j: syncs.run_slack(j, Session_, _write_lock, dd))
+    def started_reply(request: Request, started: bool, ok: str, busy: str, to: str) -> Response:
+        """The answer to a button that starts a background job: JSON for the page's script (sync.js), which then
+        shows the progress box, or a redirect with a message for a plain form post."""
         if request.headers.get("x-sync") == "1":
             return JSONResponse({"started": started})
-        return back("Sync started. Refresh this page in a minute or two to see the result." if started
-                    else "That sync is already running.", "/")
+        return back(ok if started else busy, to)
+
+    def start_sync(request: Request, name: str, force: bool = False, to: str = "/"):
+        """Starts the background job `name` (one per Sync button) unless it's already running."""
+        if not personal:
+            return back("Syncing only works with your personal notebook.", to)
+        runs = {
+            "daily": (syncs.DAILY_STEPS, lambda j: syncs.run_daily(j, Session_, _write_lock, force=force)),
+            "google": (syncs.GOOGLE_STEPS, lambda j: syncs.run_google(j, Session_, _write_lock)),
+            "kso": (syncs.KSO_STEPS, lambda j: syncs.run_kso(j, Session_, _write_lock)),
+            "review": (syncs.REVIEW_STEPS, lambda j: syncs.run_review(j, Session_)),
+            "slack": (syncs.SLACK_STEPS, lambda j: syncs.run_slack(j, Session_, _write_lock, dd)),
+            "v2mom": (syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, _write_lock, dd)),
+        }
+        steps, fn = runs[name]
+        return started_reply(request, jobs.start(name, steps, fn),
+                             "Started. Refresh this page in a minute or two to see the result.",
+                             "That's already running.", to)
 
     @app.post("/daily/suggest", dependencies=[Depends(check_csrf)])
     def daily_suggest(request: Request, force: str = Form("")):
@@ -366,13 +374,11 @@ def create_app(dd: DataDir) -> FastAPI:
     def sync_status_json():
         return JSONResponse(jobs.status(), headers={"Cache-Control": "no-store"})
 
-    @app.get("/static/sync.js")
-    def sync_js():
-        return Response(SYNC_JS, media_type="text/javascript; charset=utf-8")
-
-    @app.get("/static/page.js")
-    def page_js():
-        return Response(PAGE_JS, media_type="text/javascript; charset=utf-8")
+    @app.get("/static/{name}.js")
+    def script(name: str):
+        if name not in SCRIPTS:
+            return Response(status_code=404)
+        return Response(SCRIPTS[name], media_type="text/javascript; charset=utf-8")
 
     @app.get("/static/img/{name}")
     def static_img(name: str):
@@ -431,11 +437,10 @@ def create_app(dd: DataDir) -> FastAPI:
                 months.append(dict(label=label, wins=[]))
             months[-1]["wins"].append(dict(w=w, size_label=SIZE_LABEL.get(w.size, w.size),
                                            from_entry=entries.get(w.entry_id), guide=chips.get(("win", w.id), [])))
-        html = env.get_template("wins.html").render(
-            year=year, years=win_years(s), size=size, only_missing=missing, months=months, total=len(rows), counts=counts,
-            missing=sum(1 for w in rows if not w.impact), today=date.today().isoformat(), guided=gsvc.has_guide(s),
-            csrf=csrf_token, msg=msg, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/wins", personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "wins.html", "/wins", year=year, years=win_years(s), size=size,
+                         only_missing=missing, months=months, total=len(rows), counts=counts,
+                         missing=sum(1 for w in rows if not w.impact), today=date.today().isoformat(),
+                         guided=gsvc.has_guide(s), msg=msg)
 
     def win_fields(title: str, impact: str, size: str, theme: str, day: str) -> dict:
         try:
@@ -506,12 +511,9 @@ def create_app(dd: DataDir) -> FastAPI:
             linked_methods = linked_methods or v2mom_links.linked_ids(s, entry_id=obj.entry_id)
         suggested = set() if linked else gsvc.suggested_ids(s, text)
         pm = gsvc.promo_map(s)
-        html = env.get_template("guide_link.html").render(
-            obj=obj, is_win=isinstance(obj, Win), ref=ref, checked=linked or suggested, suggested=bool(suggested),
-            methods=v2mom_store.methods(s), checked_methods=linked_methods,
-            pm=pm, next=next if next in PAGES else "/wins", csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(),
-            theme=theme_of(request), page="/promo", personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "guide_link.html", "/promo", obj=obj, is_win=isinstance(obj, Win), ref=ref,
+                         checked=linked or suggested, suggested=bool(suggested), methods=v2mom_store.methods(s),
+                         checked_methods=linked_methods, pm=pm, next=next if next in PAGES else "/wins")
 
     @app.post("/guide/link", dependencies=[Depends(check_csrf)])
     def guide_link_save(win: int | None = Form(None), entry: int | None = Form(None), item: list[int] = Form([]),
@@ -540,6 +542,8 @@ def create_app(dd: DataDir) -> FastAPI:
             return sheet_filters()
 
     def sheet_query(f: dict):
+        """The queue's records for the filters in `f`. Open Google Tasks never show (they come in once done);
+        "removed" records live in another table, so that view has no rows here."""
         linked = select(GuideLink.entry_id).where(GuideLink.entry_id.is_not(None))
         q = select(JournalEntry).where(~((JournalEntry.source == "tasks") & (JournalEntry.status == "open")))
         if f["source"] != "any":
@@ -563,7 +567,9 @@ def create_app(dd: DataDir) -> FastAPI:
                    after: int | None = None) -> Response:
         """A full redirect for plain form posts; for the queue's script, just the redrawn row, or "gone"."""
         f = parse_ret(ret)
-        if request.headers.get("x-sheet") == "1" and eid:
+        if request.headers.get("x-sheet") == "1" and not eid:
+            return Response("")  # nothing to redraw (the link was already gone): the script reloads the page
+        if request.headers.get("x-sheet") == "1":
             s.expire_all()
             e = s.scalar(sheet_query(f).where(JournalEntry.id == eid))
             if e is None:
@@ -574,10 +580,6 @@ def create_app(dd: DataDir) -> FastAPI:
             f["msg"] = msg[:300]
         anchor = after or eid
         return RedirectResponse(f"/sheet?{urlencode(f)}" + (f"#r{anchor}" if anchor else ""), status_code=303)
-
-    @app.get("/static/sheet.js")
-    def sheet_js():
-        return Response(SHEET_JS, media_type="text/javascript; charset=utf-8")
 
     @app.get("/sheet", response_class=HTMLResponse)
     def sheet_page(request: Request, show: str = "todo", source: str = "any", kind: str = "any", page: int = 1,
@@ -606,11 +608,9 @@ def create_app(dd: DataDir) -> FastAPI:
             unread=s.scalar(select(func.count()).select_from(JournalEntry).where(
                 JournalEntry.ai_read.is_(False), JournalEntry.reviewed.is_(False))) or 0,
             **gsvc.ai_counts(s))
-        html = env.get_template("sheet.html").render(
-            rows=out, f=f, total=total, pages=pages, counts=counts, show_opts=SHEET_SHOW, source_opts=SOURCE_LABEL,
-            msg=msg, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/sheet", personal=personal, q="", wide=True, sync=sync_view(s),
-            **sheet_ctx(s, f))
-        return HTMLResponse(html)
+        return page_html(request, "sheet.html", "/sheet", rows=out, f=f, total=total, pages=pages, counts=counts,
+                         show_opts=SHEET_SHOW, source_opts=SOURCE_LABEL, msg=msg, wide=True, sync=sync_view(s),
+                         **sheet_ctx(s, f))
 
     def sheet_rows(s: Session, rows: list) -> list[dict]:
         ids = [e.id for e in rows]
@@ -773,20 +773,9 @@ def create_app(dd: DataDir) -> FastAPI:
         return sheet_back(request, s, ret, eid)
 
     @app.post("/sheet/ai", dependencies=[Depends(check_csrf)])
-    def sheet_ai(request: Request, ret: str = Form(""), s: Session = Depends(db)):
-        """Have Claude read every record it hasn't read yet against the guide."""
-        if not personal:
-            return sheet_back(request, s, ret, msg="The Claude review only works with your personal notebook.")
-        from ..claude_cli import ClaudeError
-        from ..guide.ai_review import review
-        try:  # not under the write lock: Claude takes minutes, and review() re-checks each record before saving
-            r = review(s)
-        except ClaudeError as exc:
-            return sheet_back(request, s, ret, msg=f"Claude review didn't finish: {exc}")
-        return sheet_back(request, s, ret, msg=f"Claude read {r['read']} records: {r['links']} guide links, {r['wins']} drafted "
-                                   f"wins, {r['kinds']} type changes, all marked AI."
-                                   + (f" {r['failed']} couldn't be read; press the button again to retry them."
-                                      if r["failed"] else ""))
+    def sheet_ai(request: Request, ret: str = Form("")):
+        """Have Claude read every record it hasn't read yet against the guide, in the background."""
+        return start_sync(request, "review", to=f"/sheet?{urlencode(parse_ret(ret))}")
 
     @app.get("/promo", response_class=HTMLResponse)
     def promo_page(request: Request, msg: str | None = None, s: Session = Depends(db)):
@@ -796,10 +785,8 @@ def create_app(dd: DataDir) -> FastAPI:
             linked = set(s.scalars(select(GuideLink.entry_id).where(GuideLink.entry_id.is_not(None))))
             hints = sum(1 for eid, text in s.execute(select(JournalEntry.id, JournalEntry.text).where(
                 JournalEntry.ai_read.is_(False))) if eid not in linked and suggest(text)[0])
-        html = env.get_template("promo.html").render(
-            pm=gsvc.promo_map(s) if guided else None, hints=hints, ai=gsvc.ai_counts(s), csrf=csrf_token, msg=msg,
-            sync_warning=dd.sync_warning(), theme=theme_of(request), page="/promo", personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "promo.html", "/promo", pm=gsvc.promo_map(s) if guided else None, hints=hints,
+                         ai=gsvc.ai_counts(s), msg=msg)
 
     @app.get("/digest", response_class=HTMLResponse)
     def digest_page(request: Request, week: str = "", s: Session = Depends(db)):
@@ -812,33 +799,25 @@ def create_app(dd: DataDir) -> FastAPI:
         prev, nxt = end - timedelta(days=7), end + timedelta(days=7)
         weeks = [dict(iso=prev.isoformat(), label="Week before")] + (
             [dict(iso=nxt.isoformat(), label="Week after")] if nxt <= date.today() else [])
-        html = env.get_template("digest.html").render(
-            d=digest.build(s, end), weeks=weeks, size_label=SIZE_LABEL, csrf=csrf_token, msg=None,
-            sync_warning=dd.sync_warning(), theme=theme_of(request), page="/digest", personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "digest.html", "/digest", d=digest.build(s, end), weeks=weeks,
+                         size_label=SIZE_LABEL)
 
     @app.get("/v2mom", response_class=HTMLResponse)
     def v2mom_page(request: Request, s: Session = Depends(db)):
         """Each method of the V2MOM with its measures, the work behind it, and whether it has gone quiet."""
-        html = env.get_template("v2mom.html").render(
-            r=v2mom_report.build(s), connected=bool(v2mom_conn.load_source(dd)) if personal else False,
-            csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/v2mom",
-            personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "v2mom.html", "/v2mom", r=v2mom_report.build(s),
+                         connected=bool(v2mom_conn.load_source(dd)) if personal else False)
 
     @app.get("/kso", response_class=HTMLResponse)
     def kso_page(request: Request, fy: str = "", msg: str | None = None, s: Session = Depends(db)):
         """This year's KSOs: how each is measured, how you stand (plain math from your V2MOM), and what it pays."""
         from ..kso import progress as kso_progress
-        html = env.get_template("kso.html").render(
-            r=kso_progress.build(s, fy or None), csrf=csrf_token, msg=msg, sync_warning=dd.sync_warning(),
-            theme=theme_of(request), page="/kso", personal=personal, q="", sync=sync_view(s))
-        return HTMLResponse(html)
+        return page_html(request, "kso.html", "/kso", r=kso_progress.build(s, fy or None), msg=msg, sync=sync_view(s))
 
     @app.post("/kso/estimate", dependencies=[Depends(check_csrf)])
     def kso_estimate(request: Request):
         """Have Claude estimate this year's KSO ratings now, in the background."""
-        return start_sync(request, "kso")
+        return start_sync(request, "kso", to="/kso")
 
     def _kso_fw(s: Session, fy: str):
         from ..kso import framework as kso_fw
@@ -894,12 +873,10 @@ def create_app(dd: DataDir) -> FastAPI:
             return HTMLResponse("Not found", status_code=404)
         cur = v2mom_store.current(s)
         ev = v2mom_links.evidence(s).get(mid, dict(entries=[], wins=[]))
-        html = env.get_template("v2mom_method.html").render(
-            m=m, current=m.active and cur is not None and m.version_id == cur.id, wins=ev["wins"],
-            entries=ev["entries"], kind_label=dict(SHEET_KIND), source_label=SOURCE_LABEL, size_label=SIZE_LABEL,
-            csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(), theme=theme_of(request), page="/v2mom",
-            personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "v2mom_method.html", "/v2mom", m=m,
+                         current=m.active and cur is not None and m.version_id == cur.id, wins=ev["wins"],
+                         entries=ev["entries"], kind_label=dict(SHEET_KIND), source_label=SOURCE_LABEL,
+                         size_label=SIZE_LABEL)
 
     @app.get("/impact/{key}", response_class=HTMLResponse)
     def impact_page(request: Request, key: str, window: str = "all", s: Session = Depends(db)):
@@ -908,10 +885,8 @@ def create_app(dd: DataDir) -> FastAPI:
             return HTMLResponse("Not found", status_code=404)
         window = window if window in ("half", "year", "all") else "all"
         groups = activities.records(s, key, window)
-        html = env.get_template("impact.html").render(
-            label=activities.LABEL[key], key=key, window=window, groups=groups, csrf=csrf_token, msg=None,
-            sync_warning=dd.sync_warning(), theme=theme_of(request), page="/promo", personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "impact.html", "/promo", label=activities.LABEL[key], key=key, window=window,
+                         groups=groups)
 
     @app.post("/sheet/{eid}/activity", dependencies=[Depends(check_csrf)])
     def sheet_activity(request: Request, eid: int, activity: str = Form(""), ret: str = Form(""),
@@ -938,11 +913,9 @@ def create_app(dd: DataDir) -> FastAPI:
         name = " ".join(name.split()) or pw.load_name(dd) or "the candidate"
         pw.save_name(dd, name)
         labels = [f"Write {h}" for _k, h, *_r in pw.SECTIONS]
-        started = jobs.start("promo", labels, lambda j: syncs.run_promo(j, Session_, start, end, name))
-        if request.headers.get("x-sync") == "1":
-            return JSONResponse({"started": started})
-        return back("Writing your promo case. This takes a minute or two; refresh to see it." if started
-                    else "A draft is already being written.", "/promo/case")
+        return started_reply(request, jobs.start("promo", labels, lambda j: syncs.run_promo(j, Session_, start, end, name)),
+                             "Writing your promo case. This takes a minute or two; refresh to see it.",
+                             "A draft is already being written.", "/promo/case")
 
     @app.post("/promo/case/{vid}/edit/{key}", dependencies=[Depends(check_csrf)])
     def promo_edit(vid: int, key: str, text: str = Form("", max_length=20_000), s: Session = Depends(db)):
@@ -973,11 +946,9 @@ def create_app(dd: DataDir) -> FastAPI:
             if request.headers.get("x-sync") == "1":
                 return JSONResponse({"started": False, "message": msg}, status_code=409)
             return back(msg, f"/promo/case/{vid}")
-        started = jobs.start("promo", [f"Rewrite {sec.heading}"], lambda j: syncs.run_rewrite(j, Session_, vid, key))
-        if request.headers.get("x-sync") == "1":
-            return JSONResponse({"started": started})
-        return back("Rewriting it now; refresh in a minute." if started else "A draft is already being written.",
-                    "/promo/case")
+        return started_reply(request, jobs.start("promo", [f"Rewrite {sec.heading}"],
+                                                 lambda j: syncs.run_rewrite(j, Session_, vid, key)),
+                             "Rewriting it now; refresh in a minute.", "A draft is already being written.", "/promo/case")
 
     @app.post("/promo/case/{vid}/gdoc", dependencies=[Depends(check_csrf)])
     def promo_gdoc(request: Request, vid: int, s: Session = Depends(db)):
@@ -987,11 +958,9 @@ def create_app(dd: DataDir) -> FastAPI:
             return back("Sending to Google Docs only works with your personal notebook.", "/promo/case")
         if s.get(PromoVersion, vid) is None:
             return back("That draft is gone.", "/promo/case")
-        started = jobs.start("promo", syncs.GDOC_STEPS, lambda j: syncs.run_gdoc(j, Session_, dd, vid))
-        if request.headers.get("x-sync") == "1":
-            return JSONResponse({"started": started})
-        return back("Sending it to Google Docs; refresh in a minute." if started else "Something is already running.",
-                    f"/promo/case/{vid}")
+        return started_reply(request, jobs.start("promo", syncs.GDOC_STEPS, lambda j: syncs.run_gdoc(j, Session_, dd, vid)),
+                             "Sending it to Google Docs; refresh in a minute.", "Something is already running.",
+                             f"/promo/case/{vid}")
 
     @app.get("/promo/compare", response_class=HTMLResponse)
     def promo_compare(request: Request, a: int = 0, b: int = 0, s: Session = Depends(db)):
@@ -1007,10 +976,7 @@ def create_app(dd: DataDir) -> FastAPI:
         for key, heading, *_ in pw.SECTIONS:
             sa, sb = secs[va.id].get(key), secs[vb.id].get(key)
             rows.append(dict(heading=heading, diff=pw.compare(sa.sentences if sa else [], sb.sentences if sb else [])))
-        html = env.get_template("promo_compare.html").render(
-            a=va, b=vb, rows=rows, csrf=csrf_token, msg=None, sync_warning=dd.sync_warning(), theme=theme_of(request),
-            page="/promo", personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "promo_compare.html", "/promo", a=va, b=vb, rows=rows)
 
     @app.get("/promo/case", response_class=HTMLResponse)
     @app.get("/promo/case/{vid}", response_class=HTMLResponse)
@@ -1026,13 +992,11 @@ def create_app(dd: DataDir) -> FastAPI:
         cited = sorted({n for sec in sections for x in sec.sentences for n in x["sources"]})
         by_n = {p["n"]: p for p in (v.evidence if v else [])}
         lo, hi = pw.default_window()
-        html = env.get_template("promo_case.html").render(
-            v=v, versions=versions, sections=sections, sources=[by_n[n] for n in cited if n in by_n],
-            latest=versions[0].id if versions else None, texts={x.key: pw.to_text(x.sentences) for x in sections},
-            flagged=sum(1 for sec in sections for x in sec.sentences if not x["valid"]),
-            start=lo, end=hi, name=pw.load_name(dd), guided=gsvc.has_guide(s), csrf=csrf_token, msg=msg,
-            sync_warning=dd.sync_warning(), theme=theme_of(request), page="/promo", personal=personal, q="")
-        return HTMLResponse(html)
+        return page_html(request, "promo_case.html", "/promo", v=v, versions=versions, sections=sections,
+                         sources=[by_n[n] for n in cited if n in by_n], latest=versions[0].id if versions else None,
+                         texts={x.key: pw.to_text(x.sentences) for x in sections},
+                         flagged=sum(1 for sec in sections for x in sec.sentences if not x["valid"]), start=lo,
+                         end=hi, name=pw.load_name(dd), guided=gsvc.has_guide(s), msg=msg)
 
     @app.get("/promo/export")
     def promo_export(s: Session = Depends(db)):
@@ -1056,7 +1020,8 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.post("/theme", dependencies=[Depends(check_csrf)])
     def set_theme(theme: str = Form(...), next: str = Form("/")):
-        resp = back(to=next if next in PAGES else "/")
+        local = next.startswith("/") and not next.startswith("//") and "\\" not in next  # never another site
+        resp = back(to=next if local else "/")
         resp.set_cookie("theme", "light" if theme == "light" else "dark", max_age=31_536_000,
                         httponly=True, samesite="strict")
         return resp

@@ -15,15 +15,17 @@ from typing import Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, ask
+from ..claude_cli import ClaudeError, ask, reply_results
+from ..guide.service import GRADES
 from ..storage.models import PromoSection, PromoVersion
 from .evidence import SECTIONS, build
+from ..config import write_private
 
 WORKERS = 3
 NUMBER = re.compile(r"(?<![A-Za-z])\d+(?:[.,:]\d+)*")  # not the 2 in "V2MOM M2", which every V2MOM piece has
 
-PROMPT = """You write one section of a promotion case for {name}, a DevOps release manager at Grade 5 going for \
-Grade 6, with evidence of some Grade 7 work. The section is "{heading}": {what}. Write {length}.
+PROMPT = """You write one section of a promotion case for {name}, a DevOps release manager at """ + GRADES + """. \
+The section is "{heading}": {what}. Write {length}.
 
 Write in the third person about {name} ("{name} led ..."), in plain professional English: concrete, specific, no \
 hype words (no "spearheaded", "rockstar", "passionate"). On stdin is JSON with numbered "evidence". Use ONLY that \
@@ -54,11 +56,7 @@ def load_name(dd) -> str:
 
 
 def save_name(dd, name: str) -> None:
-    import os
-    path = dd.root / "profile.json"
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        json.dump(dict(name=name), fh)
+    write_private(dd.root / "profile.json", json.dumps(dict(name=name)))
 
 
 def default_window(today: date | None = None) -> tuple[str, str]:
@@ -67,13 +65,7 @@ def default_window(today: date | None = None) -> tuple[str, str]:
 
 
 def _parse(reply: str) -> list[dict]:
-    m = re.search(r"\{.*\}", reply, re.S)
-    try:
-        got = json.loads(m.group(0)) if m else {}
-    except ValueError:
-        return []
-    out = got.get("sentences") if isinstance(got, dict) else None
-    return [x for x in out if isinstance(x, dict) and str(x.get("text", "")).strip()] if isinstance(out, list) else []
+    return [x for x in reply_results(reply, "sentences") if str(x.get("text", "")).strip()]
 
 
 def read_section(name: str, key: str, evidence: list[dict]) -> list[dict]:
@@ -148,6 +140,7 @@ def to_text(sentences: list[dict]) -> str:
 
 
 def from_text(text: str) -> list[dict]:
+    """A section you edited, back into sentences with their [n] sources."""
     out = []
     for line in text.splitlines():
         sources = [int(n) for n in CITE.findall(line)]

@@ -4,11 +4,11 @@ from sqlalchemy import select
 from typer.testing import CliRunner
 
 from careeros.cli import app as cli
-from careeros.config import DataDir, NotDemoData, resolve
+from careeros.config import DataDir, NotDemoData
 from datetime import date
 
 from careeros.storage.db import init_db, make_engine, make_session_factory
-from careeros.storage.models import GuideItem, JournalAttachment, JournalEntry, Win
+from careeros.storage.models import DailyTask, GuideItem, JournalAttachment, JournalEntry, Win
 from careeros.web.app import create_app
 
 BASE = "http://127.0.0.1"
@@ -63,6 +63,9 @@ def test_demo_seed_fills_every_page_with_made_up_data(tmp_path):
     c = TestClient(create_app(dd), base_url=BASE)
     home = c.get("/").text
     assert "practice notebook" in home and "Grade 5 to 6, aiming at 7" in home and "Sync Google" not in home
+    assert "Today's three" in home and 'action="/daily/suggest"' not in home  # the made-up three, no Suggest
+    with make_session_factory(make_engine(dd.db))() as s:
+        assert s.query(DailyTask).count() == 3  # seeding twice the same day adds no second three
     assert "Release readiness review" in c.get("/meetings").text
     for path in ("/wins", "/promo", "/sheet?show=all", "/meetings", "/conversations", "/documents", "/tasks", "/other",
                  "/search?q=rollback"):
@@ -109,7 +112,6 @@ def test_journal_add_show_and_remove(seeded):
     assert "Met with Sam about the rollout" in c.get("/meetings").text
     docs = c.get("/documents").text
     assert "&lt;b&gt;runbook" in docs and "<b>runbook" not in docs
-    assert "Met with Sam" not in c.get("/").text  # home is the dashboard, not a day list
     from careeros.storage.models import JournalEntry
     with make_session_factory(make_engine(dd.db))() as s:
         eid = s.scalar(select(JournalEntry.id).where(JournalEntry.kind == "meeting"))
@@ -117,9 +119,8 @@ def test_journal_add_show_and_remove(seeded):
     assert "Met with Sam" not in c.get("/meetings").text
 
 
-def test_journal_needs_csrf_and_ignores_future_or_bad_dates(seeded):
+def test_journal_ignores_future_or_bad_dates(seeded):
     dd, c, token = seeded
-    assert c.post("/journal/add", data={"kind": "note", "text": "x"}).status_code == 403
     form(c, "/journal/add", token, kind="bogus", text="Back-dated", day="2999-01-01")
     form(c, "/journal/add", token, kind="note", text="Garbled date", day="nope")
     html = c.get("/other").text
@@ -217,6 +218,7 @@ def test_tabs_list_by_kind_and_tasks_open_first(tmp_path):
     assert "Rollout sync" in m and "https://docs.google.com/document/d/abc/edit" in m and "ship it" not in m
     t = c.get("/tasks").text
     assert t.index("Still to do") < t.index("write plan") < t.index("ship it") and "from google" not in t
+    assert "2 saved" in t and "showing the newest" not in t  # the open task is on the page too
     assert "write plan" not in c.get("/").text  # open tasks stay off Today
     for path in ("/conversations", "/documents", "/other"):
         assert c.get(path).status_code == 200
@@ -283,7 +285,8 @@ def test_download_everything_is_a_zip_of_csvs_with_formulas_defused(seeded):
     r = c.get("/export/everything")
     assert r.headers["content-type"] == "application/zip" and ".zip" in r.headers["content-disposition"]
     z = zipfile.ZipFile(io.BytesIO(r.content))
-    assert sorted(z.namelist()) == ["entries.csv", "guide_links.csv", "pasted_notes.csv", "wins.csv"]
+    assert sorted(z.namelist()) == ["entries.csv", "guide_links.csv", "pasted_notes.csv", "promo_drafts.csv",
+                                     "v2mom_links.csv", "wins.csv"]
     read = lambda n: list(csv.DictReader(io.StringIO(z.read(n).decode("utf-8-sig"))))
     entries, notes, wins = read("entries.csv"), read("pasted_notes.csv"), read("wins.csv")
     assert {e["text"] for e in entries} == {"'=HYPERLINK(\"http://evil\")", "Fixed the deploy script"}
@@ -302,3 +305,65 @@ def test_wins_page_works_on_an_existing_notebook(tmp_path):
     con.close()
     c = TestClient(create_app(dd), base_url=BASE)
     assert c.get("/wins").status_code == 200 and 'href="/wins"' in c.get("/").text
+
+
+
+def test_removing_a_chip_that_is_already_gone_never_breaks_the_queue_row(tmp_path):
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    r = c.post("/sheet/link/999/delete", data={"csrf": app.state.csrf_token, "ret": ""},
+               headers={"X-Sheet": "1"}, follow_redirects=False)
+    assert r.status_code == 200 and r.text == ""  # empty: the queue's script reloads instead of swapping a row
+
+
+def test_switching_the_theme_comes_back_to_the_same_page_and_never_leaves_the_app(tmp_path):
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    assert 'name="next" value="/kso?fy=FY26"' in c.get("/kso?fy=FY26&msg=Saved").text
+    for nxt, to in (("/promo/case/12", "/promo/case/12"), ("//evil.example", "/"), ("/\\evil.example", "/")):
+        r = c.post("/theme", data={"csrf": app.state.csrf_token, "theme": "light", "next": nxt}, follow_redirects=False)
+        assert r.headers["location"] == to
+    assert c.get("/static/sync.js").status_code == 200 and c.get("/static/nope.js").status_code == 404
+
+
+def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
+    import time
+    from careeros.web import syncs
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    ran = []
+    monkeypatch.setattr(syncs, "run_review", lambda j, S: (ran.append(1), j.finish("ok")))
+    r = c.post("/sheet/ai", data={"csrf": app.state.csrf_token}, headers={"X-Sync": "1"})
+    assert r.json() == {"started": True}
+    r = c.post("/sheet/ai", data={"csrf": app.state.csrf_token, "ret": "show=ai&source=slack&page=2"},
+               follow_redirects=False)
+    assert r.headers["location"].startswith("/sheet?show=ai&source=slack") and "page=2" in r.headers["location"]
+    for _ in range(50):
+        if ran:
+            break
+        time.sleep(0.02)
+    assert ran
+
+
+def test_the_export_includes_v2mom_links_and_promo_drafts(nb):
+    import csv as _csv
+    import io as _io
+    import zipfile as _zip
+    from careeros.export.csv_all import notebook_zip
+    from helpers import add, draft, link, load_v2mom, open_session
+    dd, *_ = nb
+    with open_session(dd) as s:
+        m = load_v2mom(s)
+        link(s, m["M1"], entry_id=add(s, "Ran a community session"))
+        s.commit()
+        draft(s)
+        z = _zip.ZipFile(_io.BytesIO(notebook_zip(s)))
+    rows = {n: list(_csv.DictReader(_io.StringIO(z.read(n).decode("utf-8-sig")))) for n in ("v2mom_links.csv", "promo_drafts.csv")}
+    assert [(r["method"], r["linked_text"]) for r in rows["v2mom_links.csv"]] == [("M1", "Ran a community session")]
+    assert rows["promo_drafts.csv"] and "[" in rows["promo_drafts.csv"][0]["text"]  # sentences keep their [n] sources

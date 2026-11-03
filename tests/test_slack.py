@@ -7,13 +7,13 @@ from typer.testing import CliRunner
 
 from careeros.claude_cli import ClaudeError
 from careeros.cli import app as cli
-from careeros.config import DataDir
 from careeros.slack import classify as cls
 from careeros.slack.importer import import_items, impact_of, load_canvas_id, save_canvas_id
 from careeros.slack.parse import CanvasFormatError, parse_canvas
-from careeros.storage.db import init_db, make_engine, make_session_factory
 from careeros.storage.models import JournalAttachment, JournalEntry
 from careeros.web.app import create_app
+
+from helpers import personal, run_sync
 
 BASE = "http://127.0.0.1"
 LINK = "https://example.slack.com/archives/C111/p1700000000000100?thread_ts=1700000000.000100"
@@ -62,13 +62,6 @@ Canvas Created: November 3, 2025
 **Link:** https://example.slack.com/archives/C222/p1700000000000200
 """
 
-
-def personal(tmp_path):
-    dd = DataDir(tmp_path / "nb")
-    dd.init_personal()
-    engine = make_engine(dd.db)
-    init_db(engine)
-    return dd, make_session_factory(engine)
 
 
 def test_parse_tracker_keeps_work_items_only():
@@ -183,17 +176,6 @@ def test_web_sync_and_cards(tmp_path, monkeypatch):
     job = run_sync(c, token, "slack")
     assert job["state"] == "error" and "sign-in has expired" in job["steps"][0]["detail"]
 
-
-def run_sync(c, token, name):
-    import time
-    path = {"slack": "/slack/sync", "google": "/sync/google", "v2mom": "/sync/v2mom"}[name]
-    assert c.post(path, data={"csrf": token}, headers={"X-Sync": "1"}).json()["started"]
-    for _ in range(200):
-        job = c.get("/sync/status").json().get(name)
-        if job and job["state"] != "running":
-            return job
-        time.sleep(0.05)
-    raise AssertionError("sync never finished")
 
 
 def test_saved_big_answers_are_read_back(tmp_path, monkeypatch):

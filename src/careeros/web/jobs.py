@@ -86,8 +86,11 @@ class Jobs:
         return True
 
     def status(self) -> dict[str, dict | None]:
+        """Each job that's running or finished in the last little while, for the page's progress boxes."""
         out = {}
-        for name, job in self._jobs.items():
+        with self._lock:  # start() adds jobs from other threads
+            jobs = list(self._jobs.items())
+        for name, job in jobs:
             if job.finished and (datetime.now() - job.finished).total_seconds() > SHOW_FINISHED_SECONDS:
                 continue
             out[name] = job.as_dict()

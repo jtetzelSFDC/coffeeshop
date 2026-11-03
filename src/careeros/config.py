@@ -51,12 +51,13 @@ class DataDir:
             raise NotDemoData(f"{self.root} is not a recognized Career OS folder")
 
     def init_personal(self) -> None:
+        """Make this folder your real notebook; refuses a demo folder or a synced one (iCloud, Dropbox)."""
         if self.is_demo:
             raise NotDemoData(f"{self.root} is a demo folder; pick a different one")
         if (w := self.sync_warning()):
             raise NotDemoData(f"Refusing to keep a real notebook here: {w}")
         self.create()
-        self.personal_marker.write_text("personal notebook: journal only, no imported work data\n")
+        self.personal_marker.write_text("personal notebook\n")
         os.chmod(self.personal_marker, 0o600)
         (self.root / ".metadata_never_index").touch()  # keep Spotlight from indexing the notes
 
@@ -78,3 +79,11 @@ def resolve(path: str | None, *, demo: bool = False) -> DataDir:
     if not chosen:
         chosen = PERSONAL_DIR if (not demo and (PERSONAL_DIR / ".personal").exists()) else DEFAULT_DEMO_DIR
     return DataDir(Path(chosen).expanduser())
+
+
+def write_private(path: Path, text: str) -> None:
+    """Write a notebook file only you can read (0600 from the start, and kept that way if it already existed)."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as fh:
+        fh.write(text)
+    os.chmod(path, 0o600)

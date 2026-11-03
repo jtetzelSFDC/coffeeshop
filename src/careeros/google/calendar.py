@@ -5,18 +5,17 @@ and meeting links are dropped here, before anything reaches the database.
 """
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
 import httpx
 import icalendar
 import recurring_ical_events
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from ..config import DataDir
-from ..storage.models import JournalAttachment, JournalEntry
+from ..config import DataDir, write_private
+from ..storage.models import GuideLink, JournalAttachment, JournalEntry
 
 SOURCE = "calendar"
 MAX_ICS_BYTES = 20_000_000
@@ -43,10 +42,7 @@ def save_url(dd: DataDir, url: str) -> None:
     url = url.strip()
     if not url.startswith("https://"):
         raise CalendarError("That doesn't look like a calendar address (it should start with https://).")
-    fd = os.open(url_file(dd), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(url + "\n")
-    os.chmod(url_file(dd), 0o600)
+    write_private(url_file(dd), url + "\n")
 
 
 def load_url(dd: DataDir) -> str:
@@ -57,6 +53,7 @@ def load_url(dd: DataDir) -> str:
 
 
 def fetch_ics(url: str) -> bytes:
+    """Download a secret-address iCal feed (no redirects, size-capped); CalendarError with a plain reason."""
     try:
         with httpx.stream("GET", url, timeout=30, follow_redirects=False) as r:
             if r.status_code != 200:
@@ -128,10 +125,10 @@ def sync(s: Session, events: list[Event], first: date, last: date) -> dict[str, 
         elif row.text != headline(ev) or row.day != ev.day:
             row.text, row.day = headline(ev), ev.day
             updated += 1
-    from ..guide.service import keeps_entry
+    from ..storage.removal import built_on
     for gone in existing.values():
-        has_notes = s.scalar(select(JournalAttachment.id).where(JournalAttachment.entry_id == gone.id).limit(1))
-        if not has_notes and not keeps_entry(s, gone):
+        if not built_on(s, gone):  # any attachment counts: notes links and summaries are worth keeping
+            s.execute(delete(GuideLink).where(GuideLink.entry_id == gone.id))  # Claude's picks; no cascade
             s.delete(gone)
             removed += 1
     from ..storage.sync_log import record

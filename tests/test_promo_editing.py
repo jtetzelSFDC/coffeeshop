@@ -6,15 +6,9 @@ from sqlalchemy import select
 from careeros.promo import write as pw
 from careeros.storage.models import PromoSection, PromoVersion
 
-from test_guide import form, nb, session  # noqa: F401
-from test_promo_writer import by_key, seed
+from helpers import draft, form, open_session
 
 
-def draft(s):
-    seed(s)
-    return pw.write_case(s, start="2025-10-29", end="2026-10-29", name="Jordan", reader=by_key(
-        lambda key, ev: [dict(text=f"Jordan's {key} one.", sources=[ev[0]["n"]]),
-                         dict(text=f"Jordan's {key} two.", sources=[ev[-1]["n"]])]))
 
 
 def sections(s, v):
@@ -30,7 +24,7 @@ def test_text_round_trip():
 
 def test_edit_saves_a_checked_new_draft_and_keeps_the_old(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         v = draft(s)
         n = sections(s, v)["impact"].sentences[0]["sources"][0]
         new = pw.edit_section(s, v, "impact", f"Jordan ran the refresh for four teams. [{n}]\nJordan saved 99 hours. [{n}]")
@@ -44,7 +38,7 @@ def test_edit_saves_a_checked_new_draft_and_keeps_the_old(nb):
 
 def test_rewrite_one_section_from_its_own_evidence(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         v = draft(s)
         seen = []
 
@@ -61,13 +55,13 @@ def test_rewrite_one_section_from_its_own_evidence(nb):
 
 def test_pages_edit_rewrite_confirm_and_compare(nb, monkeypatch):
     dd, c, token, _ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         vid = draft(s).id
     page = c.get("/promo/case").text
     assert 'data-label="Rewrite"' in page and "Save as a new draft" in page and "[" in page
     r = form(c, f"/promo/case/{vid}/edit/summary", token, text="Jordan is ready for Grade 6.")
     assert r.status_code == 303 and r.headers["location"].endswith("#sec-summary")
-    with session(dd) as s:
+    with open_session(dd) as s:
         edited_id = s.scalar(select(PromoVersion.id).order_by(PromoVersion.id.desc()))
     new_page = c.get(f"/promo/case/{edited_id}").text
     assert "edited by you" in new_page and "Replace my edits" in new_page

@@ -5,15 +5,14 @@ notebook; the repo's tests use a made-up one."""
 from __future__ import annotations
 
 import json
-import os
 import re
 from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, ask, call_tool, connector_error
-from ..config import DataDir
+from ..claude_cli import ClaudeError, ask, call_tool, connector_error, markdown_of, reply_json
+from ..config import DataDir, write_private
 from ..storage.models import KsoFramework
 
 SOURCE_FILE = "kso.json"
@@ -74,9 +73,7 @@ def sources(decks: list[str], canvases: list[str], track: str, manager: bool) ->
 
 def save_sources(dd: DataDir, src: dict) -> None:
     """Remembered once a read with them worked, so a typo never replaces good links."""
-    fd = os.open(source_file(dd), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(json.dumps(src) + "\n")
+    write_private(source_file(dd), json.dumps(src) + "\n")
 
 
 def load_sources(dd: DataDir) -> dict | None:
@@ -86,13 +83,6 @@ def load_sources(dd: DataDir) -> dict | None:
         return None
     return src if isinstance(src, dict) and (src.get("decks") or src.get("canvases")) else None
 
-
-def _canvas_text(raw: str) -> str:
-    try:
-        data = json.loads(raw)
-    except ValueError:
-        return raw
-    return str(data.get("markdown_content") or raw) if isinstance(data, dict) else raw
 
 
 def fetch(src: dict) -> str:
@@ -106,7 +96,7 @@ def fetch(src: dict) -> str:
             raise ClaudeError(err)
         parts.append(raw)
     for cid in src.get("canvases") or []:
-        parts.append(_canvas_text(fetch_canvas(cid)))
+        parts.append(markdown_of(fetch_canvas(cid)))
     text = "\n\n---\n\n".join(parts)
     if len(text.strip()) < 200:
         raise ClaudeError("The KSO material came back empty. Check the deck and canvas links, then try again.")
@@ -125,12 +115,6 @@ def _list(d: dict, key: str) -> list:
     if not isinstance(v, list):
         raise ValueError(f"{key} isn't a list")
     return v
-
-
-def fiscal_year(text: str) -> str:
-    """FY27 from "FY27", "fy 27" or "FY2027"; "" when it isn't one."""
-    m = re.search(r"FY\s*(?:20)?(\d{2})\b", text or "", re.I)
-    return f"FY{m.group(1)}" if m else ""
 
 
 def _ratings(d: object, what: str) -> dict:
@@ -189,19 +173,20 @@ def validate(data: object) -> dict:
                 dates.append(dict(date=date.fromisoformat(d["date"]).isoformat(), what=" ".join(d["what"].split())[:120]))
             except ValueError:
                 continue
-    return dict(fiscal_year=fiscal_year(str(data.get("fiscal_year") or "")), track=_text(data, "track", 60),
+    from ..v2mom.report import fy_name
+    return dict(fiscal_year=fy_name(str(data.get("fiscal_year") or "")), track=_text(data, "track", 60),
                 rated="quarterly" if data.get("rated") == "quarterly" else "yearly",
                 payout={r: payout[r] for r in RATINGS}, level_names={r: _text(names, r, 80) for r in RATINGS},
                 ksos=ksos, dates=sorted(dates, key=lambda x: x["date"]))
 
 
 def parse(text: str, track: str = "Delivery", manager: bool = False, reader=None) -> dict:
+    """One Claude answer turns the material into the framework; ClaudeError when it doesn't fit."""
     prompt = PROMPT.format(track=track, who="a people manager" if manager else "an individual contributor",
                            max_example=MAX_EXAMPLE, skip="" if manager else MANAGER_ONLY)
     reply = (reader or (lambda p, d: ask(p, d, timeout=600)))(prompt, text[:MAX_READ])
-    m = re.search(r"\{.*\}", reply, re.S)
     try:
-        return validate(json.loads(m.group(0)) if m else None)
+        return validate(reply_json(reply))
     except ValueError as exc:
         raise ClaudeError(f"Couldn't read the KSOs from that material ({exc}). Nothing was changed.") from None
 

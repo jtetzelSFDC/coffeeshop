@@ -1,10 +1,7 @@
 [project]
 name = "careeros"
 version = "1.0.0"
-description = "Add your description here"
-authors = [
-    { name = "Jordan", email = "52677683+jtetzelSFDC@users.noreply.github.com" }
-]
+description = "A local work notebook that keeps the evidence for your next promotion"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.158.2",

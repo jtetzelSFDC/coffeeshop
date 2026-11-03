@@ -11,7 +11,8 @@ from ..storage.models import GuideItem, GuideLink, JournalEntry, Win
 from .parse import parse_guide
 from .topics import suggest
 
-CURRENT_GRADE = 5
+CURRENT_GRADE = 5  # your grade now; the guide's next two grades are what the app lines your work up against
+GRADES = (f"Grade {CURRENT_GRADE}, going for Grade {CURRENT_GRADE + 1}, with some Grade {CURRENT_GRADE + 2} work")
 TARGET_GRADES = (6, 7)
 POINTS = {"entry": 1, "small": 2, "medium": 3, "large": 4}
 RECOGNITION_SIZE = "medium"  # kudos from someone else count like a medium win
@@ -19,6 +20,7 @@ STATUSES = [(6, "strong", "Strong"), (3, "shown", "Shown"), (1, "started", "Star
 
 
 def import_guide(s: Session, path: Path | str) -> dict:
+    """Load or update the leveling guide from its CSV; items keep their rows (and links) by key."""
     items = parse_guide(path)
     have = {g.key: g for g in s.scalars(select(GuideItem))}
     seen, added, updated = set(), 0, 0
@@ -166,12 +168,6 @@ def set_links(s: Session, ids: set[int], *, win_id: int | None = None, entry_id:
     s.commit()
 
 
-def keeps_entry(s: Session, e: JournalEntry) -> bool:
-    """True when the user (or Claude) built on this entry, so a sync must not delete it."""
-    return e.reviewed or s.scalar(select(Win.id).where(Win.entry_id == e.id).limit(1)) is not None or \
-        s.scalar(select(GuideLink.id).where(GuideLink.entry_id == e.id).limit(1)) is not None
-
-
 def confirm(s: Session, entry_id: int) -> None:
     """The user checked this row: Claude's picks for it (links, V2MOM methods, type, drafted win) become the user's own."""
     e = s.get(JournalEntry, entry_id)
@@ -197,6 +193,6 @@ def ai_counts(s: Session) -> dict[str, int]:
                 wins=s.scalar(select(func.count()).select_from(Win).where(Win.by_ai)) or 0)
 
 
-def drop_links(s: Session, *, win_id: int | None = None, entry_id: int | None = None) -> None:
-    q = delete(GuideLink)
-    s.execute(q.where(GuideLink.win_id == win_id) if win_id is not None else q.where(GuideLink.entry_id == entry_id))
+def drop_links(s: Session, *, win_id: int) -> None:
+    """A win's guide links, before it's deleted or relinked."""
+    s.execute(delete(GuideLink).where(GuideLink.win_id == win_id))

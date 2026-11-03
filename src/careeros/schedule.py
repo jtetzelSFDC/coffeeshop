@@ -34,6 +34,7 @@ def _uv() -> str:
 
 
 def plists(dd: DataDir, uv: str, repo: Path = REPO) -> dict[str, dict]:
+    """The three launchd agents: the app (kept running), the sync (8 AM, 6 PM, login) and the Friday digest."""
     logs = dd.root / "logs"
     base = ["run", "--project", str(repo), "careeros"]
     env = {"PATH": PATH, "CAREEROS_DATA_DIR": str(dd.root)}
@@ -56,6 +57,7 @@ def _domain() -> str:
 
 
 def install(dd: DataDir, agents_dir: Path = AGENTS_DIR, uv: str | None = None, repo: Path = REPO) -> list[Path]:
+    """Write and load the launchd agents (replacing older ones); returns the files written."""
     (dd.root / "logs").mkdir(mode=0o700, exist_ok=True)
     agents_dir.mkdir(parents=True, exist_ok=True)
     written = []
@@ -75,6 +77,7 @@ def install(dd: DataDir, agents_dir: Path = AGENTS_DIR, uv: str | None = None, r
 
 
 def uninstall(agents_dir: Path = AGENTS_DIR) -> list[Path]:
+    """Unload and delete the launchd agents."""
     removed = []
     for label in (APP, SYNC, DIGEST):
         launchctl("bootout", f"{_domain()}/{label}")
@@ -86,6 +89,7 @@ def uninstall(agents_dir: Path = AGENTS_DIR) -> list[Path]:
 
 
 def status(dd: DataDir, agents_dir: Path = AGENTS_DIR) -> list[str]:
+    """One line per agent (on, installed but not loaded, or off) and the end of the latest sync log."""
     lines = []
     for label, what in ((APP, "Keeps the app running"), (SYNC, "Syncs at 8 AM, 6 PM, and login"),
                         (DIGEST, "Weekly digest on Fridays at noon")):

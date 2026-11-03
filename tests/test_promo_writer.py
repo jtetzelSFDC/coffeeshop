@@ -2,49 +2,24 @@
 import json
 import re
 import time
-from datetime import date, datetime
+from datetime import datetime
 
 import pytest
 from sqlalchemy import select
 
 from careeros.claude_cli import ClaudeError
-from careeros.guide.service import experiences
 from careeros.promo import evidence as pe, write as pw
-from careeros.storage.models import GuideLink, JournalEntry, PromoSection, PromoVersion, V2momLink, Win, WorkItem
+from careeros.storage.models import JournalEntry, PromoSection, PromoVersion, V2momLink, WorkItem
 
-from test_guide import nb, session  # noqa: F401
-from test_v2mom import TWO
-from test_v2mom_links import load_v2mom
+from helpers import TWO, by_key, load_v2mom, open_session, promo_seed
 
 
-def seed(s):
-    item = experiences(s)[0].id
-    e = JournalEntry(day="2026-10-20", kind="task", text="Ran the full sandbox refresh", created_at=datetime.now(),
-                     source="slack", activity="sandbox_refresh")
-    old = JournalEntry(day="2024-01-05", kind="task", text="Ancient deploy", created_at=datetime.now(), source="slack")
-    s.add_all([e, old])
-    s.flush()
-    w = Win(day="2026-10-20", title="Planned and ran a full sandbox refresh for four teams", impact="No team lost data.",
-            size="large", entry_id=e.id, created_at=datetime.now())
-    s.add(w)
-    s.flush()
-    s.add_all([GuideLink(item_id=item, win_id=w.id, created_at=datetime.now()),
-               GuideLink(item_id=item, entry_id=old.id, created_at=datetime.now())])
-    s.commit()
-    return w
-
-
-def by_key(answers):
-    def reader(name, key, evidence):
-        assert all(set(p) == {"n", "kind", "text", "day", "refs"} for p in evidence)
-        return answers(key, evidence)
-    return reader
 
 
 def test_evidence_stays_inside_the_window(nb):
     dd, *_ = nb
-    with session(dd) as s:
-        seed(s)
+    with open_session(dd) as s:
+        promo_seed(s)
         pieces, slices = pe.build(s, "2025-10-29", "2026-10-29")
         texts = " ".join(p["text"] for p in pieces)
         assert "Planned and ran a full sandbox refresh" in texts and "Ancient deploy" not in texts
@@ -73,8 +48,8 @@ def test_bad_citations_and_invented_numbers_are_flagged():
 
 def test_write_case_saves_a_version_with_its_evidence(nb):
     dd, *_ = nb
-    with session(dd) as s:
-        seed(s)
+    with open_session(dd) as s:
+        promo_seed(s)
 
         def answers(key, ev):
             if key == "growth":
@@ -94,8 +69,8 @@ def test_write_case_saves_a_version_with_its_evidence(nb):
 
 def test_write_button_shows_the_draft_with_sources(nb, monkeypatch):
     dd, c, token, _ = nb
-    with session(dd) as s:
-        seed(s)
+    with open_session(dd) as s:
+        promo_seed(s)
     monkeypatch.setattr(pw, "ask", lambda prompt, data, timeout=0: json.dumps({"sentences": [
         {"text": "Jordan ran the full sandbox refresh <b>for four teams</b>.", "sources": [json.loads(data)["evidence"][0]["n"]]},
         {"text": "Jordan cut costs by 40%.", "sources": [1]}]}))
@@ -120,8 +95,8 @@ def test_write_button_shows_the_draft_with_sources(nb, monkeypatch):
 
 
 def seed_v2mom(s):
-    """seed(), plus a V2MOM: M1 has the win (and a record outside the window), M2 one record of a piece of work."""
-    w = seed(s)
+    """promo_seed(), plus a V2MOM: M1 has the win (and a record outside the window), M2 one record of a piece of work."""
+    w = promo_seed(s)
     ids = load_v2mom(s)
     wi = WorkItem(title="Pipeline accelerator", day="2026-10-22", started="2026-10-21", created_at=datetime.now())
     s.add(wi)
@@ -141,7 +116,7 @@ def seed_v2mom(s):
 def test_v2mom_methods_become_evidence_pieces(nb, monkeypatch):
     dd, *_ = nb
     monkeypatch.setitem(pe.CAPS, "impact", 2)  # a full section still has room for them: the win doesn't push them out
-    with session(dd) as s:
+    with open_session(dd) as s:
         seed_v2mom(s)
         pieces, slices = pe.build(s, "2025-10-29", "2026-10-29")
         m1, m2 = (p for p in pieces if p["kind"] == "v2mom")
@@ -163,15 +138,15 @@ def test_v2mom_methods_become_evidence_pieces(nb, monkeypatch):
 
 def test_no_v2mom_no_v2mom_pieces(nb):
     dd, *_ = nb
-    with session(dd) as s:
-        seed(s)
+    with open_session(dd) as s:
+        promo_seed(s)
         pieces, _ = pe.build(s, "2025-10-29", "2026-10-29")
         assert pieces and not any("V2MOM" in p["text"] for p in pieces)
 
 
 def test_a_sentence_about_a_method_passes_the_check(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         seed_v2mom(s)
 
         def answers(key, ev):

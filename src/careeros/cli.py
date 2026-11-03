@@ -38,7 +38,7 @@ def demo_seed(data_dir: Optional[str] = DataOpt) -> None:
                f"Start it with:  uv run careeros serve --data-dir {dd.root}")
 
 
-sync_app = typer.Typer(no_args_is_help=True, help="Pull in Slack and Google")
+sync_app = typer.Typer(no_args_is_help=True, help="Pull in everything (what the schedule runs)")
 app.add_typer(sync_app, name="sync")
 
 
@@ -46,7 +46,8 @@ app.add_typer(sync_app, name="sync")
 def sync_all_cmd(force: bool = typer.Option(False, "--force", help="Run even if already synced since the last "
                                                                    "scheduled time (8 AM or 6 PM)"),
                  data_dir: Optional[str] = DataOpt) -> None:
-    """Back up, then run the Slack and Google syncs (what the scheduled task runs). Logs go to logs/ in the notebook."""
+    """Back up, then sync Slack, Google and GitHub, the V2MOM and KSO estimate (monthly), and the daily three (what
+    the schedule runs). Logs go to logs/ in the notebook."""
     from . import sync_all
     os.umask(0o077)
     dd = resolve(data_dir)
@@ -134,7 +135,7 @@ app.add_typer(notebook_app, name="notebook")
 
 @notebook_app.command("init")
 def notebook_init(data_dir: Optional[str] = typer.Option(None, "--data-dir", help="Default: ~/Library/Application Support/CareerOS")) -> None:
-    """Create your real, permanent notebook (journal only). Imports of work data stay off."""
+    """Create your real, permanent notebook, the one every sync fills."""
     os.umask(0o077)
     dd = DataDir(__import__("pathlib").Path(data_dir).expanduser()) if data_dir else DataDir(PERSONAL_DIR)
     try:
@@ -347,22 +348,10 @@ def slack_connect(canvas: str = typer.Argument(..., help="Link to, or ID of, you
 
 @slack_app.command("pull")
 def slack_pull(data_dir: Optional[str] = DataOpt) -> None:
-    """Read the connected canvas through Claude Code's Slack connector and import new items (the Sync Slack button)."""
-    from .claude_cli import ClaudeError
-    from .slack.connector import fetch_canvas
-    from .slack.importer import load_canvas_id
-    dd, s = _open_personal(data_dir, "Slack sync")
-    cid = load_canvas_id(dd)
-    if not cid:
-        typer.echo("No canvas connected yet. Run: uv run careeros slack connect <canvas link>")
-        raise typer.Exit(1)
-    try:
-        raw = fetch_canvas(cid)
-    except ClaudeError as exc:
-        typer.echo(str(exc))
-        raise typer.Exit(1)
-    _slack_import(dd, s, raw)
-
+    """Read the connected canvas, import new items, look for kudos, and link them to the guide (the Sync Slack
+    button)."""
+    from .web import syncs
+    _run_job(data_dir, "Slack sync", syncs.SLACK_STEPS, syncs.run_slack)
 
 v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from its PDF or a Google Doc (read-only)")
 app.add_typer(v2mom_app, name="v2mom")
@@ -387,19 +376,8 @@ def v2mom_connect(doc: str = typer.Argument(..., help="The PDF downloaded from t
 @v2mom_app.command("sync")
 def v2mom_sync(data_dir: Optional[str] = DataOpt) -> None:
     """Read the connected PDF or Doc and update your V2MOM's methods and measures (the Sync V2MOM button)."""
-    import threading
     from .web import syncs
-    from .web.jobs import Job
-    dd, s = _open_personal(data_dir, "V2MOM sync")
-    s.close()
-    job = Job(syncs.V2MOM_STEPS)
-    syncs.run_v2mom(job, make_session_factory(make_engine(dd.db)), threading.Lock(), dd)
-    for st in job.steps:
-        typer.echo(f"{st['label']}: {st['state']}" + (f" ({st['detail']})" if st["detail"] else ""))
-    typer.echo(job.message)
-    if job.state in ("error", "partial"):
-        raise typer.Exit(1)
-
+    _run_job(data_dir, "V2MOM sync", syncs.V2MOM_STEPS, syncs.run_v2mom)
 
 @v2mom_app.command("tag")
 def v2mom_tag(everything: bool = typer.Option(False, "--all", help="Every record, not just the last 90 days"),
@@ -500,19 +478,8 @@ def kso_show(data_dir: Optional[str] = DataOpt) -> None:
 @kso_app.command("estimate")
 def kso_estimate(data_dir: Optional[str] = DataOpt) -> None:
     """Have Claude estimate this year's KSO ratings now (it also runs monthly with the sync; marked AI)."""
-    import threading
     from .web import syncs
-    from .web.jobs import Job
-    dd, s = _open_personal(data_dir, "KSOs")
-    s.close()
-    job = Job(syncs.KSO_STEPS)
-    syncs.run_kso(job, make_session_factory(make_engine(dd.db)), threading.Lock())
-    for st in job.steps:
-        typer.echo(f"{st['label']}: {st['state']}" + (f" ({st['detail']})" if st["detail"] else ""))
-    typer.echo(job.message)
-    if job.state in ("error", "partial"):
-        raise typer.Exit(1)
-
+    _run_job(data_dir, "KSOs", syncs.KSO_STEPS, lambda j, S, lock, dd: syncs.run_kso(j, S, lock))
 
 def _kso_summary(fw) -> str:
     pay = ", ".join(f"{r}={p:g}%" for r, p in fw.data["payout"].items())
@@ -525,8 +492,46 @@ calendar_app = typer.Typer(no_args_is_help=True, help="Pull Google Calendar meet
 app.add_typer(calendar_app, name="calendar")
 
 
-def _open_personal(data_dir: Optional[str], what: str = "Calendar sync"):
-    from .google import calendar as gcal  # noqa: F401
+def _run_job(data_dir: Optional[str], what: str, steps: list[str], run) -> None:
+    """Runs one of the app's background jobs here in Terminal (the same code as its button) and prints each step.
+    `run(job, Session_, lock, dd)` is the job; exits 1 when a step failed."""
+    import threading
+    from .web.jobs import Job
+    dd, s = _open_personal(data_dir, what)
+    s.close()
+    job = Job(steps)
+    run(job, make_session_factory(make_engine(dd.db)), threading.Lock(), dd)
+    for st in job.steps:
+        typer.echo(f"{st['label']}: {st['state']}" + (f" ({st['detail']})" if st["detail"] else ""))
+    typer.echo(job.message)
+    if job.state in ("error", "partial"):
+        raise typer.Exit(1)
+
+
+def _skip(data_dir, source: str, text: Optional[str], things: str, where: str, sync: str) -> None:
+    """Add a skip rule for `source` (and remove what's already here), or with no TEXT list the rules."""
+    from sqlalchemy import select
+    from .storage.models import SkipRule
+    from .storage.removal import add_skip_rule
+    dd, s = _open_personal(data_dir, "Skip rules")
+    if not text:
+        rules = s.scalars(select(SkipRule.pattern).where(SkipRule.source == source))
+        typer.echo("\n".join(f"Skipping {things} with: {p}" for p in rules) or "No skip rules yet.")
+        return
+    n = add_skip_rule(s, text, source)
+    typer.echo(f"{sync} will skip {things} whose {where} contains \"{' '.join(text.split())}\". "
+               f"Removed {n} already in the notebook (see Removed in the Intake Review Queue).")
+
+
+def _unskip(data_dir, source: str, text: str) -> None:
+    from .storage.removal import drop_skip_rule
+    dd, s = _open_personal(data_dir, "Skip rules")
+    typer.echo("Rule removed." if drop_skip_rule(s, text, source) else
+               f"No rule with that text. Run `{source} skip` to list them.")
+
+
+def _open_personal(data_dir: Optional[str], what: str):
+    """The personal notebook (created tables and all), or exit with a message: syncs never touch the practice one."""
     os.umask(0o077)
     dd = resolve(data_dir)
     if not dd.is_personal:
@@ -541,33 +546,20 @@ def _open_personal(data_dir: Optional[str], what: str = "Calendar sync"):
 def calendar_skip(text: Optional[str] = typer.Argument(None, help="Title text to skip, e.g. \"Team Daily Standup\""),
                   data_dir: Optional[str] = DataOpt) -> None:
     """Never bring in meetings whose title contains TEXT, and remove the ones already here. No TEXT lists the rules."""
-    from .storage.removal import add_skip_rule, skip_patterns
-    from .storage.models import SkipRule
-    from sqlalchemy import select
-    dd, s = _open_personal(data_dir, "Calendar rules")
-    if not text:
-        rules = list(s.scalars(select(SkipRule.pattern).where(SkipRule.source == "calendar")))
-        typer.echo("\n".join(f"Skipping meetings titled with: {p}" for p in rules) or "No skip rules yet.")
-        return
-    n = add_skip_rule(s, text)
-    typer.echo(f"Calendar sync will skip meetings whose title contains \"{' '.join(text.split())}\". "
-               f"Removed {n} already in the notebook (see Removed in the Intake Review Queue).")
+    _skip(data_dir, "calendar", text, "meetings", "title", "Calendar sync")
 
 
 @calendar_app.command("unskip")
 def calendar_unskip(text: str = typer.Argument(..., help="The rule's text, exactly as listed by `calendar skip`"),
                     data_dir: Optional[str] = DataOpt) -> None:
     """Stop skipping meetings with this title text. Removed meetings stay removed until you restore them."""
-    from .storage.removal import drop_skip_rule
-    dd, s = _open_personal(data_dir, "Calendar rules")
-    typer.echo("Rule removed." if drop_skip_rule(s, text) else "No rule with that text. Run `calendar skip` to list them.")
-
+    _unskip(data_dir, "calendar", text)
 
 @calendar_app.command("connect")
 def calendar_connect(data_dir: Optional[str] = DataOpt) -> None:
     """Save your calendar's secret iCal address (typed hidden, stored owner-only, never shown again)."""
     from .google import calendar as gcal
-    dd, _ = _open_personal(data_dir)
+    dd, _ = _open_personal(data_dir, "Calendar sync")
     url = typer.prompt("Paste the 'Secret address in iCal format'", hide_input=True)
     try:
         gcal.save_url(dd, url)
@@ -580,10 +572,10 @@ def calendar_connect(data_dir: Optional[str] = DataOpt) -> None:
 @calendar_app.command("sync")
 def calendar_sync(days: int = typer.Option(14, help="How many past days to pull (max 60)"),
                   data_dir: Optional[str] = DataOpt) -> None:
-    """Pull meetings (title and time only) for the last few days into the Today page."""
+    """Pull meetings (title and time only) for the last few days into your notebook."""
     from datetime import date, timedelta
     from .google import calendar as gcal
-    dd, s = _open_personal(data_dir)
+    dd, s = _open_personal(data_dir, "Calendar sync")
     last = date.today()
     first = last - timedelta(days=max(1, min(days, 60)))
     try:
@@ -601,12 +593,12 @@ def calendar_import(file: str = typer.Argument("-", help="JSON file of meetings,
                     first: str = typer.Option(..., help="First day covered, YYYY-MM-DD"),
                     last: str = typer.Option(..., help="Last day covered, YYYY-MM-DD"),
                     data_dir: Optional[str] = DataOpt) -> None:
-    """Load meetings fetched through the Google Workspace connector (what the Sync button runs)."""
+    """Load meetings from a JSON file saved from the Google Workspace connector (for testing an import by hand)."""
     import json
     import sys
     from datetime import date
     from .google import calendar as gcal
-    dd, s = _open_personal(data_dir)
+    dd, s = _open_personal(data_dir, "Calendar sync")
     try:
         items = json.loads(sys.stdin.read() if file == "-" else open(file).read())
         r = gcal.import_events(s, items, date.fromisoformat(first), date.fromisoformat(last))
@@ -623,7 +615,7 @@ def calendar_pull(days: int = typer.Option(1, help="How many past days to includ
     """Ask Claude Code to fetch your meetings through the Google Workspace connector (what the Sync button runs)."""
     from datetime import date, timedelta
     from .google import calendar as gcal, connector, summaries
-    dd, s = _open_personal(data_dir)
+    dd, s = _open_personal(data_dir, "Calendar sync")
     last = date.today()
     first = last - timedelta(days=max(0, min(days, connector.MAX_DAYS)))
     try:
@@ -644,43 +636,21 @@ app.add_typer(github_app, name="github")
 @github_app.command("sync")
 def github_sync(data_dir: Optional[str] = DataOpt) -> None:
     """Bring in PRs you merged or reviewed (the first run goes back a year), then link them to the guide."""
-    import threading
     from .web import syncs
-    from .web.jobs import Job
-    dd, s = _open_personal(data_dir, "GitHub sync")
-    s.close()
-    engine = make_engine(dd.db)
-    job = Job(syncs.GITHUB_STEPS)
-    syncs.run_github(job, make_session_factory(engine), threading.Lock())
-    for st in job.steps:
-        typer.echo(f"{st['label']}: {st['state']}" + (f" ({st['detail']})" if st["detail"] else ""))
-    typer.echo(job.message)
-    if job.state in ("error", "partial"):
-        raise typer.Exit(1)
-
+    _run_job(data_dir, "GitHub sync", syncs.GITHUB_STEPS, lambda j, S, lock, dd: syncs.run_github(j, S, lock))
 
 @github_app.command("skip")
 def github_skip(text: Optional[str] = typer.Argument(None, help="Text to skip, e.g. a repo: \"jmysterio/career-os\""),
                 data_dir: Optional[str] = DataOpt) -> None:
     """Never bring in PRs whose title or repo contains TEXT, and remove the ones already here. No TEXT lists them."""
-    from .storage.removal import add_skip_rule, skip_patterns
-    dd, s = _open_personal(data_dir, "GitHub rules")
-    if not text:
-        typer.echo("\n".join(f"Skipping PRs with: {p}" for p in skip_patterns(s, "github")) or "No skip rules yet.")
-        return
-    n = add_skip_rule(s, text, "github")
-    typer.echo(f"GitHub sync will skip PRs whose title or repo contains \"{' '.join(text.split())}\". "
-               f"Removed {n} already in the notebook (see Removed in the Intake Review Queue).")
+    _skip(data_dir, "github", text, "PRs", "title or repo", "GitHub sync")
 
 
 @github_app.command("unskip")
 def github_unskip(text: str = typer.Argument(..., help="The rule's text, as listed by `github skip`"),
                   data_dir: Optional[str] = DataOpt) -> None:
     """Stop skipping PRs with this text. Removed PRs stay removed until you restore them."""
-    from .storage.removal import drop_skip_rule
-    dd, s = _open_personal(data_dir, "GitHub rules")
-    typer.echo("Rule removed." if drop_skip_rule(s, text, "github") else "No rule with that text.")
-
+    _unskip(data_dir, "github", text)
 
 docs_app = typer.Typer(no_args_is_help=True, help="Google Docs, Sheets and Slides you wrote (pulled by Sync Google)")
 app.add_typer(docs_app, name="docs")
@@ -690,23 +660,14 @@ app.add_typer(docs_app, name="docs")
 def docs_skip(text: Optional[str] = typer.Argument(None, help="Title text to skip, e.g. \"Untitled\""),
               data_dir: Optional[str] = DataOpt) -> None:
     """Never bring in files whose title contains TEXT, and remove the ones already here. No TEXT lists the rules."""
-    from .storage.removal import add_skip_rule, skip_patterns
-    dd, s = _open_personal(data_dir, "Docs rules")
-    if not text:
-        typer.echo("\n".join(f"Skipping files titled with: {p}" for p in skip_patterns(s, "docs")) or "No skip rules yet.")
-        return
-    n = add_skip_rule(s, text, "docs")
-    typer.echo(f"Sync Google will skip files whose title contains \"{' '.join(text.split())}\". "
-               f"Removed {n} already in the notebook (see Removed in the Intake Review Queue).")
+    _skip(data_dir, "docs", text, "files", "title", "Sync Google")
 
 
 @docs_app.command("unskip")
 def docs_unskip(text: str = typer.Argument(..., help="The rule's text, as listed by `docs skip`"),
                 data_dir: Optional[str] = DataOpt) -> None:
     """Stop skipping files with this title text. Removed files stay removed until you restore them."""
-    from .storage.removal import drop_skip_rule
-    dd, s = _open_personal(data_dir, "Docs rules")
-    typer.echo("Rule removed." if drop_skip_rule(s, text, "docs") else "No rule with that text.")
+    _unskip(data_dir, "docs", text)
 
 
 digest_app = typer.Typer(no_args_is_help=True, help="Your weekly digest")

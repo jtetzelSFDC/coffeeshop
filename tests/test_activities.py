@@ -1,19 +1,17 @@
 """Impact numbers: activity tags counted once per piece of work (fake Claude)."""
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import select
 
 from careeros.guide import activities, work
 from careeros.storage.models import JournalEntry
 
-from test_guide import form, nb, session  # noqa: F401
+from helpers import add, form, open_session
 
 
-def add(s, text, day, kind="task", status="done"):
-    e = JournalEntry(day=day, kind=kind, text=text, created_at=datetime.now(), source="slack", status=status)
-    s.add(e)
-    s.commit()
-    return e.id
+
+def done_task(s, text, day, **fields):
+    return add(s, text, day, **{"kind": "task", "status": "done", **fields})
 
 
 def tags(answers):
@@ -35,14 +33,14 @@ def test_the_list_lives_in_one_place():
 
 def test_tagging_counts_once_per_piece_of_work_and_skips_open_tasks(nb):
     dd, *_ = nb
-    with session(dd) as s:
-        add(s, "Deploy meeting", "2026-10-21", "meeting")
-        add(s, "Deployed to prod", "2026-10-21")
-        add(s, "Deployed to UAT", "2026-10-23")
-        add(s, "Deployed hotfix", "2026-03-02")
-        add(s, "Deployed last year", "2025-11-03")
-        add(s, "Deploy still open", "2026-10-22", status="open")
-        add(s, "Made it up", "2026-10-22")
+    with open_session(dd) as s:
+        done_task(s, "Deploy meeting", "2026-10-21", kind="meeting")
+        done_task(s, "Deployed to prod", "2026-10-21")
+        done_task(s, "Deployed to UAT", "2026-10-23")
+        done_task(s, "Deployed hotfix", "2026-03-02")
+        done_task(s, "Deployed last year", "2025-11-03")
+        done_task(s, "Deploy still open", "2026-10-22", status="open")
+        done_task(s, "Made it up", "2026-10-22")
         r = activities.tag(s, reader=tags({"Deploy meeting": "deployment", "Deployed to prod": "deployment",
                                            "Deployed to UAT": "deployment", "Deployed hotfix": "hotfix",
                                            "Deployed last year": "deployment", "Deploy still open": "deployment",
@@ -72,13 +70,13 @@ def test_half_year_boundaries():
 
 def test_your_choice_sticks_and_pages_show_the_numbers(nb):
     dd, c, token, _ = nb
-    with session(dd) as s:
-        eid = add(s, "Refreshed fulldata", date.today().isoformat())
+    with open_session(dd) as s:
+        eid = done_task(s, "Refreshed fulldata", date.today().isoformat())
         activities.tag(s, reader=tags({"Refreshed fulldata": "deployment"}))
     row = c.get("/sheet?show=all").text
     assert "Counts as" in row and 'value="deployment" selected' in row
     form(c, f"/sheet/{eid}/activity", token, activity="sandbox_refresh", ret="show=all")
-    with session(dd) as s:
+    with open_session(dd) as s:
         activities.tag(s, everything=True, reader=tags({"Refreshed fulldata": "deployment"}))
         e = s.get(JournalEntry, eid)
         assert (e.activity, e.activity_fixed) == ("sandbox_refresh", True)

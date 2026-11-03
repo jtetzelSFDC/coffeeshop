@@ -15,10 +15,9 @@ from careeros.storage.sync_log import status
 from careeros.v2mom import connector, store
 from careeros.web.app import create_app
 
-from test_slack import BASE, personal, run_sync
+from helpers import BASE, DOC_ID, SRC, TWO, answer, fake_syncs, personal, run_sync
 
-DOC_ID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_abcd"
-SRC = dict(kind="doc", value=DOC_ID)
+
 # Made up, in the shape of a page copied from the V2MOM app.
 DOC = """## My V2MOM Progress (FY27)
 **Published on** Mar 25, 2026 **Last updated** Oct 2, 2026
@@ -54,20 +53,6 @@ Learn more about the V2MOM | Technical Support | Send feedback
 """
 
 
-def answer(*methods, fy="FY27"):
-    """What Claude would reply for the Doc, with the given methods (name, status, progress)."""
-    return json.dumps(dict(
-        fiscal_year=fy, published="Mar 25, 2026", vision="Releases so calm nobody notices them.",
-        values=[dict(name="Calm Craft", text="Do it right once."), dict(name="Learn Out Loud", text="Share what we find.")],
-        methods=[dict(name=n, description=f"About {n}.", status=st, progress=p,
-                      measures=[dict(text="Q2: Present at 2 community sessions", status="Completed")])
-                 for n, st, p in methods],
-        obstacles=[dict(name="Two Leads For Many Teams", text="Too few people for the number of teams.",
-                        related_method="Share Release Know-How Across Teams")]))
-
-
-TWO = [("Share Release Know-How Across Teams", "On Track", 69), ("Build Reusable Pipeline Accelerators", "On Track", 50)]
-
 
 @pytest.fixture
 def fake(monkeypatch):
@@ -100,14 +85,6 @@ def test_connect_saves_the_doc_id_owner_only(tmp_path):
     assert connector.load_source(dd) == SRC and oct(connector.source_file(dd).stat().st_mode)[-3:] == "600"
     with pytest.raises(ValueError):
         connector.save_source(dd, "not a doc")
-
-
-def test_a_doc_connected_before_pdfs_still_counts(tmp_path):
-    dd, _ = personal(tmp_path)
-    (dd.root / connector.DOC_FILE).write_text(DOC_ID + "\n")
-    assert connector.load_source(dd) == SRC
-    connector.save_source(dd, f"https://docs.google.com/document/d/{DOC_ID}/edit")
-    assert not (dd.root / connector.DOC_FILE).exists() and connector.load_source(dd) == SRC
 
 
 def test_a_pull_saves_the_version_methods_measures_and_obstacles(tmp_path, fake):
@@ -215,7 +192,6 @@ def test_monthly_rule(tmp_path):
 
 
 def test_sync_all_pulls_the_v2mom_only_when_connected_and_due(tmp_path, monkeypatch):
-    from test_schedule import fake_syncs
     dd, Session = personal(tmp_path)
     calls = fake_syncs(monkeypatch)
     pulled = []

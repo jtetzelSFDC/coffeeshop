@@ -2,6 +2,14 @@ import pytest
 
 from careeros.storage.db import init_db, make_engine, make_session_factory
 
+from fastapi.testclient import TestClient
+from typer.testing import CliRunner
+
+from careeros.cli import app as cli
+from careeros.config import DataDir
+from careeros.web.app import create_app
+from helpers import BASE, write_guide
+
 
 @pytest.fixture(autouse=True)
 def new_york_time(monkeypatch):
@@ -22,7 +30,6 @@ def no_real_claude(monkeypatch):
     def refuse():
         raise claude_cli.ClaudeError("tests never call the real Claude")
     monkeypatch.setattr(claude_cli, "_claude", refuse)
-    monkeypatch.setattr("careeros.google.summaries._claude", refuse)  # imported by name, so patched separately
 
     def no_gh(*args):
         from careeros.github.connector import GitHubError
@@ -36,3 +43,16 @@ def session(tmp_path):
     init_db(engine)
     with make_session_factory(engine)() as s:
         yield s
+
+
+@pytest.fixture
+def nb(tmp_path):
+    """A personal notebook with the made-up leveling guide loaded: (DataDir, web client, CSRF token, guide CSV)."""
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    init_db(make_engine(dd.db))
+    guide = write_guide(tmp_path / "guide.csv")
+    r = CliRunner().invoke(cli, ["guide", "import", str(guide), "--data-dir", str(dd.root)])
+    assert r.exit_code == 0, r.output
+    app = create_app(dd)
+    return dd, TestClient(app, base_url=BASE), app.state.csrf_token, guide

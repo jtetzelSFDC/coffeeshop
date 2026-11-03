@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from ..storage.models import GuideItem, GuideLink, JournalAttachment, JournalEntry, Win
+from ..storage.models import DailyTask, GuideItem, GuideLink, JournalAttachment, JournalEntry, Win
 
 # (days ago, kind, source, text, notes) - notes are shown under the record like a Slack tracker note
 RECORDS = [
@@ -58,6 +58,20 @@ LINKS = {  # record index -> guide names it shows
     9: ["Develops and executes deployment strategies with minimal downtime."],
 }
 
+# The day the practice notebook is made, so Home shows the Today's three card.
+DAILY = [("Write a two-line note on the Pine release for the team channel", "Shows the plan was kept", "KSO 1.1", 5),
+         ("Add a feedback measure to your V2MOM for this quarter", "Every KSO part needs a goal", "KSO 1.2", 10),
+         ("Try an AI helper on one release checklist and note what it saved", "New tools, shared", "KSO 2.2", 10)]
+
+
+def _seed_daily(s: Session, today: date) -> None:
+    """Today's made-up three, if today has none: running `demo seed` again shows the card on a new day."""
+    if s.query(DailyTask).filter(DailyTask.day == today.isoformat()).first() is None:
+        for pos, (text, why, goal, minutes) in enumerate(DAILY, 1):
+            s.add(DailyTask(day=today.isoformat(), position=pos, text=text, why=why, goal=goal, minutes=minutes,
+                            created_at=datetime.now()))
+        s.commit()
+
 
 def _seed_ksos(s: Session) -> None:
     from ..storage.models import KsoFramework
@@ -72,6 +86,7 @@ def seed(s: Session, today: date | None = None) -> dict[str, int]:
     """Fill an empty practice notebook. Does nothing if it already has records (but adds the made-up KSOs to an
     older practice notebook that has none)."""
     _seed_ksos(s)
+    _seed_daily(s, today or date.today())
     if s.query(JournalEntry).first() is not None:
         return dict(records=0, wins=0, guide=0)
     today = today or date.today()

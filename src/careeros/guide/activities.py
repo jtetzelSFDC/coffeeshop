@@ -4,7 +4,6 @@ of work. The list below is the only place activities are defined; the prompt, th
 from __future__ import annotations
 
 import json
-import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from typing import Callable
@@ -12,7 +11,7 @@ from typing import Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, ask
+from ..claude_cli import ClaudeError, ask, reply_results
 from ..storage.models import JournalEntry
 from .service import work_key
 
@@ -48,13 +47,7 @@ covering every record."""
 
 
 def _parse(reply: str) -> dict[str, object]:
-    m = re.search(r"\{.*\}", reply, re.S)
-    try:
-        got = json.loads(m.group(0)) if m else {}
-    except ValueError:
-        return {}
-    res = got.get("results") if isinstance(got, dict) else None
-    return {str(r.get("id")): r.get("activity") for r in res if isinstance(r, dict)} if isinstance(res, list) else {}
+    return {str(r.get("id")): r.get("activity") for r in reply_results(reply)}
 
 
 def read_batch(records: list[dict]) -> dict[str, object]:
@@ -72,6 +65,7 @@ def pending(s: Session, everything: bool = False) -> list[JournalEntry]:
 def tag(s: Session, *, everything: bool = False, limit: int | None = None,
         reader: Callable[[list[dict]], dict[str, object]] = read_batch,
         progress: Callable[[int, int], None] | None = None) -> dict[str, int]:
+    """Claude tags each untagged record with the one impact activity it shows (or none), in batches; yours stay."""
     from .ai_review import _context
     todo = pending(s, everything)[:limit]
     ctx = _context(s, [e.id for e in todo])

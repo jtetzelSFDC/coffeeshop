@@ -4,7 +4,7 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Career Tracker is your work notebook. It pulls in your Google Calendar meetings, Google Tasks, and Slack tracker items, has Claude sort each one and link it to the DevOps leveling guide, and keeps your wins so the Promo map and promo case reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
+Career Tracker is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack tracker, kudos, and GitHub pull requests, has Claude sort each one against the DevOps leveling guide, your V2MOM, and your KSOs, and keeps your wins, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -14,6 +14,7 @@ Your real, permanent notebook lives in `~/Library/Application Support/CareerOS`.
 
 ```
 cd ~/Documents/career-os
+uv run careeros notebook init   # first time only: makes the notebook folder
 uv run careeros serve
 ```
 
@@ -67,7 +68,7 @@ Tips:
 
 ## Leveling guide and Promo map
 
-The app knows the DevOps leveling guide, so your work can be lined up against what Grade 6 and Grade 7 ask for. You're Grade 5, aiming at 6, with Grade 7 evidence where the work is already at that level.
+The app knows the DevOps leveling guide, so your work can be lined up against what Grade 6 and Grade 7 ask for. It's set up for someone aiming at the next grade, with evidence for the grade after that where the work is already at that level.
 
 **Loading the guide.** The guide lives at `guides/Leveling Guides - DevOps.csv`. That folder is ignored by git, so the guide never goes to GitHub. It's already loaded. When a new version comes out, save it over that file and run:
 
@@ -134,7 +135,7 @@ Buttons in the queue save without reloading the page: a row you check or remove 
 
 Purple **AI** marks are Claude's picks: guide links, drafted wins, and type changes ("AI, was Other"). They count on the Promo map straight away, and the Promo map says how many are still unchecked. Use the **Show** menu for **Changed by Claude**, **Not linked**, **Wins**, or **Checked**.
 
-**Claude's read-through.** Claude has read every record against the Grade 6 and 7 key experiences and skills. It linked each one to the guide items it shows (none for routine standups and status pings), drafted wins for the stand-out ones, and fixed obvious type mix-ups (only for Slack and typed records; calendar items stay meetings and Google Tasks stay tasks). When new records come in, the queue shows a **Have Claude read the N records it hasn't read** button. You can also run it in Terminal:
+**Claude's read-through.** Claude has read every record against the Grade 6 and 7 key experiences and skills. It linked each one to the guide items it shows (none for routine standups and status pings), drafted wins for the stand-out ones, and fixed obvious type mix-ups (only for Slack and typed records; calendar items stay meetings and Google Tasks stay tasks). When new records come in, the queue shows a **Have Claude read the N records it hasn't read** button. It runs in the background with a progress box (the same step every sync ends with), so you can keep working. You can also run it in Terminal:
 
 ```
 cd ~/Documents/career-os
@@ -147,7 +148,7 @@ It never touches rows you've marked checked or guide links you picked yourself. 
 
 Your Slack Work Activity Tracker canvas (the one Slackbot fills in every day) comes into the notebook as entries. Claude reads each work item and decides whether it was a meeting, a conversation, a document, or a task. Anything it can't place goes to **Other**. Every entry from Slack has a **from Slack** label, the tracker's notes underneath (marked as written by Slack's AI), and a link back to the Slack thread. Items that are already in the notebook are skipped, so syncing again is safe. Tasks from Slack come in as done. When the tracker says why something mattered, the entry gets a dashed **suggested win** label and the **Count this as a win** form is pre-filled with that reason, so you can edit it into your own words and save.
 
-**The Sync Slack tracker button** on Home reads the canvas through Claude Code's Slack connector, sorts the new items, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again from Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
+**The Sync Slack tracker button** on Home reads the canvas through Claude Code's Slack connector, sorts the new items, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again in Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
 
 ```
 cd ~/Documents/career-os
@@ -197,16 +198,16 @@ On Fridays at 12:00 PM the schedule shows a macOS notification like "This week: 
 **Sync Slack tracker** (and the scheduled sync) also looks for kudos: messages that mention you and recognize your work, in your **public and private Slack channels**. **DMs and group DMs are never searched.**
 
 - It searches your @-mentions a week at a time (the first pull goes back a year) and leaves out your own messages and bots.
-- **Before Claude sees anything**, messages without a word of praise (thanks, great, shout-out, congrats, appreciate, and so on) are dropped. In your first pull that was 2,155 mentions, of which only the ones with praise words were sent on.
+- **Before Claude sees anything**, messages without a word of praise (thanks, great, shout-out, congrats, appreciate, and so on) are dropped. A year of mentions can run into the thousands; only the ones with praise words are sent on.
 - Claude then keeps only real recognition: praise, a shout-out, or thanks that says what you did. A bare "thanks!", thanks for an invite, requests, FYIs, and announcements that just list you among many people are dropped. When unsure, Claude drops it.
 
 Each kept message becomes a **Kudos** record with a short **word-for-word quote** and who said it, like `Robin Vale: "really nice work on that planning meeting with the PMs!!!"`, with a link to the message. If Claude's quote isn't exactly in the message, the message's own words are used instead. On the Promo map, a kudos record **counts like a medium win**, and the promo case quotes it exactly.
 
 You can also mark any record as kudos yourself: press **Kudos** in its row of the Intake Review Queue. Everything recognition-related is on the **Kudos** tab.
 
-What to expect: the first pull found 38 kudos in a year and took about 10 minutes; after that each sync only looks at the last couple of days. A week with more than 200 mentions (big release weeks) is read newest first, and the step says how many weeks were cut short.
+What to expect: the first pull (a year) takes several minutes; after that each sync only looks at the last couple of days. A week with more than 200 mentions (big release weeks) is read newest first, and the step says how many weeks were cut short.
 
-Messages from private channels pass through Claude Code to be checked (only ones with praise words, and only their text, sender, and channel name). Your Slack user id and name are looked up once and saved in `slack_user.json` in the notebook folder. Kudos' last pull shows as the **Kudos** chip on Today and in the queue.
+Messages from private channels pass through Claude Code to be checked (only ones with praise words, and only their text, sender, and channel name). Your Slack user id and name are looked up once and saved in `slack_user.json` in the notebook folder. Kudos' last pull shows as the **Kudos** chip on Home and in the queue.
 
 ## Google Docs, Sheets and Slides you wrote
 
@@ -218,7 +219,7 @@ Messages from private channels pass through Claude Code to be checked (only ones
 
 Each file comes in as a **document** record like "Wrote doc: Release Manager Runbook" (or "Edited sheet: ..." for someone else's file), with a link, and Claude adds a two-line **AI summary** of what the file is and what it covers. If the same file changes again in a later week, a short "Updated doc: ..." record is added, which Claude groups with the first. A summary that fails is retried on the next sync, and the record stays meanwhile.
 
-The **first pull goes back a year**, which took about 12 minutes on your Drive (96 files). After that it's quick. Docs' last pull shows as the **Docs** chip on Today and in the queue.
+The **first pull goes back a year**, which can take several minutes. After that it's quick. Docs' last pull shows as the **Docs** chip on Home and in the queue.
 
 To keep files out by title (Drive's search doesn't show folders, so skipping is by title text):
 
@@ -238,7 +239,7 @@ The file's text passes through Claude Code to write the summary. Claude has no t
 The scheduled sync (8 AM and 6 PM) also reads your GitHub pull requests on github.com, through the `gh` command already signed in to your work account. No Claude is involved in reading them; only the title, repo, date, and link are kept.
 
 - **PRs you wrote and merged** come in one record each, like "Merged PR: Add Cherry-Pick Report (example-automations#12)", with a link to the PR.
-- **PRs you reviewed** come in as **one record per repo per week**, like "Reviewed 31 pull requests in example-org, week of Oct 19", with the list of PRs attached. You review close to a thousand a year, nearly all routine branch PRs, so one record each would bury the Intake Review Queue. A week's record grows as more reviews arrive.
+- **PRs you reviewed** come in as **one record per repo per week**, like "Reviewed 31 pull requests in example-org, week of Oct 19", with the list of PRs attached. A busy reviewer approves hundreds a year, mostly routine, so one record each would bury the Intake Review Queue. A week's record grows as more reviews arrive.
 - The **first pull goes back a year**; after that each pull starts two days before the last one. Nothing is ever deleted by a sync.
 - Then Claude links the new records to the leveling guide, like every other source. GitHub's last pull shows as the **GitHub** chip in the Intake Review Queue.
 
@@ -350,9 +351,10 @@ At year end, pick the year on the Wins tab and click **Download as Markdown**. T
 
 ## What you should see
 
-The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, V2MOM, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
+The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, V2MOM, KSOs, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
 
-- **Home**: a one-card view of the goal.
+- **Home**: today's three small tasks, then one card about the goal.
+  - **Today's three:** see **Daily three** above. The practice notebook shows a made-up three (run `demo seed` again on a new day to see it).
   - **Promotion readiness:** a bar each for Grade 6 and Grade 7, showing how many key experiences are shown, with a percentage (hover for the detail; click for the Promo map).
   - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method (see **The V2MOM page**). Hidden until a V2MOM is loaded.
   - **Four tiles:** leveling-guide skills with evidence, wins this half, kudos this half, and records waiting in the Intake Review Queue.
@@ -360,7 +362,7 @@ The app has these pages, opened from the three-bar **Menu** at the top left (Hom
   - **Next:** one line with the Promo map's top Aim for next.
   - **Below:** the Sync buttons with their status chips, and one slim line to add something the syncs missed. Pick a kind, type a few words, and click **Add**; you land on that kind's tab with the new entry. **Paste notes, a link, or a transcript** folds out under it.
   - There's no day-by-day list here any more. The daily review happens in the Intake Review Queue, and the Friday digest covers the week. Every record is still on its tab.
-- **Wins**, **Promo map**, **V2MOM**, and the **Intake Review Queue**: described in their own sections above.
+- **Wins**, **Promo map**, **V2MOM**, **KSOs**, and the **Intake Review Queue**: described in their own sections above.
 - **Meetings / Conversations / Documents / Tasks / Kudos / Other**: one tab per kind of entry, newest first. Each entry is one line: a small icon for where it came from (calendar, Slack, Docs, GitHub, Tasks, kudos, or a pencil for typed), the text, and four icon buttons on the right (hover for their names):
   - **+** adds notes or a link to it.
   - **Trophy** counts it as a win.
@@ -388,46 +390,31 @@ cd ~/Documents/career-os
 uv run pytest
 ```
 
-You should see `278 passed`. A failure means something broke. Don't use the app until it's fixed.
+Every test should pass: the last line says `passed`, with no `failed`. A failure means something broke. Don't use the app until it's fixed.
 
 ## What comes next
 
 Your personal notebook is connected to Google Calendar, Google Tasks, Google Docs, the Slack tracker canvas, Slack kudos, and GitHub, and Claude links what comes in to the leveling guide. Ideas still open:
 
-1. **Fill in older history.** The notebook mostly covers July to October 2026. Older Google Calendar history needs a little setup: the Claude connector reaches back 14 days at most (`uv run careeros calendar pull --days 14`), while connecting the calendar's private iCal address (`calendar connect`) lets `calendar sync --days 60` go back two months at a time. Older Slack work could be found by searching your messages, then read by Claude like everything else.
+1. **Fill in older history.** Older Google Calendar history needs a little setup: the Claude connector reaches back 14 days at most (`uv run careeros calendar pull --days 14`), while connecting the calendar's private iCal address (`calendar connect`) lets `calendar sync --days 60` go back two months at a time. Older Slack work could be found by searching your messages, then read by Claude like everything else.
 2. **Keep the approvals questions in mind:**
    - Do the owners of the customer-related channels and repos mind a personal tool keeping titles and short notes from them?
    - Is Claude, through Claude Code, approved for this kind of work content?
    - Is the notebook folder backed up (Time Machine) and kept out of synced folders (iCloud, Dropbox)?
-3. **More sources and automation** are planned in [`PLAN.md`](plans/PLAN.md) and [`IMPLEMENTATION_PLAN.md`](plans/IMPLEMENTATION_PLAN.md): daily automatic syncs, grouping duplicate records, impact counts, a Claude-written promo case, GitHub, Google Docs as a source, kudos, and a weekly digest.
-4. **At year end,** download the promo case from the Promo map and your wins from the Wins tab.
+3. **At year end,** download the promo case from the Promo map and your wins from the Wins tab.
 
 Keep real data out of `/tmp/cos-demo`; the practice notebook never syncs with Slack or Google.
 
 ## Q&A
 
-**Every button showed `{"error":"bad origin"}`. Was that expected?**
-No, it was a bug on my side. The page told the browser not to send any referrer, and Chrome then labels form submissions with an origin of "null", which the app's safety check rejects. I fixed it, and a real Chrome click-through now works. The app still rejects "null" and foreign origins on purpose, and a test guards both.
-
-**Is there a dark mode?**
-Yes, it is the default. Use the button at the top right to switch. The choice is stored in a cookie in your browser.
-
 **Can one entry hold several pieces, like a link plus notes plus a transcript?**
 Yes. An entry is the thing you did ("Rollout sync with Sam"). Under it you can attach any number of pieces, each with a type (meeting notes, transcript, link, Slack canvas, prompt, other text) and an optional name. Removing the entry removes its pieces. Pasted text is shown as plain text only, and links are never opened or fetched by the app. Each piece is limited to about 200,000 characters.
-
-**How do I start a real notebook?**
-Run this once (Terminal, in `~/Documents/career-os`):
-```
-uv run careeros notebook init
-uv run careeros serve
-```
-`init` creates `~/Library/Application Support/CareerOS` with owner-only permissions, tells Spotlight not to index it, and refuses any folder under iCloud, Dropbox, Google Drive, or OneDrive. After that, plain `uv run careeros serve` opens your real notebook (the practice one needs `--data-dir /tmp/cos-demo`). It never mixes with practice data, and `demo seed` refuses to write into it.
 
 **How do I search?**
 Use the search box at the top of any page. It looks through your entry headlines, pasted text, and names, and every word you type must appear somewhere in the entry. It is not case-sensitive and the match is highlighted. `%` and `_` are searched as ordinary characters.
 
 **Is my real notebook backed up?**
-Yes, on this laptop. `uv run careeros backup now` copies the notebook into `backups/` in the notebook folder, safely even while the app is running, and the daily automatic sync does it too. It keeps the last 30 days plus the first copy of each of the last 12 months, and deletes older ones. `uv run careeros backup list` shows them. These copies sit next to the notebook, so they protect against mistakes, not against losing the laptop: for that you'd also need Time Machine (no destination is set up on this Mac yet) or a copy somewhere else.
+Yes, on this laptop. `uv run careeros backup now` copies the notebook into `backups/` in the notebook folder, safely even while the app is running, and the daily automatic sync does it too. It keeps the last 30 days plus the first copy of each of the last 12 months, and deletes older ones. `uv run careeros backup list` shows them. These copies sit next to the notebook, so they protect against mistakes, not against losing the laptop: for that you'd also need Time Machine or a copy somewhere else.
 
 **How do I restore from a backup?**
 1. Stop the app (Ctrl+C in its Terminal window).
@@ -447,16 +434,13 @@ Meetings show on the **Meetings** tab with a small calendar icon (hover it for t
 Before using it on a work calendar, check that titles of meetings (which can name other people or customer-related topics) are okay to keep on this laptop. This iCal route isn't part of the scheduled sync; the scheduled sync uses the Sync Google route below.
 
 **Can I sync my calendar without the secret iCal address?**
-Yes. On Home, press **Sync Google** (or run `uv run careeros calendar pull` for the calendar part only). Sync Google does Calendar, the Google Docs you wrote (see that section), Google Tasks (only ones you've marked complete in Google, from the task lists changed since the last pull; open tasks never come in, and one you finish shows up on the next sync, dated the day you completed it; a task list that couldn't be read is reported, never treated as deleted; the pull then isn't counted, so the next Sync Google looks back to the same point and picks up what was missed), and meeting-note summaries in one go, then has Claude link the new records to the leveling guide. Only meetings that have ended come in: a meeting later today shows up on the first sync after it's over, by which time its Gemini notes are usually attached (the 8 AM sync then catches notes that arrived overnight). A progress bar under the button ticks through each step and shows any error in plain words; you can keep using the app while it runs. If the calendar connector answers with an error (for example an expired Google sign-in), that step stops with the message instead of reading it as an empty calendar, so no meetings are removed. For the calendar part, it starts Claude Code in the background with permission to use only the calendar tool, fetches yesterday's and today's meetings through the Google Workspace connector, and saves title, time, and Google file links (Gemini notes, recordings). Declined meetings and all-day items are skipped. It then reads the Google Docs attached to each meeting (Gemini notes, shared notes) and saves a short "AI summary" under the meeting, with the notes linked beside it; meetings without notes say so. Expect a few minutes when there are many meetings. Nothing duplicates, and a failed summary is retried the next time you press the button. Recordings and chat files aren't read. Meeting titles, times, and attendee details pass through the AI tool on the way, so it only runs when you press it or when the schedule you installed runs it. It needs Claude Code installed and the Google Workspace connector signed in. `careeros calendar pull --days 7` reaches further back (max 14).
-
-**How were my calendar and tasks pulled in?**
-Through the Google Workspace connector in a Claude Code session, not by a script on its own. Meeting titles/times, the files attached to each meeting (Gemini notes, recordings, chat), and task titles and notes pass through the AI tool on the way in. Asking Claude to refresh pulls new ones without duplicating. Meetings you declined are dropped, and so are ones that vanished from the calendar, unless you attached your own notes. Only finished Google Tasks come in, so open ones never reach the Intake Review Queue; open tasks saved by older versions are cleared on the next sync, unless you'd built on one (checked it, set its links, made a win, or added notes), in which case it stays out of the queue until it's done. A task you remove while it's open still comes in once you finish it, and one you untick in Google goes back out. Open tasks you type yourself stay at the top of the Tasks tab. Links to Google files are only links: the app never opens or reads the file. You need to be signed in to Google to open them.
+Yes. On Home, press **Sync Google** (or run `uv run careeros calendar pull` for the calendar part only). Sync Google does Calendar, the Google Docs you wrote (see that section), Google Tasks (only ones you've marked complete in Google, from the task lists changed since the last pull; open tasks never come in, and one you finish shows up on the next sync, dated the day you completed it; a task you removed while it was open still comes in once you finish it; a task list that couldn't be read is reported, never treated as deleted; the pull then isn't counted, so the next Sync Google looks back to the same point and picks up what was missed), and meeting-note summaries in one go, then has Claude link the new records to the leveling guide. Only meetings that have ended come in: a meeting later today shows up on the first sync after it's over, by which time its Gemini notes are usually attached (the 8 AM sync then catches notes that arrived overnight). A progress bar under the button ticks through each step and shows any error in plain words; you can keep using the app while it runs. If the calendar connector answers with an error (for example an expired Google sign-in), that step stops with the message instead of reading it as an empty calendar, so no meetings are removed. For the calendar part, it starts Claude Code in the background with permission to use only the calendar tool, fetches yesterday's and today's meetings through the Google Workspace connector, and saves title, time, and Google file links (Gemini notes, recordings). Declined meetings and all-day items are skipped. It then reads the Google Docs attached to each meeting (Gemini notes, shared notes) and saves a short "AI summary" under the meeting, with the notes linked beside it; meetings without notes say so. Expect a few minutes when there are many meetings. Nothing duplicates, and a failed summary is retried the next time you press the button. Recordings and chat files aren't read. Meeting titles, times, and attendee details pass through the AI tool on the way, so it only runs when you press it or when the schedule you installed runs it. It needs Claude Code installed and the Google Workspace connector signed in. `careeros calendar pull --days 7` reaches further back (max 14).
 
 **Where is my information stored, and is it backed up?**
-Everything (entries, pasted notes, wins) is in one file: `~/Library/Application Support/CareerOS/careeros.db`, on this laptop only. It is not in iCloud or any synced folder, and the app refuses to keep a real notebook in one. Time Machine backs it up if Time Machine is on. Daily copies go into `backups/` next to it (see "Is my real notebook backed up?" below). A few one-off copies from October 2026 also sit in the notebook folder as `careeros-backup-2026-10-*.db`.
+Everything (entries, pasted notes, wins) is in one file: `~/Library/Application Support/CareerOS/careeros.db`, on this laptop only. It is not in iCloud or any synced folder, and the app refuses to keep a real notebook in one. Time Machine backs it up if Time Machine is on. Daily copies go into `backups/` next to it (see "Is my real notebook backed up?" above).
 
 **Can I export everything, not just wins?**
-Yes. Click **Download everything (CSV)** at the bottom of any page. You get one zip with four spreadsheets: `entries.csv` (every meeting, task, and note), `pasted_notes.csv` (everything pasted under them, with the entry it belongs to), `wins.csv`, and `guide_links.csv` (which wins and entries you linked to which leveling guide items). They open in Excel, Numbers, or Google Sheets, so the data stays readable even without this app. It's a snapshot of that moment; download a fresh one whenever you like, for example at year end. The zip holds everything you pasted, so keep it somewhere as safe as this laptop, and remember that removing something in the app doesn't remove it from zips you already downloaded. Text that starts with `=`, `+`, `-`, or `@` gets a leading `'` so a spreadsheet shows it instead of running it as a formula.
+Yes. Click **Download everything (CSV)** at the bottom of any page. You get one zip with six spreadsheets: `entries.csv` (every meeting, task, and note), `pasted_notes.csv` (everything pasted under them, with the entry it belongs to), `wins.csv`, `guide_links.csv` (which wins and entries you linked to which leveling guide items), `v2mom_links.csv` (which ones advance which V2MOM method), and `promo_drafts.csv` (every section of every promo case draft). They open in Excel, Numbers, or Google Sheets, so the data stays readable even without this app. It's a snapshot of that moment; download a fresh one whenever you like, for example at year end. The zip holds everything you pasted, so keep it somewhere as safe as this laptop, and remember that removing something in the app doesn't remove it from zips you already downloaded. Text that starts with `=`, `+`, `-`, or `@` gets a leading `'` so a spreadsheet shows it instead of running it as a formula.
 
 **After a restart the app opened with demo data and my entries were missing. Were they lost?**
 No. The app had been started with `--data-dir /tmp/cos-demo`, which opens the practice folder instead of your notebook. Run `uv run careeros serve` with no `--data-dir` and your notebook comes back.

@@ -4,16 +4,14 @@ values, methods with measures, obstacles, and check-ins."""
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 
-from ..claude_cli import ClaudeError, ask, call_tool, connector_error
-from ..config import DataDir
+from ..claude_cli import ClaudeError, ask, call_tool, connector_error, markdown_of, reply_json
+from ..config import DataDir, write_private
 
 TOOL = "mcp__plugin_google-workspace_google-workspace__get_doc_as_markdown"
 SOURCE_FILE = "v2mom.json"
-DOC_FILE = "v2mom.doc"  # before PDFs: the Doc id alone
 DOC_ID = re.compile(r"(?:/document/d/)?([\w-]{25,})")
 PAGE_MARKER = re.compile(r"^[ \t]*(?:--[ \t]*\d+[ \t]+of[ \t]+\d+[ \t]*--|Page[ \t]+\d+[ \t]+of[ \t]+\d+)[ \t]*\n?",
                          re.M | re.I)
@@ -74,39 +72,40 @@ def save_source(dd: DataDir, value: str) -> dict:
         if not m:
             raise ValueError("That isn't a PDF or a Google Doc link (https://docs.google.com/document/d/…).")
         src = dict(kind="doc", value=m.group(1))
-    fd = os.open(source_file(dd), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(json.dumps(src) + "\n")
-    (dd.root / DOC_FILE).unlink(missing_ok=True)
+    write_private(source_file(dd), json.dumps(src) + "\n")
     return src
 
 
 def load_source(dd: DataDir) -> dict | None:
     """{"kind": "pdf" or "doc", "value": path or Doc id}, or None when nothing is connected."""
-    f = source_file(dd)
-    if f.exists():
-        try:
-            src = json.loads(f.read_text())
-        except ValueError:
-            return None
-        return src if isinstance(src, dict) and src.get("kind") in ("pdf", "doc") and src.get("value") else None
-    old = dd.root / DOC_FILE
-    doc = old.read_text().strip() if old.exists() else ""
-    return dict(kind="doc", value=doc) if doc else None
+    try:
+        src = json.loads(source_file(dd).read_text())
+    except (OSError, ValueError):
+        return None
+    return src if isinstance(src, dict) and src.get("kind") in ("pdf", "doc") and src.get("value") else None
 
 
 def _fy(name: str) -> int:
-    m = re.search(r"FY(\d{2})", name, re.I)
-    return int(m.group(1)) if m else 0
+    from .report import fy_name
+    n = fy_name(name)
+    return int(n[2:]) if n else 0
+
+
+def _owner(name: str) -> frozenset[str]:
+    """The words of a V2MOM PDF's name that say whose it is, in any order or punctuation: "FY27 V2MOM Pat Example
+    (1).pdf" and "Pat_Example-FY28-V2MOM.pdf" both give {v2mom, pat, example}."""
+    return frozenset(w for w in re.findall(r"[a-z0-9]+", name.lower()) if not re.fullmatch(r"fy\d*|\d+|pdf", w))
 
 
 def newest_pdf(stored: str) -> Path | None:
-    """The newest *V2MOM*.pdf next to the stored one (so "… (1).pdf" re-downloads count), else the stored file.
-    The latest fiscal year in the name wins over the newest file, so last year's PDF opened again isn't read."""
+    """The newest V2MOM PDF next to the stored one with the same owner in its name (so "… (1).pdf" re-downloads and
+    next year's count, but a colleague's V2MOM saved next to yours doesn't), else the stored file. The latest fiscal
+    year in the name wins over the newest file, so last year's PDF opened again isn't read."""
     p = Path(stored)
     try:
         found = [x for x in p.parent.iterdir()
-                 if x.suffix.lower() == ".pdf" and "v2mom" in x.name.lower() and x.is_file()]
+                 if x.suffix.lower() == ".pdf" and "v2mom" in x.name.lower() and x.is_file()
+                 and _owner(x.name) == _owner(p.name)]
     except OSError:
         found = []
     if found:
@@ -119,6 +118,7 @@ def strip_markers(text: str) -> str:
 
 
 def pdf_text(path: Path) -> str:
+    """The text of a V2MOM PDF, read locally with pypdf (no AI), page markers removed."""
     from pypdf import PdfReader
     from pypdf.errors import PyPdfError
     try:
@@ -131,13 +131,6 @@ def pdf_text(path: Path) -> str:
     return text
 
 
-def _markdown(raw: str) -> str:
-    try:
-        data = json.loads(raw)
-    except ValueError:
-        return raw
-    return str(data.get("markdown_content") or raw) if isinstance(data, dict) else raw
-
 
 def fetch(doc_id: str) -> str:
     """The Doc's text as markdown, never Claude's own words."""
@@ -145,7 +138,7 @@ def fetch(doc_id: str) -> str:
                     "include_comments=false. When it returns, reply with only DONE.", TOOL, timeout=300)
     if err := connector_error(raw, "Google"):
         raise ClaudeError(err)
-    text = _markdown(raw)
+    text = markdown_of(raw)
     if len(text.strip()) < 40:
         raise ClaudeError("The V2MOM Doc looks empty. Paste your V2MOM into it, then sync again.")
     return text
@@ -221,7 +214,8 @@ def validate(data: object) -> dict:
         rel = _related(o)
         obstacles.append(dict(name=_text(o, "name"), text=_text(o, "text"), related_method=rel[0] if rel else "",
                               related_methods=rel))
-    return dict(fiscal_year=_text(data, "fiscal_year"), published=_text(data, "published"),
+    from .report import fy_name
+    return dict(fiscal_year=fy_name(_text(data, "fiscal_year")), published=_text(data, "published"),
                 vision=_text(data, "vision"),
                 values=[dict(name=_text(v, "name"), text=_text(v, "text")) for v in _items(data, "values")],
                 methods=methods, obstacles=obstacles,
@@ -230,10 +224,10 @@ def validate(data: object) -> dict:
 
 
 def parse(text: str, prompt: str = PROMPT, what: str = "that Doc") -> dict:
+    """One Claude answer turns the V2MOM text into its parts; ClaudeError when it doesn't fit."""
     reply = ask(prompt, text[:MAX_READ], timeout=300)
-    m = re.search(r"\{.*\}", reply, re.S)
     try:
-        return validate(json.loads(m.group(0)) if m else None)
+        return validate(reply_json(reply))
     except ValueError as exc:
         raise ClaudeError(f"Couldn't read a V2MOM from {what} ({exc}). Check that it has your Vision, "
                           "Values, and Methods, then sync again.") from None

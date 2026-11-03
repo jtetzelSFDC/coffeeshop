@@ -119,9 +119,8 @@ uv run pytest -q
 
 - One PR per feature, to `main`. When a PR is built on another, its body says so and gives the merge order.
 - The body has three parts: what changed, how it was tested, and what isn't covered.
-- Each PR updates `docs/INSTRUCTIONS.md`, including its test count, and this file or the README when they change.
+- Each PR updates `docs/INSTRUCTIONS.md`, and this file or the README when they change.
 - A ponytail review runs on each PR; its findings and fixes are a comment on the PR.
 - Larger choices get a short note in [`docs/decisions/`](decisions/): what was decided, why, and how to roll back.
-- Original plans: [PLAN.md](plans/PLAN.md) and [IMPLEMENTATION_PLAN.md](plans/IMPLEMENTATION_PLAN.md).
 
 The backdrop photos in `src/careeros/web/static/img/` are AI-generated, each in a light and dark version. To swap one, keep the file name and composition, about 1500 px on the long side. README screenshots in `docs/img/` come from the practice notebook only.

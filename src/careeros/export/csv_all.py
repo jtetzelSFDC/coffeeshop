@@ -1,4 +1,5 @@
-"""Master export: everything in the notebook as CSV files in one zip, readable without this app."""
+"""Master export: your records and what you built on them as CSV files in one zip, readable without this app.
+(The full notebook, settings and all, is the database and its daily copies in backups/.)"""
 from __future__ import annotations
 
 import csv
@@ -9,7 +10,8 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..storage.models import GuideItem, GuideLink, JournalAttachment, JournalEntry, Win
+from ..storage.models import (GuideItem, GuideLink, JournalAttachment, JournalEntry, PromoSection, PromoVersion,
+                              V2momLink, V2momMethod, V2momVersion, Win)
 
 FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
 
@@ -29,6 +31,8 @@ def _csv(header: list[str], rows) -> bytes:
 
 
 def notebook_zip(s: Session) -> bytes:
+    """Download everything: entries, pasted notes, wins, guide links, V2MOM links, and promo drafts as CSVs."""
+    from ..promo.write import to_text
     entries = list(s.scalars(select(JournalEntry).order_by(JournalEntry.day, JournalEntry.id)))
     text_of = {e.id: (e.day, e.text) for e in entries}
     atts = s.scalars(select(JournalAttachment).order_by(JournalAttachment.entry_id, JournalAttachment.id))
@@ -53,6 +57,21 @@ def notebook_zip(s: Session) -> bytes:
             ([g.kind, g.grade or "", g.name, "win" if l.win_id else "entry", l.win_id or l.entry_id,
               title_of.get(l.win_id, "") if l.win_id else text_of.get(l.entry_id, ("", ""))[1], l.created_at]
              for l, g in links)),
+        "v2mom_links.csv": _csv(
+            ["fiscal_year", "method", "method_name", "linked_to", "linked_id", "linked_text", "by_ai", "linked_at"],
+            ([v.fiscal_year, m.label, m.name, "win" if l.win_id else "entry", l.win_id or l.entry_id,
+              title_of.get(l.win_id, "") if l.win_id else text_of.get(l.entry_id, ("", ""))[1], l.by_ai, l.created_at]
+             for l, m, v in s.execute(select(V2momLink, V2momMethod, V2momVersion)
+                                      .join(V2momMethod, V2momMethod.id == V2momLink.method_id)
+                                      .join(V2momVersion, V2momVersion.id == V2momMethod.version_id)
+                                      .order_by(V2momVersion.id, V2momMethod.position, V2momLink.id)))),
+        "promo_drafts.csv": _csv(
+            ["draft_id", "created_at", "from", "to", "note", "section", "text", "edited"],
+            ([pv.id, pv.created_at, pv.window_start, pv.window_end, pv.note, sec.heading, to_text(sec.sentences),
+              sec.edited]
+             for sec, pv in s.execute(select(PromoSection, PromoVersion)
+                                      .join(PromoVersion, PromoVersion.id == PromoSection.version_id)
+                                      .order_by(PromoVersion.id, PromoSection.position)))),
     }
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:

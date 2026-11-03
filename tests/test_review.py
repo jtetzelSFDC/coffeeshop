@@ -9,18 +9,13 @@ from sqlalchemy import select
 from careeros.claude_cli import ClaudeError
 from careeros.google import calendar as gcal
 from careeros.guide import ai_review
-from careeros.guide.service import evidence, promo_map
+from careeros.guide.service import promo_map
 from careeros.storage.db import init_db, make_engine
 from careeros.storage.models import GuideLink, JournalEntry, SyncRun, Win
 
-from test_guide import form, nb, session  # noqa: F401
+from helpers import add, form, open_session
 
 
-def add(s, text, kind="note", source="slack", day="2026-10-20"):
-    e = JournalEntry(day=day, kind=kind, text=text, created_at=datetime.now(), source=source)
-    s.add(e)
-    s.commit()
-    return e.id
 
 
 def fake(answers):
@@ -47,7 +42,7 @@ def test_old_notebooks_get_the_new_columns(tmp_path):
 
 def test_review_links_fixes_kinds_and_drafts_wins(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "Refreshed the full sandbox and ran the post-refresh steps")
         b = add(s, "10:00 AM Standup", kind="meeting", source="calendar")
         c = add(s, "Ran the CI/CD pipeline program for three teams", kind="conversation")
@@ -74,7 +69,7 @@ def test_review_links_fixes_kinds_and_drafts_wins(nb):
 
 def test_review_keeps_user_links_and_checked_rows(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "Mine")
         b = add(s, "Checked")
         from careeros.guide.service import experiences
@@ -90,7 +85,7 @@ def test_review_keeps_user_links_and_checked_rows(nb):
 
 def test_review_failure_changes_nothing(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         add(s, "x")
 
         def down(*a):
@@ -102,18 +97,18 @@ def test_review_failure_changes_nothing(nb):
 
 def test_mark_as_recognition_from_the_sheet(nb):
     dd, c, token, _ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "Pat said the 3.4 release went smoothly thanks to me")
     assert 'value="recognition"' in c.get("/sheet").text
     form(c, f"/sheet/{a}/kind", token, kind="recognition", ret="")
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.get(JournalEntry, a).kind == "recognition"
     assert "Pat said the 3.4 release" in c.get("/recognition").text
 
 
 def test_sheet_one_click_actions(nb):
     dd, c, token, _ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "Wrote the refresh runbook")
         b = add(s, "Next row")
         ai_review.review(s, reader=fake({"Wrote the refresh runbook": dict(guide=["E1"], kind="document", win=dict(
@@ -125,30 +120,30 @@ def test_sheet_one_click_actions(nb):
     r = form(c, f"/sheet/{a}/kind", token, kind="task", ret="show=all&source=any&kind=any&page=1")
     assert r.status_code == 303 and r.headers["location"].endswith(f"#r{a}") and "show=all" in r.headers["location"]
     form(c, f"/sheet/{a}/win", token, size="large", ret="")
-    with session(dd) as s:
+    with open_session(dd) as s:
         e, w = s.get(JournalEntry, a), s.scalar(select(Win))
         assert (e.kind, e.kind_was, e.status) == ("task", "", "done") and (w.size, w.by_ai) == ("large", False)
         lid = s.scalar(select(GuideLink.id).where(GuideLink.entry_id == a))
     r = form(c, f"/sheet/{a}/ok", token, ret="", after=str(b))
     assert r.headers["location"].endswith(f"#r{b}")
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.get(JournalEntry, a).reviewed and not any(l.by_ai for l in s.scalars(select(GuideLink)))
     assert "Wrote the refresh runbook" not in c.get("/sheet").text  # checked rows leave "Not checked yet"
     assert "Wrote the refresh runbook" in c.get("/sheet?show=checked").text
 
     form(c, f"/sheet/link/{lid}/delete", token, ret="")
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.scalar(select(GuideLink)) is None  # removed from the entry and the win made from it
     form(c, f"/sheet/{a}/unwin", token, ret="")
     form(c, f"/sheet/{b}/win", token, size="small", ret="")
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert [w.entry_id for w in s.scalars(select(Win))] == [b]
     assert c.post(f"/sheet/{a}/kind", data={"csrf": "nope", "kind": "task"}).status_code == 403
 
 
 def test_sheet_script_updates_rows_in_place(nb):
     dd, c, token, _ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         a = add(s, "Wrote the refresh runbook")
     js = c.get("/static/sheet.js")
     assert js.status_code == 200 and "javascript" in js.headers["content-type"]
@@ -172,7 +167,7 @@ def test_remove_keeps_it_out_of_syncs_and_can_restore(nb):
     from careeros.slack.parse import SlackItem
     from careeros.storage.models import RemovedEntry
     dd, c, token, _ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         e = JournalEntry(day="2026-10-20", kind="meeting", text="9:00 AM Not my meeting", created_at=datetime.now(),
                          source="calendar", external_id="cal@1")
         sl = JournalEntry(day="2026-10-20", kind="conversation", text="Slack thing", created_at=datetime.now(),
@@ -187,7 +182,7 @@ def test_remove_keeps_it_out_of_syncs_and_can_restore(nb):
     r = c.post(f"/sheet/{eid}/remove", data={"csrf": token, "ret": "show=all"}, headers={"X-Sheet": "1"})
     assert r.headers["x-row"] == "gone"
     form(c, f"/sheet/{sid}/remove", token, ret="show=all")
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert s.get(JournalEntry, eid) is None
         assert [(w.title, w.entry_id) for w in s.scalars(select(Win))] == [("My own win", None)]
         ev = gcal.Event("cal@1", "2026-10-20", datetime(2026, 10, 20, 9), None, "Not my meeting")
@@ -198,7 +193,7 @@ def test_remove_keeps_it_out_of_syncs_and_can_restore(nb):
     assert "Not my meeting" in page and "Restore" in page
     assert "Not my meeting" not in c.get("/sheet?show=all").text
     form(c, f"/sheet/removed/{rid}/restore", token, ret="show=removed")
-    with session(dd) as s:
+    with open_session(dd) as s:
         back = s.scalar(select(JournalEntry).where(JournalEntry.external_id == "cal@1"))
         assert back and back.kind == "meeting" and s.get(RemovedEntry, rid) is None
 
@@ -207,7 +202,7 @@ def test_calendar_skip_rule(nb):
     from typer.testing import CliRunner
     from careeros.cli import app as cli
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         for i, t in enumerate(["11:45 AM  [EXT] Team Daily Standup — Pine", "12:00 PM  [EXT] team daily standup - Team",
                                "1:00 PM  Refresh review"]):
             s.add(JournalEntry(day="2026-10-20", kind="meeting", text=t, created_at=datetime.now(), source="calendar",
@@ -215,7 +210,7 @@ def test_calendar_skip_rule(nb):
         s.commit()
     r = CliRunner().invoke(cli, ["calendar", "skip", "Team Daily Standup", "--data-dir", str(dd.root)])
     assert r.exit_code == 0 and "Removed 2" in r.output, r.output
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert [e.text for e in s.scalars(select(JournalEntry))] == ["1:00 PM  Refresh review"]
         new = gcal.Event("u9", "2026-10-21", datetime(2026, 10, 21, 11, 45), None, "[EXT] Team Daily Standup — Pine")
         assert gcal.sync(s, [new], date(2026, 10, 21), date(2026, 10, 21))["added"] == 0
@@ -226,7 +221,7 @@ def test_last_pulled_status(nb):
     from careeros.storage.models import SyncRun
     from careeros.storage.sync_log import status
     dd, c, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert status(s)["slack"]["at_text"] == "never" and status(s)["slack"]["ok"] is False
         s.add(JournalEntry(day="2026-10-26", kind="task", text="old", created_at=datetime(2026, 10, 27, 12), source="slack"))
         s.commit()
@@ -281,7 +276,7 @@ def test_google_tasks_parse_and_merge(nb):
     assert len(gtasks.parse_tasks(_result_text(json.dumps({"result": TASKS_TEXT})))) == 3
     assert gtasks.parse_lists("- Week of 7/14/25 (ID: A1)\n  Updated: 2026-10-22T04:01:38.851Z\n- Old (ID: B2)\n"
                               "  Updated: 2025-07-28T12:39:12.431Z")[0][0] == "A1"
-    with session(dd) as s:
+    with open_session(dd) as s:
         s.add(JournalEntry(day="2026-10-20", kind="task", text="deploy pine to uat", created_at=datetime.now(),
                            source="tasks", external_id="task:legacy", status="open"))
         s.commit()
@@ -300,7 +295,7 @@ def test_open_google_tasks_saved_before_are_cleared_unless_built_on(nb):  # and 
     from careeros.google import tasks as gtasks
     from careeros.storage.models import JournalAttachment, RemovedEntry, Win
     dd, c, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         def task(text, **kw):
             e = JournalEntry(day="2026-10-20", kind="task", text=text, created_at=datetime.now(), source="tasks",
                              external_id=f"gtask:{text}", status="open", **kw)
@@ -330,7 +325,7 @@ def test_a_task_removed_while_open_comes_in_once_done_and_reopening_takes_it_out
     from careeros.storage.removal import remove_entry
     dd, *_ = nb
     when = datetime(2026, 10, 27, 9, 0)
-    with session(dd) as s:
+    with open_session(dd) as s:
         s.add(JournalEntry(day="2026-10-20", kind="task", text="old open", created_at=datetime.now(), source="tasks",
                            external_id="gtask:T9", status="open", reviewed=True))
         s.commit()
@@ -395,7 +390,7 @@ def test_sync_google_runs_every_step(nb, monkeypatch):
 
 def test_sync_never_deletes_entries_you_built_on(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         e = JournalEntry(day="2026-10-20", kind="meeting", text="9:00 AM Go/no-go", created_at=datetime.now(),
                          source="calendar", external_id="gone@1")
         s.add(e)
@@ -409,11 +404,11 @@ def test_sync_never_deletes_entries_you_built_on(nb):
 def test_review_skips_records_removed_or_edited_while_claude_reads(nb):
     from careeros.storage.removal import remove_entry
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         gone, checked, retyped, plain = (add(s, t) for t in ("gone", "checked", "retyped", "plain"))
 
         def reader(guide, themes, records):
-            with session(dd) as other:  # what you do in the queue while Claude is thinking
+            with open_session(dd) as other:  # what you do in the queue while Claude is thinking
                 remove_entry(other, gone)
                 other.get(JournalEntry, checked).reviewed = True
                 other.get(JournalEntry, retyped).kind = "document"
@@ -425,3 +420,18 @@ def test_review_skips_records_removed_or_edited_while_claude_reads(nb):
         assert s.get(JournalEntry, retyped).kind == "document"  # your choice wins over Claude's
         assert s.get(JournalEntry, plain).kind == "task"
         assert {l.entry_id for l in s.scalars(select(GuideLink))} == {retyped, plain}
+
+
+def test_a_vanished_meeting_claude_linked_is_removed_without_breaking_the_sync(nb):
+    from careeros.storage.models import GuideItem
+    dd, *_ = nb
+    with open_session(dd) as s:
+        e = JournalEntry(day="2026-10-20", kind="meeting", text="9:00 AM Moved meeting", created_at=datetime.now(),
+                         source="calendar", external_id="moved@1")
+        s.add(e)
+        s.flush()
+        s.add(GuideLink(item_id=s.scalar(select(GuideItem.id).limit(1)), entry_id=e.id, created_at=datetime.now(),
+                        by_ai=True))
+        s.commit()
+        assert gcal.sync(s, [], date(2026, 10, 19), date(2026, 10, 21))["removed"] == 1
+        assert s.get(JournalEntry, e.id) is None

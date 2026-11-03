@@ -4,20 +4,14 @@ import re
 from datetime import date, datetime, timedelta
 
 from careeros import digest
-from careeros.storage.models import JournalEntry, V2momLink, Win
+from careeros.storage.models import JournalEntry, Win
 from careeros.v2mom import report
 
-from test_guide import nb, session  # noqa: F401
-from test_review import add
-from test_v2mom import TWO
-from test_v2mom_links import load_v2mom
+from helpers import TWO, add, link, load_v2mom, open_session
+
 
 FOUR = TWO + [("Grow The Next Release Leads", "Completed", 100), ("Write Down The Runbooks", "At Risk", None)]
 NOV_2 = date(2026, 11, 2)
-
-
-def link(s, method_id, *, entry_id=None, win_id=None):
-    s.add(V2momLink(method_id=method_id, entry_id=entry_id, win_id=win_id, created_at=datetime.now()))
 
 
 def fixture(s, today):
@@ -49,7 +43,7 @@ def test_fiscal_year_and_quarter():
 
 def test_counts_and_states_on_a_fixture(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         m = fixture(s, NOV_2)  # 240 days before Nov 2 is Mar 7: in FY27, not this quarter; 100 days is Jul 25
         r = report.build(s, NOV_2)
         rows = {x["m"].label: x for x in r["methods"]}
@@ -66,7 +60,7 @@ def test_counts_and_states_on_a_fixture(nb):
 def test_home_strip_numbers(nb):
     dd, c, *_ = nb
     assert "methods active this quarter" not in c.get("/").text  # hidden with no V2MOM
-    with session(dd) as s:
+    with open_session(dd) as s:
         m = fixture(s, date.today())
     page = c.get("/").text
     assert "V2MOM: <b>1 of 4</b> methods active this quarter" in page
@@ -76,7 +70,7 @@ def test_home_strip_numbers(nb):
 
 def test_digest_nudges_only_quiet_methods(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         assert not any("V2MOM" in n["text"] for n in digest.build(s, NOV_2)["nudges"])  # no V2MOM yet
         fixture(s, NOV_2)
         got = [n for n in digest.build(s, NOV_2)["nudges"] if "V2MOM" in n["text"]]
@@ -92,7 +86,7 @@ def test_the_page_renders_with_and_without_a_v2mom(nb):
     dd, c, *_ = nb
     page = c.get("/v2mom").text
     assert "No V2MOM loaded yet" in page and 'href="/v2mom" class="on"' in page
-    with session(dd) as s:
+    with open_session(dd) as s:
         m = fixture(s, date.today())
     page = c.get("/v2mom").text
     assert "V2MOM FY27" in page and "1 of 4 methods active this quarter" in page
@@ -109,7 +103,7 @@ def test_the_page_renders_with_and_without_a_v2mom(nb):
 
 def test_every_link_resolves(nb):
     dd, c, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         m = fixture(s, date.today())
     pages = ["/", "/v2mom", f"/v2mom/{m['M1']}", "/digest"]
     hrefs = {h.split("#")[0] for p in pages for h in re.findall(r'href="(/[^"]*)"', c.get(p).text)}

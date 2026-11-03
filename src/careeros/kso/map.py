@@ -3,14 +3,13 @@ the V2MOM's progress into KSO progress. Claude picks (marked AI) for methods not
 from __future__ import annotations
 
 import json
-import re
 from contextlib import nullcontext
 from typing import Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..claude_cli import ClaudeError, ask
+from ..claude_cli import ClaudeError, ask, reply_json
 from ..storage.models import KsoFramework, KsoMap, V2momMethod
 from . import framework
 
@@ -45,11 +44,8 @@ def pending(s: Session, fw: KsoFramework, redo: bool = False) -> list[V2momMetho
 
 
 def validate(reply: str, method_ids: set[str], keys: set[str]) -> dict[str, str]:
-    m = re.search(r"\{.*\}", reply, re.S)
-    try:
-        data = json.loads(m.group(0)) if m else None
-    except ValueError:
-        data = None
+    """Claude's picks: one per method offered, each a component offered or none; ValueError says what's off."""
+    data = reply_json(reply)
     picks = data.get("map") if isinstance(data, dict) else None
     if not isinstance(picks, dict) or set(picks) != method_ids:
         raise ValueError("it didn't answer for every method")

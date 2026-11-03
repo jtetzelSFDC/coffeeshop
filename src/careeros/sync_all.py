@@ -1,5 +1,6 @@
-"""`careeros sync all`: back up, then run the same Slack and Google syncs as the buttons, then GitHub, with a log.
-Once a month it also re-reads the V2MOM.
+"""`careeros sync all`: back up, then run the same Slack, Google and GitHub syncs as the buttons, with a log.
+Once a month it also re-reads the V2MOM and re-estimates the KSOs, and once a day (from 8 AM) it suggests the daily
+three, last, so it sees the fresh work.
 
 Run by the scheduled task at 8 AM and 6 PM and at login. A run that's already covered by an earlier one since
 the latest scheduled time does nothing, so the login catch-up is cheap.
@@ -8,6 +9,7 @@ from __future__ import annotations
 
 import fcntl
 import subprocess
+import sqlite3
 import threading
 from datetime import datetime, time, timedelta
 from typing import Callable
@@ -33,6 +35,7 @@ def last_scheduled(now: datetime) -> datetime:
 
 
 def mac_notify(title: str, message: str) -> None:
+    """A macOS notification (quoted for AppleScript); never fails the sync."""
     def q(text: str) -> str:
         return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
     try:
@@ -98,9 +101,13 @@ def run(dd: DataDir, *, force: bool = False, now: datetime | None = None,
         if not force and _covered(Session_, last_scheduled(now)):
             say("Already synced since the last scheduled time; nothing to do.")
             return 0
-        say(f"Backup: {make_backup(dd).name} ({prune(dd)} old copies removed)")
-        lock = threading.Lock()
         failed = []
+        try:
+            say(f"Backup: {make_backup(dd).name} ({prune(dd)} old copies removed)")
+        except (OSError, sqlite3.Error) as exc:  # a full disk shouldn't stop the syncs, but it must be noticed
+            say(f"Backup failed: {exc}")
+            failed.append(("Backup", f"The backup failed ({exc}). Check the disk has space."))
+        lock = threading.Lock()
         runs = [("Slack", syncs.SLACK_STEPS, lambda j: syncs.run_slack(j, Session_, lock, dd)),
                 ("Google", syncs.GOOGLE_STEPS, lambda j: syncs.run_google(j, Session_, lock)),
                 ("GitHub", syncs.GITHUB_STEPS, lambda j: syncs.run_github(j, Session_, lock))]

@@ -79,3 +79,20 @@ def test_cli_backup_now_and_list(tmp_path):
     assert r.exit_code == 0 and "Backed up to" in r.output, r.output
     r = CliRunner().invoke(cli, ["backup", "list", "--data-dir", str(dd.root)])
     assert r.exit_code == 0 and f"careeros-{date.today():%Y-%m-%d}.db" in r.output
+
+
+def test_a_failed_backup_leaves_no_half_copy(tmp_path, monkeypatch):
+    import pytest
+    dd = notebook(tmp_path)
+
+    class Broken:
+        def backup(self, out):
+            raise sqlite3.OperationalError("disk I/O error")
+
+        def close(self):
+            pass
+    real = sqlite3.connect
+    monkeypatch.setattr(sqlite3, "connect", lambda p: Broken() if str(p) == str(dd.db) else real(p))
+    with pytest.raises(sqlite3.OperationalError):
+        make_backup(dd, today=date(2026, 10, 28))
+    assert not list(dd.backups.glob("*.part"))

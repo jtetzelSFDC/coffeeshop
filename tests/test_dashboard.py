@@ -4,7 +4,8 @@ from careeros import dashboard
 from careeros.guide.service import experiences, promo_map
 from careeros.storage.models import GuideLink, JournalEntry, Win
 
-from test_guide import nb, session  # noqa: F401
+from helpers import open_session
+
 
 TODAY = date.today()
 
@@ -21,7 +22,7 @@ def add(s, ago, text, kind="task", reviewed=True, link=None):
 
 def test_dashboard_numbers_match_the_promo_map(nb):
     dd, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         item = experiences(s)[0]
         a = add(s, 0, "Ran the refresh", link=item)
         add(s, 1, "Kudos from Pat", kind="recognition")
@@ -43,7 +44,7 @@ def test_dashboard_numbers_match_the_promo_map(nb):
 
 def test_home_is_the_dashboard_not_a_day_list(nb):
     dd, c, *_ = nb
-    with session(dd) as s:
+    with open_session(dd) as s:
         add(s, 0, "Something done today")
         s.commit()
     html = c.get("/").text

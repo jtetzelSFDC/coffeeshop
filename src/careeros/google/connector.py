@@ -3,7 +3,7 @@
 Claude is allowed exactly one tool (calendar get_events) and never sees anything but the request. The
 app then reads the tool's raw answer itself and keeps only title, times, and Google file links, so no
 AI-written text ever reaches the notebook. Meeting titles, times, and attendee details do pass through
-the AI tool on the way, which is why this is a button you press, not something that runs by itself.
+the AI tool on the way. It runs with Sync Google: the button, and the scheduled sync at 8 AM and 6 PM.
 """
 from __future__ import annotations
 
