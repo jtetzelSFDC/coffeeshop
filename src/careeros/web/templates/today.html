@@ -4,9 +4,11 @@
 {% from "_sync.html" import sync_chips %}
 
 {% if personal or daily %}
-<section class="card daily" aria-label="Today's three">
+<section class="card home-tile daily" aria-label="Today's three">
+  <details>
+  <summary><h2>Today's three</h2></summary>
   {% set all_done = daily and daily|selectattr("done_at")|list|length == daily|length %}
-  <div class="qhead"><h2>Today's three</h2>{% if personal %}{{ sync_chips(sync, [("daily", "Daily")]) }}{% endif %}
+  <div class="qhead">{% if personal %}{{ sync_chips(sync, [("daily", "Daily")]) }}{% endif %}
     {% if personal %}<form method="post" action="/daily/suggest" data-sync="daily" style="margin-left:auto">
       <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="force" value="{{ '1' if daily else '' }}">
       <button data-label="{{ 'New three' if daily else 'Suggest now' }}" title="{{ 'Replace all three. Ones you already checked off stay in your notebook' if daily else 'Ask Claude now instead of waiting for the morning sync' }}">{{ 'New three' if daily else 'Suggest now' }}</button></form>{% endif %}</div>
@@ -27,10 +29,13 @@
   {% else %}<p class="muted">No three yet today. They come with the morning sync, or press <b>Suggest now</b>.</p>{% endfor %}
   {% if all_done %}<p class="next">All three done. Nice.</p>{% endif %}
   <div class="job" data-job="daily" hidden></div>
+  </details>
 </section>
 {% endif %}
 
-<section class="card dash" aria-label="Progress">
+<section class="card home-tile dash" aria-label="Progress">
+  <details>
+  <summary><h2>Promotion Progress</h2></summary>
   {% if dash.grades %}
   <h2>Grade {{ dash.current }} to {{ dash.grades[0].grade }}, aiming at {{ dash.grades[-1].grade }}</h2>
   <div class="ready">
@@ -43,7 +48,6 @@
     {% endfor %}
   </div>
   {% else %}
-  <h2>Progress</h2>
   <p class="muted">Load your leveling guide to see how close the promotion is: <code>uv run careeros guide import &lt;file&gt;</code>.</p>
   {% endif %}
 
@@ -77,10 +81,13 @@
   </div>
 
   {% if dash.next %}<p class="next">Next: {{ dash.next.idea }} <a href="/promo">Promo map</a></p>{% endif %}
+  </details>
 </section>
 
 {% if personal %}
-<section class="card slim fold" tabindex="-1" aria-label="Sync">
+<section class="card slim home-tile" aria-label="Sync">
+  <details>
+  <summary><h2>Sync status</h2></summary>
   <div class="sync-grid">
     <div class="sync-col">
       <form method="post" action="/sync/google" data-sync="google">
@@ -113,11 +120,14 @@
     <p class="help">{% if v2mom_doc %}<b>Sync V2MOM</b> re-reads your V2MOM ({{ 'the newest V2MOM PDF in the folder you connected' if v2mom_doc.kind == 'pdf' else 'the Google Doc it is pasted in' }}) and updates its methods, measures, and check-ins. It runs by itself once a month; after a check-in, download the PDF again and press it. The text passes through the AI tool.{% else %}V2MOM: not connected yet. In the V2MOM app, download it as a PDF, then in Terminal run <code>uv run careeros v2mom connect &lt;path to the PDF&gt;</code>.{% endif %}</p>
     <p class="help">Google and Slack also run on their own at 8 AM and 6 PM.</p>
   {% endcall %}
+  </details>
 </section>
 <script src="/static/sync.js" defer></script>
 {% endif %}
 
-<section class="card slim" aria-label="Add to your notebook">
+<section class="card slim home-tile" aria-label="Add to your notebook">
+  <details>
+  <summary><h2>New entry</h2></summary>
   <form method="post" action="/journal/add">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="quick">
@@ -130,5 +140,6 @@
     </div>
     <details class="howto"><summary>Paste notes, a link, or a transcript</summary><div class="stack">{{ attach_fields() }}</div></details>
   </form>
+  </details>
 </section>
 {% endblock %}
