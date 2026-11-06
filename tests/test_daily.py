@@ -76,17 +76,17 @@ def test_a_bad_answer_raises_and_saves_nothing(nb, bad):
         assert s.query(DailyTask).count() == 0
 
 
-def test_force_replaces_only_the_ones_not_done(nb):
+def test_force_replaces_every_task_and_keeps_the_logged_one(nb):
     dd, *_ = nb
     setup(dd)
     with open_session(dd) as s:
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         first = daily.suggest(s, TODAY, reader=lambda p, d: reply(ids, text="First idea"))
-        first[1].done_at = datetime.now()
-        s.commit()
+        e = daily.check(s, first[1])
+        eid = e.id
         new = daily.suggest(s, TODAY, force=True, reader=lambda p, d: reply(ids, text="Second idea"))
-        assert [t.text for t in new] == ["First idea", "Second idea", "Second idea"]
-        assert new[0].done_at and [t.position for t in new] == [1, 2, 3]
+        assert [t.text for t in new] == ["Second idea"] * 3 and all(t.done_at is None for t in new)
+        assert [t.position for t in new] == [1, 2, 3] and s.get(JournalEntry, eid) is not None
 
 
 def test_no_v2mom_still_works_from_the_guide_and_no_goals_at_all_is_a_clear_error(nb, tmp_path):
@@ -152,7 +152,7 @@ def test_quiet_v2mom_methods_come_before_on_track_ones(nb):
     assert ids.index("V2MOM M1") < aim < ids.index("V2MOM M2")
 
 
-def test_force_with_all_three_done_doesnt_ask(nb):
+def test_force_with_all_three_done_asks_for_a_new_three(nb):
     dd, *_ = nb
     setup(dd)
     with open_session(dd) as s:
@@ -160,7 +160,8 @@ def test_force_with_all_three_done_doesnt_ask(nb):
         for t in daily.suggest(s, TODAY, reader=lambda p, d: reply(ids)):
             t.done_at = datetime.now()
         s.commit()
-        assert len(daily.suggest(s, TODAY, force=True, reader=lambda p, d: pytest.fail("asked"))) == 3
+        new = daily.suggest(s, TODAY, force=True, reader=lambda p, d: reply(ids, text="Next idea"))
+        assert [t.text for t in new] == ["Next idea"] * 3 and all(t.done_at is None for t in new)
 
 
 def test_two_runs_at_once_keep_one_three(nb):
@@ -345,7 +346,7 @@ def test_all_three_done_and_the_suggest_button_starts_a_job(nb, monkeypatch):
     for tid in _three(dd):
         c.post(f"/daily/{tid}/done", data={"csrf": tok})
     home = c.get("/").text
-    assert "All three done. Nice." in home and 'action="/daily/suggest"' not in home
+    assert "All three done. Nice." in home and 'data-label="New three"' in home
     started = []
     monkeypatch.setattr("careeros.web.syncs.run_daily",
                         lambda job, S, lock, force=False: (started.append(force), job.finish("ok")))

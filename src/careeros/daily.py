@@ -157,11 +157,12 @@ def today_tasks(s: Session, day: date | None = None) -> list[DailyTask]:
 
 def suggest(s: Session, today: date | None = None, *, force: bool = False,
             reader: Callable[[str, str], str] | None = None, lock=None) -> list[DailyTask]:
-    """Today's three, asking Claude only if they don't exist yet (or `force`). A bad answer raises ClaudeError and
-    leaves today's tasks as they were. `lock` is held only while saving, not while Claude thinks."""
+    """Today's three, asking Claude only if they don't exist yet (or `force`, which replaces all of them). A
+    checked-off task's notebook record stays. A bad answer raises ClaudeError and leaves today's tasks as they were.
+    `lock` is held only while saving, not while Claude thinks."""
     today = today or date.today()
     have = today_tasks(s, today)
-    if have and (not force or all(t.done_at for t in have)):
+    if have and not force:
         return have
     data = context(s, today)
     if not data["goals"]:
@@ -178,18 +179,16 @@ def suggest(s: Session, today: date | None = None, *, force: bool = False,
 def _save(s: Session, today: date, tasks: list[dict], force: bool) -> list[DailyTask]:
     s.expire_all()
     have = today_tasks(s, today)  # again: a tick or another run may have landed while Claude was thinking
-    if have and (not force or all(t.done_at for t in have)):
+    if have and not force:
         return have
-    if have:  # forced: replace only the ones not done yet
-        s.execute(delete(DailyTask).where(DailyTask.day == today.isoformat(), DailyTask.done_at.is_(None)))
-    kept = [t for t in have if t.done_at]
-    for i, t in enumerate(kept, 1):
-        t.position = i
-    s.flush()  # done tasks take positions 1.. before the new ones are added
-    for i, t in enumerate(tasks[: TASKS - len(kept)], len(kept) + 1):
+    if have:  # forced: drop every row for today; the journal entry from a check-off stays
+        for t in have:
+            s.delete(t)
+        s.flush()
+    for i, t in enumerate(tasks, 1):
         s.add(DailyTask(day=today.isoformat(), position=i, created_at=datetime.now(), **t))
     from .storage.sync_log import record
-    record(s, SOURCE, TASKS - len(kept))
+    record(s, SOURCE, len(tasks))
     try:
         s.commit()
     except IntegrityError:  # another run (the schedule and a button press) saved today's three first; keep those

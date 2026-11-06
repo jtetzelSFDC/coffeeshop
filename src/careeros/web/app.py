@@ -327,7 +327,7 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.post("/daily/suggest", dependencies=[Depends(check_csrf)])
     def daily_suggest(request: Request, force: str = Form("")):
-        """Ask for today's three now (or a new three, keeping the ones done), in the background."""
+        """Ask for today's three now (or a new three, replacing all of them), in the background."""
         return start_sync(request, "daily", force=force == "1")
 
     @app.post("/daily/{tid}/done", dependencies=[Depends(check_csrf)])

@@ -7,9 +7,9 @@
 <section class="card daily" aria-label="Today's three">
   {% set all_done = daily and daily|selectattr("done_at")|list|length == daily|length %}
   <div class="qhead"><h2>Today's three</h2>{% if personal %}{{ sync_chips(sync, [("daily", "Daily")]) }}{% endif %}
-    {% if personal and not all_done %}<form method="post" action="/daily/suggest" data-sync="daily" style="margin-left:auto">
+    {% if personal %}<form method="post" action="/daily/suggest" data-sync="daily" style="margin-left:auto">
       <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="force" value="{{ '1' if daily else '' }}">
-      <button data-label="{{ 'New three' if daily else 'Suggest now' }}" title="{{ 'Swap the ones not done yet for new ideas' if daily else 'Ask Claude now instead of waiting for the morning sync' }}">{{ 'New three' if daily else 'Suggest now' }}</button></form>{% endif %}</div>
+      <button data-label="{{ 'New three' if daily else 'Suggest now' }}" title="{{ 'Replace all three. Ones you already checked off stay in your notebook' if daily else 'Ask Claude now instead of waiting for the morning sync' }}">{{ 'New three' if daily else 'Suggest now' }}</button></form>{% endif %}</div>
   {% for t in daily %}
   <div class="dt {{ 'done' if t.done_at }}">
     {% if t.done_at %}

@@ -344,7 +344,7 @@ DAILY_STEPS = ["Suggest today's three tasks"]
 
 
 def run_daily(job: Job, Session_, lock, force: bool = False) -> None:
-    """Today's three: suggested once a day (or a new three with `force`, keeping the done ones)."""
+    """Today's three: suggested once a day (or a new three with `force`, replacing all of them)."""
     from .. import daily
     job.start(0)
     with Session_() as s:
