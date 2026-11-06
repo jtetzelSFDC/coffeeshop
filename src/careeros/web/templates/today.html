@@ -33,6 +33,24 @@
 </section>
 {% endif %}
 
+<section class="card slim home-tile" aria-label="Add to your notebook">
+  <details>
+  <summary><h2>New entry</h2></summary>
+  <form method="post" action="/journal/add">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="quick">
+      <select name="kind" aria-label="What kind of thing">
+        {% for k, label in kinds %}<option value="{{ k }}">{{ label }}</option>{% endfor %}
+      </select>
+      <input name="text" required maxlength="500" placeholder="Something the syncs missed?" aria-label="Something the syncs missed?">
+      <input type="date" name="day" value="{{ today }}" max="{{ today }}" aria-label="Day">
+      <button>Add</button>
+    </div>
+    <details class="howto"><summary>Paste notes, a link, or a transcript</summary><div class="stack">{{ attach_fields() }}</div></details>
+  </form>
+  </details>
+</section>
+
 <section class="card home-tile dash" aria-label="Progress">
   <details>
   <summary><h2>Promotion Progress</h2></summary>
@@ -124,22 +142,4 @@
 </section>
 <script src="/static/sync.js" defer></script>
 {% endif %}
-
-<section class="card slim home-tile" aria-label="Add to your notebook">
-  <details>
-  <summary><h2>New entry</h2></summary>
-  <form method="post" action="/journal/add">
-    <input type="hidden" name="csrf" value="{{ csrf }}">
-    <div class="quick">
-      <select name="kind" aria-label="What kind of thing">
-        {% for k, label in kinds %}<option value="{{ k }}">{{ label }}</option>{% endfor %}
-      </select>
-      <input name="text" required maxlength="500" placeholder="Something the syncs missed?" aria-label="Something the syncs missed?">
-      <input type="date" name="day" value="{{ today }}" max="{{ today }}" aria-label="Day">
-      <button>Add</button>
-    </div>
-    <details class="howto"><summary>Paste notes, a link, or a transcript</summary><div class="stack">{{ attach_fields() }}</div></details>
-  </form>
-  </details>
-</section>
 {% endblock %}
