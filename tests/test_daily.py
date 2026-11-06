@@ -380,9 +380,12 @@ def test_untick_keeps_a_record_you_linked_yourself(nb):
         assert s.get(JournalEntry, e.id) is not None and t.done_at is None
 
 
-def test_new_three_reloads_the_page_when_the_job_finishes():
-    """The show-items button used assign() on the current address, which does not reload, so the new three never appeared."""
+def test_new_three_reloads_when_done_unless_a_box_has_text():
+    """Runs sync.js against a fake page: done reloads once; text in a box does not."""
+    import shutil
+    import subprocess
     from pathlib import Path
-    js = (Path(__file__).parents[1] / "src/careeros/web/static/sync.js").read_text()
-    assert "location.assign" not in js
-    assert "watchDaily" in js and "location.reload()" in js
+    node = shutil.which("node")
+    assert node, "node is required to run sync.js"
+    r = subprocess.run([node, str(Path(__file__).with_name("sync_reload.js"))], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr

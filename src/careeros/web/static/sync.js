@@ -3,6 +3,16 @@ const ICON = { pending: "○", running: "◐", done: "✓", error: "✕", skippe
 let dailyGen = 0; // bumps when New three is clicked, so a status fetch already in flight can't reload on the old job
 let watchDaily = false; // this page started Today's three, or saw it running, so reload once when that job finishes
 
+function draft() {
+  // The day box is already filled in, so only a line someone typed counts.
+  for (const el of document.querySelectorAll("textarea, input")) {
+    const t = el.type || "text";
+    if (t === "hidden" || t === "date" || t === "checkbox" || t === "radio" || t === "button" || t === "submit") continue;
+    if ((el.value || "").trim()) return true;
+  }
+  return false;
+}
+
 function el(tag, cls, text) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -51,9 +61,10 @@ function render(name, job) {
   box.append(list);
   if (!running) {
     const end = el("p", "jmsg", job.message);
-    // Daily reloads itself when the job finishes. Other syncs wait for this button. reload() is required:
-    // assign() to the current address does not load the page again, so the list never changed.
-    if (name !== "daily") {
+    // Daily reloads itself when the job finishes. If a box has text, this button loads the new three instead,
+    // so the typed line is not thrown away. reload() is required: assign() to the current address does not
+    // load the page again.
+    if (name !== "daily" || (watchDaily && draft())) {
       const again = el("button", "", "Show the new items");
       again.type = "button";
       again.addEventListener("click", () => location.reload());
@@ -85,7 +96,7 @@ async function poll() {
       if (name === "daily" && watchDaily && job.state === "done") refreshDaily = true;
     }
   }
-  if (refreshDaily) {
+  if (refreshDaily && !draft()) {
     location.reload();
     return;
   }
