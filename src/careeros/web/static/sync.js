@@ -1,5 +1,7 @@
 // Sync buttons start a background sync; this shows its progress step by step until it finishes.
 const ICON = { pending: "○", running: "◐", done: "✓", error: "✕", skipped: "–" };
+let dailyGen = 0; // bumps when New three is clicked, so a status fetch already in flight can't reload on the old job
+let watchDaily = false; // this page started Today's three, or saw it running, so reload once when that job finishes
 
 function el(tag, cls, text) {
   const n = document.createElement(tag);
@@ -49,10 +51,14 @@ function render(name, job) {
   box.append(list);
   if (!running) {
     const end = el("p", "jmsg", job.message);
-    const again = el("button", "", "Show the new items");
-    again.type = "button";
-    again.addEventListener("click", () => location.assign(location.pathname + location.search));
-    end.append(" ", again);
+    // Daily reloads itself when the job finishes. Other syncs wait for this button. reload() is required:
+    // assign() to the current address does not load the page again, so the list never changed.
+    if (name !== "daily") {
+      const again = el("button", "", "Show the new items");
+      again.type = "button";
+      again.addEventListener("click", () => location.reload());
+      end.append(" ", again);
+    }
     box.append(end);
   } else {
     box.append(el("p", "jmsg", `Started at ${job.started}. You can keep using the app; this updates by itself.`));
@@ -60,19 +66,28 @@ function render(name, job) {
 }
 
 async function poll() {
+  const gen = dailyGen;
   let status;
   try {
     status = await (await fetch("/sync/status", { cache: "no-store" })).json();
   } catch (e) {
-    setTimeout(poll, 4000);
+    if (gen === dailyGen) setTimeout(poll, 4000);
     return;
   }
+  if (gen !== dailyGen) return;
   let running = false;
+  let refreshDaily = false;
   for (const [name, job] of Object.entries(status)) {
     if (job) {
+      if (name === "daily" && job.state === "running") watchDaily = true;
       render(name, job);
       running = running || job.state === "running";
+      if (name === "daily" && watchDaily && job.state === "done") refreshDaily = true;
     }
+  }
+  if (refreshDaily) {
+    location.reload();
+    return;
   }
   if (running) setTimeout(poll, 1500);
 }
@@ -91,6 +106,10 @@ document.addEventListener("submit", async (ev) => {
       const body = await resp.json().catch(() => ({}));
       if (body.message) why = body.message;
       throw new Error(resp.status);
+    }
+    if (form.dataset.sync === "daily") {
+      dailyGen++;
+      watchDaily = true;
     }
   } catch (e) {
     delete button.dataset.busy;

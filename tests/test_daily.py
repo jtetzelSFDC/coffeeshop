@@ -378,3 +378,11 @@ def test_untick_keeps_a_record_you_linked_yourself(nb):
         s.commit()
         daily.uncheck(s, t)
         assert s.get(JournalEntry, e.id) is not None and t.done_at is None
+
+
+def test_new_three_reloads_the_page_when_the_job_finishes():
+    """The show-items button used assign() on the current address, which does not reload, so the new three never appeared."""
+    from pathlib import Path
+    js = (Path(__file__).parents[1] / "src/careeros/web/static/sync.js").read_text()
+    assert "location.assign" not in js
+    assert "watchDaily" in js and "location.reload()" in js
