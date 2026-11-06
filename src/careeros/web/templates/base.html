@@ -95,6 +95,16 @@ table.sheet td{padding:.22rem .4rem}a.btnlike{color:var(--text);text-decoration:
 .sub{color:var(--muted);margin:.2rem 0 0}
 .note{background:var(--note-bg);border:1px solid var(--note-line);border-radius:10px;padding:.55rem .9rem;margin:1rem 0;font-size:.92rem}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:1.2rem 1.4rem;margin:1.4rem 0}
+.card.home-tile{background:color-mix(in srgb,var(--card) 50%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.card.home-tile:has(>details[open]){background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none}
+.card.home-tile>details{interpolate-size:allow-keywords;margin:0}
+.card.home-tile>details>summary{display:flex;align-items:center;justify-content:space-between;color:var(--text);list-style:none}
+.card.home-tile>details>summary::-webkit-details-marker{display:none}
+.card.home-tile>details>summary h2{margin:0}
+.card.home-tile>details>summary::after{content:"";width:.45rem;height:.45rem;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);flex:none}
+.card.home-tile>details[open]>summary::after{transform:rotate(225deg);margin-top:.3rem}
+.card.home-tile>details::details-content{height:0;overflow:hidden;opacity:0;transition:height .3s ease,opacity .2s ease}
+.card.home-tile>details[open]::details-content{height:auto;opacity:1}
 .chip{display:inline-block;font-size:.76rem;border-radius:99px;padding:.05rem .6rem;margin-left:.4rem;
   background:var(--btn);color:var(--muted);vertical-align:middle}
 .chip.done{color:var(--good)}a.chip{text-decoration:none;margin-left:0}
