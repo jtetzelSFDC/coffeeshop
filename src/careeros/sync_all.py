@@ -63,8 +63,12 @@ $n.BalloonTipTitle = $env:COFFEESHOP_NOTIFY_TITLE
 $n.BalloonTipText = $env:COFFEESHOP_NOTIFY_BODY
 $n.Visible = $true
 $n.ShowBalloonTip(8000)
-Start-Sleep -Seconds 3
-$n.Dispose()
+# The balloon is never drawn unless a window message loop is running.
+$timer = New-Object System.Windows.Forms.Timer
+$timer.Interval = 3000
+$timer.add_Tick({ $timer.Stop(); $n.Dispose(); [System.Windows.Forms.Application]::Exit() })
+$timer.Start()
+[System.Windows.Forms.Application]::Run()
 """
 
 
@@ -108,6 +112,8 @@ def _lock_windows(lock_file) -> None:
     try:
         msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
     except OSError as exc:
+        if exc.errno not in (13, 16, 36):  # EACCES, EBUSY, EDEADLK: someone else holds the byte
+            raise
         raise BlockingIOError(exc.errno or 0, "sync already running") from exc
 
 
@@ -160,6 +166,9 @@ def run(dd: DataDir, *, force: bool = False, now: datetime | None = None,
     except BlockingIOError:  # another sync (login catch-up, or the 6 PM run) is still going
         lock_file.close()
         return LOCKED
+    except Exception:
+        lock_file.close()
+        raise
     log = (logs / f"sync-{now:%Y-%m-%d}.log").open("a")
 
     def say(line: str) -> None:

@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -137,6 +139,7 @@ def _powershell() -> str:
 def _task_script(data: Path, uv: str, repo: Path, args: list[str], log: Path) -> str:
     """Set the notebook folder, then run uv the same way the Mac agents do. Exit with uv's code so a crash counts."""
     return "\n".join([
+        "$ErrorActionPreference = 'Stop'",  # a missing uv must fail the task, or keep-alive will not restart it
         f"$env:{DATA_DIR_ENV} = {_ps_quote(str(data))}",
         f"& {_ps_quote(uv)} run --project {_ps_quote(str(repo))} careeros {' '.join(args)} *>> {_ps_quote(str(log))}",
         "exit $LASTEXITCODE",
@@ -156,14 +159,23 @@ def _daily_trigger(hour: int) -> str:
 
 
 _LOGON = "    <LogonTrigger><Enabled>true</Enabled></LogonTrigger>\n"
-# 2026-01-02 is a Friday, so the boundary matches the weekday Windows uses.
-_FRIDAY = (
-    "    <CalendarTrigger>\n"
-    "      <StartBoundary>2026-01-02T12:00:00</StartBoundary>\n"
-    "      <Enabled>true</Enabled>\n"
-    "      <ScheduleByWeek><WeeksInterval>1</WeeksInterval><DaysOfWeek><Friday/></DaysOfWeek></ScheduleByWeek>\n"
-    "    </CalendarTrigger>\n"
-)
+_TASK_NS = "http://schemas.microsoft.com/windows/2004/02/mit/task"
+
+
+def _friday_trigger(now: datetime | None = None) -> str:
+    """The next Friday at noon. A start date in the past makes install run the digest immediately."""
+    now = now or datetime.now()
+    days = (4 - now.weekday()) % 7
+    if days == 0 and (now.hour, now.minute) >= (12, 0):
+        days = 7
+    friday = now.date() + timedelta(days=days)
+    return (
+        "    <CalendarTrigger>\n"
+        f"      <StartBoundary>{friday:%Y-%m-%d}T12:00:00</StartBoundary>\n"
+        "      <Enabled>true</Enabled>\n"
+        "      <ScheduleByWeek><WeeksInterval>1</WeeksInterval><DaysOfWeek><Friday/></DaysOfWeek></ScheduleByWeek>\n"
+        "    </CalendarTrigger>\n"
+    )
 
 
 def _task_xml(command: str, arguments: str, workdir: str, triggers: str, *, restart: bool) -> str:
@@ -216,7 +228,7 @@ def _windows_tasks(dd: DataDir, uv: str, repo: Path) -> list[tuple[str, str, str
     jobs = (
         (APP, ["serve"], logs / "app.log", _LOGON, True, True),
         (SYNC, ["sync", "all"], logs / "sync-agent.log", _LOGON + _daily_trigger(8) + _daily_trigger(18), False, True),
-        (DIGEST, ["digest", "notify"], logs / "digest-agent.log", _FRIDAY, False, False),
+        (DIGEST, ["digest", "notify"], logs / "digest-agent.log", _friday_trigger(), False, False),
     )
     out = []
     for label, args, log, triggers, restart, run_now in jobs:
@@ -270,15 +282,27 @@ def _uninstall_windows() -> list[Path]:
     return removed
 
 
+def _settings_enabled(stdout: str) -> bool:
+    """The task's own Settings/Enabled. A disabled trigger does not count, and unreadable XML still means it exists."""
+    start = (stdout or "").find("<Task")
+    if start < 0:
+        return True
+    try:
+        root = ET.fromstring(stdout[start:])
+    except ET.ParseError:
+        return True
+    enabled = root.findtext(f".//{{{_TASK_NS}}}Settings/{{{_TASK_NS}}}Enabled")
+    return (enabled or "true").strip().lower() != "false"
+
+
 def _status_windows(dd: DataDir) -> list[str]:
     lines = []
     for label, what in ((APP, "Keeps the app running"), (SYNC, "Syncs at 8 AM, 6 PM, and login"),
                         (DIGEST, "Weekly digest on Fridays at noon")):
         result = schtasks("/Query", "/TN", label, "/XML")
-        # <Enabled> is not translated; "Disabled" in /FO LIST is, so a French PC would look on.
         if result.returncode != 0:
             state = "off"
-        elif "<Enabled>false</Enabled>" in (result.stdout or ""):
+        elif not _settings_enabled(result.stdout):
             state = "installed but not loaded"
         else:
             state = "on"

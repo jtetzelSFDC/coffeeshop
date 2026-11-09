@@ -2,7 +2,7 @@ import plistlib
 import subprocess
 import sys
 import types
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -260,6 +260,7 @@ def test_windows_schedule_builds_schtasks_commands(dd, monkeypatch):
     assert [a[2] for a in ran if a[0] == "/Run"] == [schedule.APP, schedule.SYNC]
     sync = (dd.root / "tasks" / "com.careeros.sync.ps1").read_text(encoding="utf-8-sig")
     assert f"& '{uv}' run --project '{repo}' careeros sync all" in sync
+    assert "$ErrorActionPreference = 'Stop'" in sync
     assert f"$env:COFFEESHOP_DATA_DIR = '{dd.root}'" in sync and "exit $LASTEXITCODE" in sync
     xml = (dd.root / "tasks" / "com.careeros.sync.xml").read_text(encoding="utf-16")
     assert "T08:00:00" in xml and "T18:00:00" in xml and "LogonTrigger" in xml
@@ -269,6 +270,8 @@ def test_windows_schedule_builds_schtasks_commands(dd, monkeypatch):
     digest_xml = (dd.root / "tasks" / "com.careeros.digest.xml").read_text(encoding="utf-16")
     digest = (dd.root / "tasks" / "com.careeros.digest.ps1").read_text(encoding="utf-8-sig")
     assert "Friday" in digest_xml and "T12:00:00" in digest_xml and "LogonTrigger" not in digest_xml
+    boundary = digest_xml.split("<StartBoundary>")[1].split("T")[0]
+    assert date.fromisoformat(boundary) >= date.today() and date.fromisoformat(boundary).weekday() == 4
     assert "careeros digest notify" in digest
     removed = schedule.uninstall()
     deletes = [a for a in ran if a[0] == "/Delete"]
@@ -288,6 +291,12 @@ def test_windows_install_reports_a_schtasks_error(dd, monkeypatch):
         schedule.install(dd, uv=r"C:\Tools\uv.exe", repo=Path("C:/repo"))
 
 
+def _queried(enabled: str, trigger: str = "true") -> str:
+    return (f'<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">'
+            f"<Triggers><LogonTrigger><Enabled>{trigger}</Enabled></LogonTrigger></Triggers>"
+            f"<Settings><Enabled>{enabled}</Enabled></Settings></Task>")
+
+
 def test_windows_status_reads_schtasks_not_the_real_scheduler(dd, monkeypatch):
     monkeypatch.setattr(schedule.sys, "platform", "win32")
     seen = []
@@ -295,10 +304,10 @@ def test_windows_status_reads_schtasks_not_the_real_scheduler(dd, monkeypatch):
     def fake(*args):
         seen.append(args)
         label = args[2]
-        if label == schedule.APP:
-            return subprocess.CompletedProcess(args, 0, "<Enabled>true</Enabled>", "")
+        if label == schedule.APP:  # a disabled trigger does not mean the task is off
+            return subprocess.CompletedProcess(args, 0, _queried("true", "false"), "")
         if label == schedule.SYNC:
-            return subprocess.CompletedProcess(args, 0, "<Enabled>false</Enabled>", "")
+            return subprocess.CompletedProcess(args, 0, _queried("false"), "")
         return subprocess.CompletedProcess(args, 1, "", "not found")
     monkeypatch.setattr(schedule, "schtasks", fake)
     (dd.root / "logs").mkdir(exist_ok=True)
@@ -308,6 +317,49 @@ def test_windows_status_reads_schtasks_not_the_real_scheduler(dd, monkeypatch):
                          "Weekly digest on Fridays at noon: off"]
     assert "Google synced" in lines[-1]
     assert seen == [("/Query", "/TN", label, "/XML") for label in (schedule.APP, schedule.SYNC, schedule.DIGEST)]
+
+
+def test_windows_paths_are_quoted_for_powershell_and_xml():
+    script = schedule._task_script(Path(r"C:\O'Hare\nb"), r"C:\O'Hare\uv.exe", Path(r"C:\repo"),
+                                   ["sync", "all"], Path(r"C:\O'Hare\nb\logs\sync-agent.log"))
+    assert "O''Hare" in script and "O'Hare" not in script.replace("O''Hare", "")
+    xml = schedule._task_xml(r"C:\Windows\powershell.exe", "arg", r"C:\repo & co", "<x/>", restart=False)
+    assert "repo &amp; co" in xml and "repo & co" not in xml
+
+
+def test_windows_run_retries_then_gives_up(dd, monkeypatch):
+    monkeypatch.setattr(schedule.sys, "platform", "win32")
+    monkeypatch.setattr(schedule, "pause", lambda s: None)
+    app_runs = []
+
+    def fake(*args):
+        if args[0] == "/Run" and args[2] == schedule.APP:
+            app_runs.append(1)
+            return subprocess.CompletedProcess(args, 0 if len(app_runs) == 2 else 1, "", "not ready")
+        return subprocess.CompletedProcess(args, 0, "", "")
+    monkeypatch.setattr(schedule, "schtasks", fake)
+    schedule.install(dd, uv=r"C:\Tools\uv.exe", repo=Path("C:/repo"))
+    assert len(app_runs) == 2
+    app_runs.clear()
+
+    def always(*args):
+        if args[0] == "/Run":
+            app_runs.append(args[2])
+            return subprocess.CompletedProcess(args, 1, "", "not ready")
+        return subprocess.CompletedProcess(args, 0, "", "")
+    monkeypatch.setattr(schedule, "schtasks", always)
+    with pytest.raises(RuntimeError, match="wouldn't start"):
+        schedule.install(dd, uv=r"C:\Tools\uv.exe", repo=Path("C:/repo"))
+    assert app_runs == [schedule.APP] * 5  # gives up before starting the sync task
+
+
+def test_friday_trigger_is_the_next_friday_not_a_past_one():
+    coming = schedule._friday_trigger(datetime(2026, 11, 9, 15, 56))  # Monday
+    assert "2026-11-13T12:00:00" in coming
+    later = schedule._friday_trigger(datetime(2026, 11, 13, 12, 0))  # Friday just at noon
+    assert "2026-11-20T12:00:00" in later
+    morning = schedule._friday_trigger(datetime(2026, 11, 13, 11, 59))
+    assert "2026-11-13T12:00:00" in morning
 
 
 def test_mac_install_does_not_call_schtasks(dd, tmp_path, monkeypatch):
@@ -355,15 +407,26 @@ def test_windows_toast_failure_is_a_log_line_and_does_not_fail_the_sync(dd, monk
     assert "Notification skipped: blocked" in log
 
 
-def test_a_windows_lock_held_by_another_sync_exits(dd, monkeypatch):
+def _windows_lock(monkeypatch, exc: OSError):
     monkeypatch.setattr(sync_all, "fcntl", None)
     fake = types.ModuleType("msvcrt")
     fake.LK_NBLCK = 2
-    fake.locking = lambda fd, mode, n: (_ for _ in ()).throw(OSError(13, "locked"))
+    fake.locking = lambda fd, mode, n: (_ for _ in ()).throw(exc)
     monkeypatch.setitem(sys.modules, "msvcrt", fake)
+
+
+def test_a_windows_lock_held_by_another_sync_exits(dd, monkeypatch):
+    _windows_lock(monkeypatch, OSError(13, "locked"))
     calls = fake_syncs(monkeypatch)
     assert sync_all.run(dd, force=True, notify=lambda *a: None) == sync_all.LOCKED
     assert calls == []
+
+
+def test_a_windows_lock_io_error_is_not_called_another_sync(dd, monkeypatch):
+    _windows_lock(monkeypatch, OSError(5, "I/O error"))
+    fake_syncs(monkeypatch)
+    with pytest.raises(OSError, match="I/O error"):
+        sync_all.run(dd, force=True, notify=lambda *a: None)
 
 
 def test_a_failed_backup_notifies_and_the_syncs_still_run(dd, monkeypatch):
