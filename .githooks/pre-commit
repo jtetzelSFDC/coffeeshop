@@ -1,0 +1,10 @@
+#!/bin/sh
+# Git for Windows runs hooks with its own sh. The rules live in the Python script.
+if command -v python3 >/dev/null 2>&1; then
+    exec python3 .githooks/check_personal_data.py
+fi
+if command -v python >/dev/null 2>&1; then
+    exec python .githooks/check_personal_data.py
+fi
+echo "pre-commit: python3 or python is required to check for personal data" >&2
+exit 1
