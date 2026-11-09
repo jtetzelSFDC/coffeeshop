@@ -212,14 +212,15 @@ function mount(html) {
   return table;
 }
 
-// The server row reverses the win box and the Notes details, so a match by position or by name alone lands on the wrong box.
+// The server row puts the win box first, so a match by name alone lands on the wrong title.
 function row(o) {
   const group = `<details${o.groupOpen ? " open" : ""}><summary>Group with…</summary><form method="post" action="/sheet/4/group"><input type="hidden" name="csrf" value="${o.csrf}"><select name="item"><option value="">Pick</option><option value="9"${o.item === "9" ? " selected" : ""}>Pine</option></select><input name="title" value="${o.title}"><textarea name="blurb">${o.blurb}</textarea><button>Group</button></form></details>`;
   const notes = `<details${o.notesOpen ? " open" : ""}><summary>Notes</summary></details>`;
+  const winBox = `<details${o.winOpen ? " open" : ""}><summary>${o.winLabel || "Shipped it"}</summary></details>`;
   const win = `<form method="post" action="/sheet/4/win"><input name="title" value="${o.winTitle}"></form>`;
   const kind = `<form method="post" action="/sheet/4/kind"><input type="hidden" name="csrf" value="${o.csrf}"><button name="kind" value="ship">Ship</button><span class="mark">${o.mark}</span></form>`;
   const activity = `<form method="post" action="/sheet/4/activity"><select name="activity"><option value="">Nothing</option><option value="ship"${o.activity === "ship" ? " selected" : ""}>Ship</option><option value="mentor"${o.activity === "mentor" ? " selected" : ""}>Mentor</option></select><button>Set</button></form>`;
-  const bits = [kind, activity, o.notesFirst ? notes + group : group + notes];
+  const bits = [kind, activity, group + notes + winBox];
   if (o.winFirst) bits.splice(1, 0, win);
   else bits.push(win);
   return `<tr id="r4"><td>${bits.join("")}</td></tr>`;
@@ -257,11 +258,11 @@ async function save(client, server, action, submitter) {
 (async () => {
   const typed = {
     mark: "old", csrf: "tok", activity: "mentor", item: "9", title: "Pine 5.1.2", blurb: "typed blurb",
-    winTitle: "Other win", groupOpen: true, notesOpen: false, winFirst: false, notesFirst: false,
+    winTitle: "Other win", groupOpen: true, notesOpen: false, winFirst: false,
   };
   const fromServer = {
     mark: "saved", csrf: "srv", activity: "ship", item: "", title: "G-server", blurb: "server blurb",
-    winTitle: "W-server", groupOpen: false, notesOpen: false, winFirst: true, notesFirst: true,
+    winTitle: "W-server", groupOpen: false, notesOpen: false, winFirst: true,
   };
   const kind = await save(row(typed), row(fromServer), "/sheet/4/kind", { name: "kind", value: "ship" });
   assert.equal(kind.querySelectorAll("span.mark")[0].textContent, "saved", "the row should redraw");
@@ -284,7 +285,7 @@ async function save(client, server, action, submitter) {
     ...typed, groupOpen: false, notesOpen: true,
   };
   const grouped = {
-    ...fromServer, title: "saved title", blurb: "from server", winFirst: false, notesFirst: false,
+    ...fromServer, title: "saved title", blurb: "from server", winFirst: false,
   };
   const group = await save(row(grouping), row(grouped), "/sheet/4/group", null);
   assert.equal(val(group, "/sheet/4/group", "title"), "saved title", "Group shows the server's title");
@@ -294,4 +295,12 @@ async function save(client, server, action, submitter) {
   assert.equal(val(group, "/sheet/4/win", "title"), "Other win");
   assert.equal(isOpen(group, "Group with…"), false, "a closed Group with stays closed");
   assert.equal(isOpen(group, "Notes"), true, "Notes stays open");
+
+  // A win headed "Notes" sits after the notes box. Position keeps the win open; a heading match would open the notes box.
+  const clash = await save(
+    row({ ...typed, groupOpen: false, notesOpen: false, winOpen: true, winLabel: "Notes" }),
+    row({ ...fromServer, winOpen: false, winLabel: "Notes" }),
+    "/sheet/4/kind", { name: "kind", value: "ship" });
+  assert.deepEqual(clash.querySelectorAll("details").map((d) => d.open), [false, false, true],
+    "the win box stays open when its heading matches Notes");
 })().catch((err) => { console.error(err); process.exit(1); });

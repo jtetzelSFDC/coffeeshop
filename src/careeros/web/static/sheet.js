@@ -5,10 +5,6 @@
 const keep = (row, fresh, saved) => {
   const take = (el) => el.name && (el.tagName !== "INPUT" || (el.type || "text") === "text");
   const action = (el) => (el.form && el.form.getAttribute("action")) || "";
-  const summary = (d) => {
-    const s = d.querySelector("summary");
-    return (s ? s.textContent : "").trim();
-  };
   const left = [...fresh.querySelectorAll("textarea, select, input")].filter(take);
   for (const el of row.querySelectorAll("textarea, select, input")) {
     if (!take(el) || saved.contains(el)) continue;
@@ -17,14 +13,10 @@ const keep = (row, fresh, saved) => {
     left[i].value = el.value;
     left.splice(i, 1);
   }
-  const open = [...fresh.querySelectorAll("details")];
-  for (const d of row.querySelectorAll("details")) {
-    if (!d.open) continue;
-    const i = open.findIndex((n) => summary(n) === summary(d));
-    if (i < 0) continue;
-    open[i].open = true;
-    open.splice(i, 1);
-  }
+  // A save only adds or removes the win box at the end, so earlier boxes stay at the same index.
+  const prev = [...row.querySelectorAll("details")];
+  const next = [...fresh.querySelectorAll("details")];
+  for (let i = 0; i < prev.length; i++) if (prev[i].open && next[i]) next[i].open = true;
 };
 
 document.addEventListener("submit", async (ev) => {
