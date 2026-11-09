@@ -55,7 +55,7 @@ def test_win_flow_suggests_then_saves_only_what_user_confirms(nb):
         assert f'value="{gid}" checked' in page
     with open_session(dd) as s:
         assert not list(s.scalars(select(GuideLink)))          # nothing is linked until the user saves
-    r = form(c, "/guide/link", tok, guide=1, win=win_id, item=[sandbox[6], sandbox[0]], next="/wins")
+    r = form(c, "/guide/link", tok, win=win_id, item=[sandbox[6], sandbox[0]], next="/wins")
     assert r.status_code == 303 and "Linked%20to%202" in r.headers["location"]
     assert "Sandbox and test data strategy (Grade 6)" in c.get("/wins").text
     page = c.get(f"/guide/link?win={win_id}").text
@@ -87,14 +87,14 @@ def test_entry_links_count_once_and_entry_cards_show_hints(nb):
     with open_session(dd) as s:
         eid = s.scalar(select(JournalEntry.id).where(JournalEntry.text.startswith("Demo")))
         demo7 = s.scalar(select(GuideItem.id).where(GuideItem.name.startswith("Runs demos")))
-    form(c, "/guide/link", tok, guide=1, entry=eid, item=[demo7], next="/")
+    form(c, "/guide/link", tok, entry=eid, item=[demo7], next="/")
     assert '<span class="meta-label">Shows</span>' in c.get("/meetings").text
     # a win made from that entry starts with the entry's links, and the entry isn't counted twice
     r = form(c, "/wins/add", tok, title="Ran the customer pipeline demo", size="small", entry_id=eid, next="/")
     with open_session(dd) as s:
         wid = s.scalar(select(Win.id))
     assert f'value="{demo7}" checked' in c.get(r.headers["location"]).text
-    form(c, "/guide/link", tok, guide=1, win=wid, item=[demo7], next="/")
+    form(c, "/guide/link", tok, win=wid, item=[demo7], next="/")
     from careeros.guide.service import evidence
     with open_session(dd) as s:
         ev = evidence(s)[demo7]
@@ -111,7 +111,7 @@ def test_reimport_keeps_links_and_retires_removed_items(nb, tmp_path):
         s.add(Win(day=date.today().isoformat(), title="Mentored Sam", size="medium", created_at=datetime.now()))
         s.commit()
         wid = s.scalar(select(Win.id))
-    form(c, "/guide/link", tok, guide=1, win=wid, item=[mentor])
+    form(c, "/guide/link", tok, win=wid, item=[mentor])
     write_guide(guide, g6=G6[:2] + ["A brand new expectation about pipelines."])
     r = CliRunner().invoke(cli, ["guide", "import", str(guide), "--data-dir", str(dd.root)])
     assert r.exit_code == 0 and "1 new" in r.output and "1 no longer in the guide" in r.output
@@ -128,7 +128,7 @@ def test_guide_links_are_in_the_csv_export_and_bad_input_is_ignored(nb):
         eid = s.scalar(select(JournalEntry.id))
         summary = s.scalar(select(GuideItem.id).where(GuideItem.kind == "summary"))
         mentor = s.scalar(select(GuideItem.id).where(GuideItem.name.startswith("Mentors newer")))
-    form(c, "/guide/link", tok, guide=1, entry=eid, item=[mentor, summary, 99999], next="//evil.example")
+    form(c, "/guide/link", tok, entry=eid, item=[mentor, summary, 99999], next="//evil.example")
     with open_session(dd) as s:
         assert [l.item_id for l in s.scalars(select(GuideLink))] == [mentor]
     z = zipfile.ZipFile(io.BytesIO(c.get("/export/everything").content))

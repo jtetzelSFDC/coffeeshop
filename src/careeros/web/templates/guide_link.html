@@ -8,7 +8,6 @@
 <form method="post" action="/guide/link">
 <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ next }}">
 {% if is_win %}<input type="hidden" name="win" value="{{ obj.id }}">{% else %}<input type="hidden" name="entry" value="{{ obj.id }}">{% endif %}
-{% if pm %}<input type="hidden" name="guide" value="1">{% endif %}
 <section class="card">
   <h2>Which parts of the leveling guide does this show?</h2>
   <p style="margin:.6rem 0 .2rem"><span class="chip">{{ 'Win' if is_win else 'Notebook entry' }}</span> <b>{{ obj.title if is_win else obj.text }}</b></p>

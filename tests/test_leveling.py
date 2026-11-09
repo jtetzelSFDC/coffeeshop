@@ -175,6 +175,27 @@ def test_setup_level_saves_the_choice_and_loads_the_guide_keeping_links(tmp_path
     assert r.exit_code == 1 and "no role called \"Nope\"" in r.output
 
 
+def test_saving_links_after_a_promotion_keeps_links_to_the_old_grade(tmp_path, workbook):
+    dd, Session_ = personal(tmp_path)
+    run = lambda grade: CliRunner().invoke(cli, ["setup", "level", "--role", "1", "--grade", grade,
+                                                 "--data-dir", str(dd.root)])
+    assert run("4").exit_code == 0
+    with Session_() as s:
+        five = s.scalar(select(GuideItem.id).where(GuideItem.name == "Ships widgets"))
+        seven = s.scalar(select(GuideItem.id).where(GuideItem.name == "Leads widget design across teams"))
+        s.add(Win(day="2026-10-20", title="Shipped the widget", size="medium", created_at=datetime.now()))
+        s.commit()
+        wid = s.scalar(select(Win.id))
+    app = create_app(dd)
+    c, tok = TestClient(app, base_url=BASE), app.state.csrf_token
+    form(c, "/guide/link", tok, win=wid, item=[five], next="/wins")
+    assert run("5").exit_code == 0  # promoted: the page now offers Grade 7 only
+    assert "Ships widgets" not in c.get(f"/guide/link?win={wid}").text
+    form(c, "/guide/link", tok, win=wid, item=[seven], next="/wins")
+    with open_session(dd) as s:
+        assert set(s.scalars(select(GuideLink.item_id))) == {five, seven}
+
+
 def test_guide_update_checks_then_copies_and_says_what_changed(tmp_path, workbook):
     def renamed(ws):
         label_b_tab(ws)
@@ -188,3 +209,6 @@ def test_guide_update_checks_then_copies_and_says_what_changed(tmp_path, workboo
     assert r.exit_code == 0, r.output
     assert "Added: Widget Ops" in r.output and "Removed: Widget Release Engineering" in r.output
     assert "Changed: none" in r.output and workbook.read_bytes() == new.read_bytes()
+    workbook.write_text("damaged")  # a repo copy that no longer reads doesn't block a good download
+    r = CliRunner().invoke(cli, ["guide", "update", str(new)])
+    assert r.exit_code == 0 and "doesn't read" in r.output and workbook.read_bytes() == new.read_bytes()

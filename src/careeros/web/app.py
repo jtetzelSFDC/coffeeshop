@@ -523,19 +523,18 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.post("/guide/link", dependencies=[Depends(check_csrf)])
     def guide_link_save(win: int | None = Form(None), entry: int | None = Form(None), item: list[int] = Form([]),
-                        method: list[int] = Form([]), guide: bool = Form(False), next: str = Form("/wins"),
-                        s: Session = Depends(db)):
+                        method: list[int] = Form([]), next: str = Form("/wins"), s: Session = Depends(db)):
         to = next if next in PAGES else "/wins"
         with _write_lock:
             t = link_target(s, win, entry)
             if t is None:
                 return back("That item is gone.", to)
-            if guide:  # the page showed guide items; without a Promo map it didn't, so links already made stay
-                gsvc.set_links(s, set(item), **t[1])
+            offered = gsvc.shown_ids(s)
+            gsvc.set_links(s, set(item), offered, **t[1])
             if shown := {m.id for m in v2mom_store.methods(s)}:
                 v2mom_links.set_links(s, set(method), shown, **t[1])
-        n = len(item)
-        if not guide:
+        n = len(set(item) & offered)
+        if not offered:
             return back("Saved.", to)
         return back(f"Linked to {n} leveling guide item{'' if n == 1 else 's'}." if n else "Saved, with no guide items.", to)
 

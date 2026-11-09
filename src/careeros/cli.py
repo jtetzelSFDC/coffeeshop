@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sqlite3
 import tempfile
 from contextlib import closing
@@ -229,15 +230,18 @@ def guide_import(file: str = typer.Argument(..., help="Leveling guide CSV export
 @guide_app.command("update")
 def guide_update(file: str = typer.Argument(..., help="The leveling guide workbook (.xlsx) you downloaded")) -> None:
     """Check a new download of the leveling guide workbook and show what changed, then put it in the repo."""
-    import shutil
     from .guide import parse
     try:
         new = {g["name"]: g for g in parse.read_workbook(file)}
-        old = {g["name"]: g for g in parse.read_workbook()} if parse.WORKBOOK.exists() else {}
     except parse.GuideFormatError as exc:
         typer.echo(f"Nothing was changed. {exc}")
         raise typer.Exit(1)
     typer.echo(f"Every role tab reads: {len(new)} roles.")
+    try:
+        old = {g["name"]: g for g in parse.read_workbook()} if parse.WORKBOOK.exists() else {}
+    except parse.GuideFormatError as exc:
+        typer.echo(f"The copy in the repo doesn't read ({exc}), so every role counts as added.")
+        old = {}
     for label, names in (("Added", set(new) - set(old)), ("Removed", set(old) - set(new)),
                          ("Changed", {n for n in set(new) & set(old) if new[n] != old[n]})):
         typer.echo(f"{label}: {', '.join(sorted(names)) or 'none'}")
@@ -289,6 +293,8 @@ def guide_group(dry_run: bool = typer.Option(False, "--dry-run", help="Show the 
         scratch = tempfile.TemporaryDirectory()
         with closing(sqlite3.connect(dd.db)) as src, closing(sqlite3.connect(Path(scratch.name) / "dry.db")) as dst:
             src.backup(dst)
+        if (dd.root / "profile.json").exists():  # the prompt names the saved role, read from beside the database
+            shutil.copyfile(dd.root / "profile.json", Path(scratch.name) / "profile.json")
         s = make_session_factory(make_engine(Path(scratch.name) / "dry.db"))()
     n = len(work.pending(s, redo)[:limit])
     if not n:

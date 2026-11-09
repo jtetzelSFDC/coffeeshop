@@ -232,10 +232,21 @@ def linked_ids(s: Session, *, win_id: int | None = None, entry_id: int | None = 
     return set(s.scalars(select(GuideLink.item_id).where(GuideLink.win_id == win_id, GuideLink.entry_id == entry_id)))
 
 
-def set_links(s: Session, ids: set[int], *, win_id: int | None = None, entry_id: int | None = None) -> None:
-    valid = set(s.scalars(select(GuideItem.id).where(GuideItem.id.in_(ids), GuideItem.kind != "summary")))
-    s.execute(delete(GuideLink).where(GuideLink.win_id == win_id, GuideLink.entry_id == entry_id))
-    s.add_all(GuideLink(item_id=i, win_id=win_id, entry_id=entry_id, created_at=datetime.now()) for i in sorted(valid))
+def shown_ids(s: Session) -> set[int]:
+    """The items the link page offers: the target grades' experiences and the skills, or none without a Promo map."""
+    lv = level(s)
+    if not lv or not lv["targets"]:
+        return set()
+    return {g.id for g in experiences(s, lv["targets"])} | {g.id for g in skills(s)}
+
+
+def set_links(s: Session, ids: set[int], shown: set[int], *, win_id: int | None = None,
+              entry_id: int | None = None) -> None:
+    """The user's choice among the `shown` items; links to items not shown (an earlier grade's) stay."""
+    ids &= shown
+    s.execute(delete(GuideLink).where(GuideLink.win_id == win_id, GuideLink.entry_id == entry_id,
+                                      GuideLink.item_id.in_(shown)))
+    s.add_all(GuideLink(item_id=i, win_id=win_id, entry_id=entry_id, created_at=datetime.now()) for i in sorted(ids))
     s.commit()
 
 
