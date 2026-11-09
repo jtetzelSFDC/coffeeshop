@@ -2,6 +2,9 @@
 {% block body %}
 {% from "_entry.html" import attach_fields with context %}
 {% from "_sync.html" import sync_chips %}
+{% if dash.grades %}{% set g = dash.grades[0] %}
+<a class="level" href="/promo" title="Grade {{ g.grade }}: {{ g.shown }} of {{ g.total }} key experiences shown">Grade {{ g.grade }} &middot; {{ g.pct }}% &middot; {{ g.shown }} of {{ g.total }}<span class="bar" aria-hidden="true"><span class="b-strong" style="width:{{ g.pct }}%"></span></span></a>
+{% endif %}
 
 {% if personal or daily %}
 <section class="card home-tile daily" aria-label="Today's three">
@@ -24,7 +27,9 @@
         <div><button class="primary">Done</button></div></form></details>
     {% endif %}
     <span class="dt-text" title="{{ t.why }}">{{ t.text }}</span>
-    <span class="dt-meta muted" title="{{ t.goal }}">~{{ t.minutes }} min &middot; {{ t.goal|truncate(26, True, '…', 0) }}</span>
+    {% set ns = namespace(goal=t.goal) %}
+    {% if dash.v2mom %}{% for x in dash.v2mom.methods if t.goal == 'V2MOM ' ~ x.m.label %}{% set ns.goal = x.m.name %}{% endfor %}{% endif %}
+    <span class="dt-meta muted" title="{{ ns.goal }}">~{{ t.minutes }} min &middot; {{ ns.goal|truncate(26, True, '…', 0) }}</span>
   </div>
   {% else %}<p class="muted">No three yet today. They come with the morning sync, or press <b>Suggest now</b>.</p>{% endfor %}
   {% if all_done %}<p class="next">All three done. Nice.</p>{% endif %}
@@ -74,9 +79,9 @@
     <a href="/v2mom">V2MOM: <b>{{ v2.active }} of {{ v2.methods|length }}</b> methods active this quarter</a>
     <div class="ready">
       {% for x in v2.methods %}
-      <a class="ready-row" href="/v2mom#m{{ x.m.id }}" title="{{ x.m.label }} {{ x.m.name }}: {{ x.quarter }} this quarter">
-        <span class="ready-label">{{ x.m.label }}</span>
-        <span class="bar" role="img" aria-label="{{ x.m.label }}: {{ x.quarter }} this quarter"><span class="{{ 'b-strong' if x.state == 'active' else 'b-started' }}" style="width:{{ x.pct }}%"></span></span>
+      <a class="ready-row" href="/v2mom#m{{ x.m.id }}" title="{{ x.m.name }}: {{ x.quarter }} this quarter">
+        <span class="ready-label">{{ x.m.name }}</span>
+        <span class="bar" role="img" aria-label="{{ x.m.name }}: {{ x.quarter }} this quarter"><span class="{{ 'b-strong' if x.state == 'active' else 'b-started' }}" style="width:{{ x.pct }}%"></span></span>
         <span class="ready-num"><b>{{ x.quarter }}</b> <span class="muted">this qtr</span></span>
       </a>
       {% endfor %}

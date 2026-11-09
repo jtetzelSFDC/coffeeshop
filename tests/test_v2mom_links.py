@@ -72,7 +72,8 @@ def test_looks_right_makes_the_picks_yours(nb):
         load_v2mom(s)
         ai_review.review(s, reader=reader({"Ran a community session on release trains": ["M2"]}))
     row = c.get("/sheet").text
-    assert "AI: V2MOM M2" in row and "/sheet/v2mom/" in row
+    assert 'title="Build Reusable Pipeline Accelerators"' in row and "AI: V2MOM Build Reusable" in row
+    assert "V2MOM M2" not in row and "/sheet/v2mom/" in row
     assert form(c, f"/sheet/{a}/ok", token).status_code == 303
     with open_session(dd) as s:
         assert s.scalar(select(V2momLink)).by_ai is False and s.get(JournalEntry, a).v2mom_fixed
@@ -132,7 +133,9 @@ def test_edit_page_sets_your_methods_and_keeps_old_ones(nb):
     with open_session(dd) as s:
         assert {(l.method_id, l.by_ai) for l in s.scalars(select(V2momLink))} == {(old["M2"], False), (new["M1"], False)}
         assert s.get(JournalEntry, a).v2mom_fixed
-    assert "V2MOM old" in c.get("/sheet", params={"show": "all"}).text
+    old = c.get("/sheet", params={"show": "all"}).text
+    assert "Build Reusable Pipeline Accelerators" in old and "no longer in your V2MOM" in old
+    assert "V2MOM old" not in old
 
 
 def test_evidence_counts_wins_made_from_linked_records_and_removal_cleans_up(nb):

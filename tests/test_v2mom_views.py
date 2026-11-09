@@ -64,8 +64,10 @@ def test_home_strip_numbers(nb):
         m = fixture(s, date.today())
     page = c.get("/").text
     assert "V2MOM: <b>1 of 4</b> methods active this quarter" in page
-    assert f'href="/v2mom#m{m["M1"]}"' in page and 'aria-label="M1: 2 this quarter"' in page
-    assert 'aria-label="M2: 0 this quarter"' in page
+    assert f'href="/v2mom#m{m["M1"]}"' in page and 'class="level" href="/promo"' in page
+    assert 'aria-label="Share Release Know-How Across Teams: 2 this quarter"' in page
+    assert 'aria-label="Build Reusable Pipeline Accelerators: 0 this quarter"' in page
+    assert 'class="ready-label">M1<' not in page and 'class="ready-label">M2<' not in page
 
 
 def test_digest_nudges_only_quiet_methods(nb):

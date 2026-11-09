@@ -63,6 +63,7 @@ def test_demo_seed_fills_every_page_with_made_up_data(tmp_path):
     c = TestClient(create_app(dd), base_url=BASE)
     home = c.get("/").text
     assert "practice notebook" in home and "Grade 5 to 6, aiming at 7" in home and "Sync Google" not in home
+    assert 'class="level" href="/promo"' in home and home.index('class="level"') < home.index("Today's three")
     assert "Today's three" in home and 'action="/daily/suggest"' not in home  # the made-up three, no Suggest
     with make_session_factory(make_engine(dd.db))() as s:
         assert s.query(DailyTask).count() == 3  # seeding twice the same day adds no second three
@@ -184,7 +185,7 @@ def test_personal_notebook_is_journal_only(tmp_path):
     assert (root / ".metadata_never_index").exists() and oct(root.stat().st_mode & 0o777) == "0o700"
     c = TestClient(create_app(dd), base_url=BASE)
     html = c.get("/").text
-    assert "practice notebook" not in html and "Releases" not in html
+    assert "practice notebook" not in html and "Releases" not in html and 'class="level"' not in html
     r = CliRunner().invoke(cli, ["demo", "seed", "--data-dir", str(root)])
     assert r.exit_code == 1 and "personal notebook" in r.output
     assert not dd.is_demo
@@ -367,3 +368,24 @@ def test_the_export_includes_v2mom_links_and_promo_drafts(nb):
     rows = {n: list(_csv.DictReader(_io.StringIO(z.read(n).decode("utf-8-sig")))) for n in ("v2mom_links.csv", "promo_drafts.csv")}
     assert [(r["method"], r["linked_text"]) for r in rows["v2mom_links.csv"]] == [("M1", "Ran a community session")]
     assert rows["promo_drafts.csv"] and "[" in rows["promo_drafts.csv"][0]["text"]  # sentences keep their [n] sources
+
+
+def test_v2mom_goals_and_chips_show_the_method_name(nb):
+    from datetime import datetime
+    from careeros.storage.models import DailyTask
+    from helpers import add, link, load_v2mom, open_session
+    dd, c, *_ = nb
+    with open_session(dd) as s:
+        m = load_v2mom(s)
+        link(s, m["M1"], entry_id=add(s, "Ran a community session on release trains"))
+        s.add(DailyTask(day=date.today().isoformat(), position=1, text="Share the release note", why="Moves the method",
+                        goal="V2MOM M1", minutes=5, created_at=datetime.now()))
+        s.add(DailyTask(day=date.today().isoformat(), position=2, text="Note one sandbox gap", why="Next on the map",
+                        goal="Grade 6: Leads sandbox strategy", minutes=5, created_at=datetime.now()))
+        s.commit()
+        assert s.query(DailyTask).filter_by(position=1).one().goal == "V2MOM M1"  # the stored id stays
+    home = c.get("/").text
+    assert 'title="Share Release Know-How Across Teams"' in home and "V2MOM M1" not in home
+    assert "Grade 6: Leads sandbox strategy" in home
+    row = c.get("/sheet").text
+    assert 'title="Share Release Know-How Across Teams"' in row and "V2MOM M1" not in row

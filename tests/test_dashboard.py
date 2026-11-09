@@ -49,6 +49,8 @@ def test_home_is_the_dashboard_not_a_day_list(nb):
         s.commit()
     html = c.get("/").text
     assert "Grade 5 to 6, aiming at 7" in html and html.count("<rect class=") == dashboard.WEEKS
+    assert 'class="level" href="/promo"' in html and "Grade 6 &middot; 0% &middot; 0 of 3" in html
+    assert html.index('class="level"') < html.index("Today's three")
     assert "wins this half" in html and "kudos this half" in html and 'href="/sheet?show=todo"' in html
     assert "Something done today" not in html and "<h2>Today</h2>" not in html
     assert 'data-sync="google"' in html and 'action="/journal/add"' in html
@@ -62,3 +64,4 @@ def test_home_without_a_guide_says_how_to_load_it(tmp_path):
     dd.init_personal()
     html = TestClient(create_app(dd), base_url="http://127.0.0.1").get("/").text
     assert "careeros guide import" in html and html.count("<rect class=") == dashboard.WEEKS
+    assert 'class="level"' not in html

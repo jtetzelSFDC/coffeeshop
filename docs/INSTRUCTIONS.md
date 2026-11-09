@@ -107,7 +107,7 @@ Colors come from points. A linked entry is worth 1, and a small, medium, or larg
 The **Intake Review Queue** (in the Menu) lists every record (calendar meetings, Google Tasks, Slack items, and what you typed) as rows, newest first, 100 to a page. Each row has one-click buttons:
 
 - **Type**: Meeting, Convo, Doc, Task, or Other. The lit one is the current type.
-- **Leveling guide**: the guide items the record shows, and the V2MOM methods it moves forward (**V2MOM M2**). Click &times; to remove one, or **edit**/**link** to pick them yourself.
+- **Leveling guide**: the guide items the record shows, and the V2MOM methods it moves forward (the method's name, shortened if it's long; hover for the full name). Click &times; to remove one, or **edit**/**link** to pick them yourself.
 - **Win**: **S**, **M**, or **L** makes the record a small, medium, or large win (or resizes it), and &times; removes the win. Click the win's title to see why it mattered, then **Edit on Wins** to reword it.
 - **Looks right** marks the row checked. Whatever Claude picked for it becomes yours, and the row leaves the **Not checked yet** list, so you can work down the list until it's empty.
 - **Remove** (under Looks right) takes a record out for good, for example a meeting you didn't attend. Its pasted notes, guide links, and any win Claude drafted from it go too; wins you made or edited stay. Calendar, Tasks, and Slack syncs skip removed records so they don't come back. Choose **Removed** in the Show menu to see them and **Restore** one if you change your mind.
@@ -168,14 +168,14 @@ uv run careeros daily suggest --force   # a new three, keeping any you've alread
 uv run careeros daily show              # print today's three
 ```
 
-**On Home**, a **Today's three** card sits at the top. Each line is a checkbox, the task, and a small `~5 min · V2MOM M4` hint (hover the task for why it helps).
+**On Home**, a thin bar for the next grade sits above the tiles (for example Grade 6 · 85% · 11 of 13). It links to the Promo map and stays visible. It's hidden until a leveling guide is loaded. Under it, **Today's three**. Each line is a checkbox, the task, and a small hint like `~5 min · Write Down The Runbooks` when the goal is a V2MOM method (hover for the full name; hover the task for why it helps).
 
 - **Check one off:** press its box, add what you did if you like (optional), and press **Done**. It's logged as a finished task (from "daily"), so it counts like any other work, and the next sync links it to the leveling guide and your V2MOM.
 - **Changed your mind:** press the checked box. The record it logged goes too, unless you wrote what you did, checked it in the Intake Review Queue, or made a win from it. Then the record stays, and checking the box again reuses it.
 - **Suggest now** (when today's three aren't there yet) or **New three** (replace all three, even ones you checked off) asks Claude right away, with a progress box like the Sync buttons. A checked-off task stays in your notebook.
 - When all three are done, the card says so.
 
-Each task names its goal, like `V2MOM M4` or `Grade 6: …`. If Claude's answer doesn't fit (not exactly three, longer than ten minutes, or tied to a goal that wasn't offered), nothing is saved and the command says why. With no leveling guide and no V2MOM loaded there's nothing to aim at, so it says that instead. When it fails in the morning sync, the sync's usual notification says why and nothing is saved; the next sync that day tries again. The **Daily** chip in the Intake Review Queue turns green once today's three exist, and the sync log in `logs/` shows each run.
+Each task is tied to a goal, like `V2MOM M4` or `Grade 6: …`. Home shows a V2MOM goal as that method's name. If Claude's answer doesn't fit (not exactly three, longer than ten minutes, or tied to a goal that wasn't offered), nothing is saved and the command says why. With no leveling guide and no V2MOM loaded there's nothing to aim at, so it says that instead. When it fails in the morning sync, the sync's usual notification says why and nothing is saved; the next sync that day tries again. The **Daily** chip in the Intake Review Queue turns green once today's three exist, and the sync log in `logs/` shows each run.
 
 ## Weekly digest
 
@@ -283,7 +283,7 @@ The app pulls the text out of the PDF on your laptop (with pypdf), then Claude (
 
 **The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when your V2MOM was read in the last 31 days, orange when it's older, and grey with a hint when nothing is connected yet. The PDF's path or the Doc's id is kept in `v2mom.json` in the notebook folder, readable only by you (a `v2mom.doc` from before still works). The text passes through Claude Code to be read; the PDF itself stays where it is.
 
-**Linking your work to methods.** Once the V2MOM is loaded, Claude's read-through of new records (after every sync, and the queue's **Have Claude read** button) also picks the V2MOM methods each record really moves forward: none for routine meetings and status pings, at most two. It's the same read as the leveling-guide links, so it costs no extra Claude time. In the Intake Review Queue they show as purple **AI: V2MOM M2** chips next to the guide chips (hover for the method's name). **Looks right** makes them yours, **&times;** on a chip removes it for good (Claude won't put it back), and **edit** opens the linking page, which now has a **Which V2MOM methods does this move forward?** list at the top. Once you've changed a record's methods, Claude leaves them alone. A chip that says **V2MOM old** points at a method that's no longer in your current V2MOM (dropped, or last year's); it stays so the history makes sense.
+**Linking your work to methods.** Once the V2MOM is loaded, Claude's read-through of new records (after every sync, and the queue's **Have Claude read** button) also picks the V2MOM methods each record really moves forward: none for routine meetings and status pings, at most two. It's the same read as the leveling-guide links, so it costs no extra Claude time. In the Intake Review Queue they show as chips with the method's name, shortened if it's long (hover for the full name), purple when Claude picked them. **Looks right** makes them yours, **&times;** on a chip removes it for good (Claude won't put it back), and **edit** opens the linking page, which now has a **Which V2MOM methods does this move forward?** list at the top. Once you've changed a record's methods, Claude leaves them alone. A method that's no longer in your current V2MOM (dropped, or last year's) still shows its name; hover says so. It stays so the history makes sense.
 
 **Linking what's already in the notebook** (once, after the first V2MOM sync). Records Claude read before the V2MOM existed have no methods yet. This reads them in batches of 40 (about 16 batches for 600 records, a few minutes):
 
@@ -310,7 +310,7 @@ Below, one row per method, in your V2MOM's order:
 
 **see the work** opens that method's page: its wins and linked records, newest first. To change which methods a record moves forward, use **edit** on its row in the Intake Review Queue.
 
-On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active this quarter", with a small bar per method (how many wins and records it has this quarter, longest for the busiest; orange for a method that's gone quiet). Click the line for the V2MOM page, or a bar for that method. The strip is hidden until a V2MOM is loaded. Everything here is worked out when the page opens, from the notebook only: no Claude, nothing stored.
+On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active this quarter", with a small bar per method labeled with its name (shortened to fit; hover for the full name). The bar is how many wins and records it has this quarter, longest for the busiest; orange for a method that's gone quiet. Click the line for the V2MOM page, or a bar for that method. The strip is hidden until a V2MOM is loaded. Everything here is worked out when the page opens, from the notebook only: no Claude, nothing stored.
 
 The promo case then shows how your work lines up with your V2MOM (see **V2MOM alignment** under the promo case).
 
@@ -353,10 +353,11 @@ At year end, pick the year on the Wins tab and click **Download as Markdown**. T
 
 The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, V2MOM, KSOs, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
 
-- **Home**: today's three small tasks, then one card about the goal.
+- **Home**: a thin bar for the next grade, then today's three, then the other tiles.
+  - **Next grade:** at the top, always visible once a leveling guide is loaded. It shows the next grade, the percent, and how many key experiences are shown (for example Grade 6 · 85% · 11 of 13) and links to the Promo map.
   - **Today's three:** see **Daily three** above. The practice notebook shows a made-up three (run `demo seed` again on a new day to see it).
   - **Promotion readiness:** a bar each for Grade 6 and Grade 7, showing how many key experiences are shown, with a percentage (hover for the detail; click for the Promo map).
-  - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method (see **The V2MOM page**). Hidden until a V2MOM is loaded.
+  - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method labeled with its name (see **The V2MOM page**). Hidden until a V2MOM is loaded.
   - **Four tiles:** leveling-guide skills with evidence, wins this half, kudos this half, and records waiting in the Intake Review Queue.
   - **Momentum:** a small chart of evidence per week (wins plus records linked to the guide) for the last 12 weeks, with the current week in darker green. Hover over a bar for its count.
   - **Next:** one line with the Promo map's top Aim for next.
