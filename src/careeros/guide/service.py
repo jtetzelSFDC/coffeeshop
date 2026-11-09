@@ -1,27 +1,86 @@
 """Leveling guide storage, links from the user's work to guide items, and how much evidence each item has."""
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from ..config import write_private
 from ..storage.models import GuideItem, GuideLink, JournalEntry, Win
 from .parse import parse_guide
-from .topics import suggest
+from .topics import grouped, suggest
 
-CURRENT_GRADE = 5  # your grade now; the guide's next two grades are what the app lines your work up against
-GRADES = (f"Grade {CURRENT_GRADE}, going for Grade {CURRENT_GRADE + 1}, with some Grade {CURRENT_GRADE + 2} work")
-TARGET_GRADES = (6, 7)
+PROFILE = "profile.json"
+SETUP_HINT = "uv run careeros setup level"
 POINTS = {"entry": 1, "small": 2, "medium": 3, "large": 4}
 RECOGNITION_SIZE = "medium"  # kudos from someone else count like a medium win
 STATUSES = [(6, "strong", "Strong"), (3, "shown", "Shown"), (1, "started", "Started"), (0, "gap", "Not yet")]
 
 
-def import_guide(s: Session, path: Path | str) -> dict:
-    """Load or update the leveling guide from its CSV; items keep their rows (and links) by key."""
-    items = parse_guide(path)
+def read_profile(root: Path) -> dict:
+    try:
+        return json.loads((root / PROFILE).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def save_profile(root: Path, **changes) -> None:
+    write_private(root / PROFILE, json.dumps({**read_profile(root), **changes}))
+
+
+def _root(s: Session) -> Path:
+    return Path(s.get_bind().url.database).parent  # profile.json sits next to the notebook's database
+
+
+def save_level(s: Session, role: str, grade: int, title: str = "") -> None:
+    save_profile(_root(s), role=role, grade=grade, title=title)
+
+
+def level(s: Session) -> dict | None:
+    """The saved role and grade, and `targets`: the next one or two grades the loaded guide has, so DevOps Grade 9
+    goes for 11. `top` when the guide has no higher grade. None until `careeros setup level` has run."""
+    p = read_profile(_root(s))
+    if not isinstance(p.get("grade"), int):
+        return None
+    grades = sorted(s.scalars(select(GuideItem.grade).where(GuideItem.active, GuideItem.grade.is_not(None)).distinct()))
+    targets = tuple(g for g in grades if g > p["grade"])[:2]
+    return dict(role=str(p.get("role", "")), grade=p["grade"], title=str(p.get("title", "")), targets=targets,
+                next=targets[0] if targets else None, top=bool(grades) and not targets)
+
+
+def level_note(lv: dict | None) -> str:
+    """What a page says when there's no Promo map: the top of the path, or how to choose a level."""
+    if lv and lv["top"]:
+        return (f"Grade {lv['grade']} is the top of the {lv['role'] or 'career'} path in the leveling guide, "
+                "so there's no next level to map.")
+    return f"Choose your role and level to see the Promo map. In Terminal: {SETUP_HINT}"
+
+
+def person(lv: dict | None) -> str:
+    """Who the prompts are about, e.g. "a DevOps Engineer on the DevOps career path"."""
+    if not lv:
+        return "someone"
+    who = f"{'an' if lv['title'][0] in 'AEIOU' else 'a'} {lv['title']}" if lv["title"] else "someone"
+    return f"{who} on the {lv['role']} career path" if lv["role"] else who
+
+
+def grades_text(lv: dict | None) -> str:
+    """The level for the prompts, e.g. "Grade 5, going for Grade 6, with some Grade 7 work"; "" before one is
+    chosen."""
+    if not lv:
+        return ""
+    t = lv["targets"]
+    return (f"Grade {lv['grade']}" + (f", going for Grade {t[0]}" if t else ", the top of the path")
+            + (f", with some Grade {t[1]} work" if len(t) > 1 else ""))
+
+
+def import_guide(s: Session, guide: Path | str | list[dict]) -> dict:
+    """Load or update the leveling guide from a CSV, or from items already read (one role of the workbook); items
+    keep their rows (and links) by key."""
+    items = parse_guide(guide) if isinstance(guide, (str, Path)) else guide
     have = {g.key: g for g in s.scalars(select(GuideItem))}
     seen, added, updated = set(), 0, 0
     for pos, it in enumerate(items):
@@ -51,7 +110,10 @@ def has_guide(s: Session) -> bool:
     return s.scalar(select(GuideItem.id).where(GuideItem.active).limit(1)) is not None
 
 
-def experiences(s: Session, grades=TARGET_GRADES) -> list[GuideItem]:
+def experiences(s: Session, grades: tuple[int, ...] | None = None) -> list[GuideItem]:
+    """Key experiences of `grades` (default: the grades the saved level is going for)."""
+    if grades is None:
+        grades = (level(s) or {}).get("targets", ())
     return list(s.scalars(select(GuideItem).where(
         GuideItem.kind == "experience", GuideItem.active, GuideItem.grade.in_(grades)).order_by(GuideItem.position)))
 
@@ -106,10 +168,15 @@ def evidence(s: Session) -> dict[int, dict]:
     return out
 
 
-def promo_map(s: Session) -> dict:
-    """Topics as rows with each target grade's experiences, plus per-grade progress, skills, and impact counts."""
+def promo_map(s: Session) -> dict | None:
+    """Topics as rows with each target grade's experiences, plus per-grade progress, skills, and impact counts.
+    None with no level chosen, or at the top of the path where there's no next grade to map."""
     from .activities import counts
-    from .topics import OTHER, TOPICS, topic_of
+    from .topics import OTHER, PLAIN, TOPICS, topic_of
+    lv = level(s)
+    if not lv or not lv["targets"]:
+        return None
+    grades = lv["targets"]
     ev = evidence(s)
     empty = dict(points=0, wins=[], entries=[])
 
@@ -118,42 +185,46 @@ def promo_map(s: Session) -> dict:
         key, label = status(e["points"])
         return dict(item=g, status=key, status_label=label, **e)
 
-    exps = [view(g) for g in experiences(s)]
+    exps = [view(g) for g in experiences(s, grades)]
+    devops = grouped(lv["role"])
     rows = []
-    for t in [*TOPICS, OTHER]:
-        cells = {gr: [x for x in exps if x["item"].grade == gr and topic_of(x["item"].name) == t] for gr in TARGET_GRADES}
+    for t in [*TOPICS, OTHER] if devops else [PLAIN]:
+        cells = {gr: [x for x in exps if x["item"].grade == gr and (not devops or topic_of(x["item"].name) == t)]
+                 for gr in grades}
         if any(cells.values()):
             rows.append(dict(topic=t, cells=cells))
     progress = {}
-    for gr in TARGET_GRADES:
+    for gr in grades:
         mine = [x for x in exps if x["item"].grade == gr]
         progress[gr] = dict(total=len(mine), **{k: sum(1 for x in mine if x["status"] == k)
                                                 for _f, k, _l in STATUSES})
-    skill_views = [dict(view(g), now=g.targets.get(str(CURRENT_GRADE)),
-                        **{f"g{gr}": g.targets.get(str(gr)) for gr in TARGET_GRADES}) for g in skills(s)]
-    hi, lo = TARGET_GRADES[-1], TARGET_GRADES[0]
+    skill_views = [dict(view(g), now=g.targets.get(str(lv["grade"])),
+                        **{f"g{gr}": g.targets.get(str(gr)) for gr in grades}) for g in skills(s)]
+    hi, lo = grades[-1], grades[0]
     rising = [x for x in skill_views if (x[f"g{hi}"] or 0) > (x[f"g{lo}"] or 0)]
     nxt = []  # one step per topic: finish the lower grade first, then step up
     for row in rows:
         t = row["topic"]
-        for i, gr in enumerate(TARGET_GRADES):
+        for i, gr in enumerate(grades):
             todo = [x for x in row["cells"][gr] if x["status"] in ("gap", "started")]
             if todo and t.ideas:
-                started = any(x["status"] != "gap" for gr2 in TARGET_GRADES for x in row["cells"][gr2])
+                started = any(x["status"] != "gap" for gr2 in grades for x in row["cells"][gr2])
                 nxt.append(dict(topic=t, grade=gr, item=todo[0]["item"], started=started,
                                 idea=t.ideas[0] if i == 0 else t.ideas[-1]))
                 break
     nxt.sort(key=lambda n: (not n["started"], n["grade"]))
     return dict(rows=rows, progress=progress, rising=rising, next=nxt,
-                steady=[x for x in skill_views if x not in rising], summaries=summaries(s), grades=TARGET_GRADES,
-                current=CURRENT_GRADE, impact=counts(s))
+                steady=[x for x in skill_views if x not in rising], summaries=summaries(s), grades=grades,
+                current=lv["grade"], level=lv, impact=counts(s))
 
 
 def suggested_ids(s: Session, text: str) -> set[int]:
     from .topics import topic_of
     topics, skill_names = suggest(text)
     keys = {t.key for t in topics}
-    ids = {g.id for g in experiences(s) if topic_of(g.name).key in keys}
+    lv = level(s)
+    ids = ({g.id for g in experiences(s, lv["targets"]) if topic_of(g.name).key in keys}
+           if lv and grouped(lv["role"]) else set())
     return ids | {g.id for g in skills(s) if g.name in skill_names}
 
 

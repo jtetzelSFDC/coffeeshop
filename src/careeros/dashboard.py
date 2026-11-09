@@ -35,7 +35,7 @@ def momentum(s: Session, today: date) -> list[dict]:
 def build(s: Session, today: date | None = None) -> dict:
     """Everything Home's progress card shows: grade readiness, skills, wins and kudos this half, records to check,
     weekly momentum, the V2MOM's active methods, and the next guide item to aim for."""
-    from .guide.service import CURRENT_GRADE, has_guide, promo_map
+    from .guide.service import has_guide, level, promo_map
     from .v2mom import report
     today = today or date.today()
     half = activities.windows(today)["half"][0]
@@ -43,6 +43,7 @@ def build(s: Session, today: date | None = None) -> dict:
     grades = []
     skills = None
     nxt = None
+    lv = level(s)
     if pm:
         for gr in pm["grades"]:
             p = pm["progress"][gr]
@@ -53,7 +54,8 @@ def build(s: Session, today: date | None = None) -> dict:
         skills = dict(shown=sum(1 for x in views if x["status"] in ("shown", "strong")), total=len(views))
         nxt = pm["next"][0] if pm["next"] else None
     return dict(
-        grades=grades, skills=skills, next=nxt, current=CURRENT_GRADE, weeks=momentum(s, today),
+        grades=grades, skills=skills, next=nxt, current=lv["grade"] if lv else None, level=lv,
+        weeks=momentum(s, today),
         v2mom=report.build(s, today),
         wins=s.scalar(select(func.count()).select_from(Win).where(Win.day >= half)) or 0,
         kudos=s.scalar(select(func.count()).select_from(JournalEntry).where(

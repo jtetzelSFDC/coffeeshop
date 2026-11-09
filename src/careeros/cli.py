@@ -149,6 +149,54 @@ def notebook_init(data_dir: Optional[str] = typer.Option(None, "--data-dir", hel
     typer.echo("Start it with:  uv run careeros serve" + (f" --data-dir {dd.root}" if data_dir else ""))
 
 
+setup_app = typer.Typer(no_args_is_help=True, help="Set the app up for you")
+app.add_typer(setup_app, name="setup")
+
+
+@setup_app.command("level")
+def setup_level(role: Optional[str] = typer.Option(None, help="Your career path, by name or its number in the list"),
+                grade: Optional[int] = typer.Option(None, help="Your grade now"),
+                data_dir: Optional[str] = DataOpt) -> None:
+    """Choose your role and current level, and load that role's leveling guide from the repo. Links you've already
+    made are kept. Run it again after a promotion."""
+    from .guide.parse import GuideFormatError, read_workbook
+    from .guide.service import import_guide, level, save_level
+    os.umask(0o077)
+    dd = resolve(data_dir)
+    try:
+        dd.require_known()
+        guides = read_workbook()
+    except (NotDemoData, GuideFormatError) as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    if role is None:
+        typer.echo("\n".join(f"{n:>3}. {g['name']}" for n, g in enumerate(guides, 1)))
+        role = typer.prompt("Your role (number or name)")
+    a = role.strip()
+    g = guides[int(a) - 1] if a.isdigit() and 1 <= int(a) <= len(guides) else \
+        next((g for g in guides if g["name"].lower() == a.lower()), None)
+    if g is None:
+        typer.echo(f"There's no role called \"{a}\" in the leveling guide. Run without --role to see the list.")
+        raise typer.Exit(1)
+    if grade is None:
+        typer.echo("\n".join(f"  Grade {l['grade']}" + (f", {l['title']}" if l["title"] else "") for l in g["levels"]))
+        grade = typer.prompt("Your grade now", type=int)
+    pick = next((l for l in g["levels"] if l["grade"] == grade), None)
+    if pick is None:
+        typer.echo(f"{g['name']} has no Grade {grade}. Its grades: {', '.join(str(l['grade']) for l in g['levels'])}.")
+        raise typer.Exit(1)
+    engine = make_engine(dd.db)
+    init_db(engine)
+    with make_session_factory(engine)() as s:
+        r = import_guide(s, g["items"])
+        save_level(s, g["name"], grade, pick["title"])
+        lv = level(s)
+    typer.echo(f"Saved: {g['name']}, Grade {grade}" + (f" ({pick['title']})" if pick["title"] else "") + ". "
+               + (f"Next level: Grade {lv['next']}." if lv["next"] else
+                  "That's the top of this path, so there's no next level to map."))
+    typer.echo(f"Guide loaded: {r['added']} new, {r['updated']} changed, {r['retired']} no longer in the guide.")
+
+
 guide_app = typer.Typer(no_args_is_help=True, help="Your leveling guide")
 app.add_typer(guide_app, name="guide")
 
@@ -176,6 +224,28 @@ def guide_import(file: str = typer.Argument(..., help="Leveling guide CSV export
             raise typer.Exit(1)
     typer.echo(f"Guide loaded into {dd.root}: {r['added']} new, {r['updated']} changed, "
                f"{r['retired']} no longer in the guide.")
+
+
+@guide_app.command("update")
+def guide_update(file: str = typer.Argument(..., help="The leveling guide workbook (.xlsx) you downloaded")) -> None:
+    """Check a new download of the leveling guide workbook and show what changed, then put it in the repo."""
+    import shutil
+    from .guide import parse
+    try:
+        new = {g["name"]: g for g in parse.read_workbook(file)}
+        old = {g["name"]: g for g in parse.read_workbook()} if parse.WORKBOOK.exists() else {}
+    except parse.GuideFormatError as exc:
+        typer.echo(f"Nothing was changed. {exc}")
+        raise typer.Exit(1)
+    typer.echo(f"Every role tab reads: {len(new)} roles.")
+    for label, names in (("Added", set(new) - set(old)), ("Removed", set(old) - set(new)),
+                         ("Changed", {n for n in set(new) & set(old) if new[n] != old[n]})):
+        typer.echo(f"{label}: {', '.join(sorted(names)) or 'none'}")
+    if Path(file).resolve() != parse.WORKBOOK.resolve():
+        parse.WORKBOOK.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(file, parse.WORKBOOK)
+    typer.echo(f"Saved as {parse.WORKBOOK}. Commit it, then run `uv run careeros setup level` to load your role's "
+               "new guide (links you've made are kept).")
 
 
 @guide_app.command("review")
