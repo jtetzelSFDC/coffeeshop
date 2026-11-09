@@ -2,7 +2,7 @@
 <html lang="en" data-theme="{{ theme }}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {% set main_pages = [("/", "Home"), ("/wins", "Wins"), ("/promo", "Promo map"), ("/v2mom", "V2MOM"), ("/kso", "KSOs"), ("/sheet", "Intake Review Queue"), ("/digest", "Weekly digest")] %}
-{% set ns = namespace(here='Search' if page == '/search' else '') %}
+{% set ns = namespace(here='Search' if page == '/search' else 'Setup' if page == '/setup' else 'Settings' if page == '/settings' else '') %}
 {% for path, label in main_pages %}{% if path == page %}{% set ns.here = label %}{% endif %}{% endfor %}
 {% for path, tab in tabs.items() %}{% if path == page %}{% set ns.here = tab[1] %}{% endif %}{% endfor %}
 <title>Coffee Shop{% if ns.here %} · {{ ns.here }}{% endif %}</title>
@@ -238,6 +238,7 @@ ol.sources{font-size:.85rem;color:var(--muted);padding-left:1.6rem}ol.sources li
       {% for path, label in main_pages %}<a href="{{ path }}" class="{{ 'on' if page == path }}">{{ label }}</a>{% endfor %}
       <hr>
       {% for path, tab in tabs.items() %}<a href="{{ path }}" class="{{ 'on' if page == path }}">{{ tab[1] }}</a>{% endfor %}
+      {% if personal %}<hr><a href="/setup" class="{{ 'on' if page == '/setup' }}">Setup</a><a href="/settings" class="{{ 'on' if page == '/settings' }}">Settings</a>{% endif %}
     </div></details>
   {% if ns.here %}<span class="here">{{ ns.here }}</span>{% endif %}
   <form method="get" action="/search" style="margin-left:auto"><input type="search" name="q" value="{{ q }}" placeholder="Search your notebook" aria-label="Search your notebook" maxlength="200"><button>Search</button></form></nav>

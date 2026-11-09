@@ -23,6 +23,14 @@ Open **http://127.0.0.1:8765** in a browser. Leave the terminal running. Press *
 
 Don't add `--data-dir` to this command. That flag points the app at a different folder, such as the practice demo below.
 
+## Set up with Claude (or by hand)
+
+New here? [SETUP.md](../SETUP.md) has the steps. In Claude Code, open this folder and type `/setup`. Claude asks for your role and level, where your V2MOM PDF is, and which of Google, Slack, and GitHub to turn on, then checks each one and says what to fix. It is safe to run again.
+
+The fallback is the **Setup** page in the Menu (http://127.0.0.1:8765/setup): pick your role and level, see whether your V2MOM is connected, and press **Check connections**. Untick a connector to skip it. **Settings** in the Menu shows your saved role and level, with **Change** and **Run setup again**. Until a role and level are saved, Home shows a **Finish setup** note.
+
+`uv run careeros setup check` prints the same checks in Terminal as pass, fail, or skipped, each with what to do. It only reads: one small read from Google and one from Slack, and nothing is changed. Add `--skip google`, `--skip slack`, `--skip github`, or `--skip schedule` to leave one out. Signing in to Google or Slack always happens in Claude Code's connector settings.
+
 ## Let it run on its own (recommended)
 
 One command sets up three small macOS scheduled tasks, so you never start the app or press Sync yourself:

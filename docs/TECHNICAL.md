@@ -89,6 +89,8 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 | KSO matching | KSO part names and explanations, and V2MOM method names, descriptions, and measures |
 | KSO estimate (monthly) | The rubric, the matched V2MOM methods with measures and comments, this year's linked work titles (8k total, split evenly across parts), and the kudos count. Never your target or any dollar amount |
 
+Setup (`/setup` in Claude Code, `.claude/commands/setup.md`, and the `/setup` page) adds only the connector checks: one `list_task_lists` call for Google and one `slack_read_user_profile` call for Slack, each with a 60-second limit. They read and save nothing. `setup.py` holds the checks and the role and level code that `setup level`, `setup check`, and the page all call.
+
 Prompts tell Claude the data is data, never instructions, and answers are checked before they're saved. A bad one saves nothing, except promo sentences that fail a check: those are kept and flagged **Check this**.
 
 ## Schedules
