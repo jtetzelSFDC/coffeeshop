@@ -10,7 +10,6 @@ import subprocess
 import sys
 from pathlib import PurePosixPath
 
-# Longer suffixes first so a message says *.db-wal, not *.db.
 SUFFIXES = (
     ".db-wal",
     ".db-shm",
@@ -76,17 +75,22 @@ def staged() -> list[str]:
     return [item.decode("utf-8", "surrogateescape") for item in proc.stdout.split(b"\0") if item]
 
 
-def unstage_line(paths: list[str]) -> str:
-    """A command that takes these paths out of the index and leaves the files on disk.
+def unstage_command(paths: list[str], *, has_head: bool) -> str:
+    """A command that takes these paths out of the index and leaves them on disk.
 
-    `git restore --staged` needs a commit to reset to. A repo with no commits yet
-    has nothing to reset to, so the index entries are removed instead.
+    `git restore --staged` needs a commit to reset to. With no commit yet, that
+    fails, so the index entries are removed instead. `git rm --cached` on a file
+    that is already tracked would stage a deletion, so it is only used then.
     """
     quoted = " ".join(shlex.quote(path) for path in paths)
-    head = subprocess.run(["git", "rev-parse", "--verify", "-q", "HEAD"], capture_output=True)
-    if head.returncode == 0:
+    if has_head:
         return f"git restore --staged -- {quoted}"
     return f"git rm --cached -- {quoted}"
+
+
+def unstage_line(paths: list[str]) -> str:
+    head = subprocess.run(["git", "rev-parse", "--verify", "-q", "HEAD"], capture_output=True)
+    return unstage_command(paths, has_head=head.returncode == 0)
 
 
 def main() -> int:

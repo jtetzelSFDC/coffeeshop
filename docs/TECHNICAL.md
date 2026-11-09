@@ -60,7 +60,7 @@ Every record lands as a `JournalEntry`. Claude's read-through sets its kind, gui
 
 ## Where data lives
 
-Outside the repo, in `~/Library/Application Support/coffeeshop/` (the practice notebook uses `coffeeshop-demo/`). That folder holds the database, backups, logs, and connector settings. The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`; your target incentive lives only in `kso_year`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Run `git config core.hooksPath .githooks` once per clone so the pre-commit check is on: it refuses a staged database, PDF, CSV, zip, backup, log, export, or connector file, and a spreadsheet anywhere except `data/leveling/`. Tests and docs use made-up names and data only.
+Outside the repo, in `~/Library/Application Support/coffeeshop/` (the practice notebook uses `coffeeshop-demo/`). That folder holds the database, backups, logs, and connector settings. The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`; your target incentive lives only in `kso_year`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Run `git config core.hooksPath .githooks` once per clone so the pre-commit check is on (a spreadsheet is allowed only under `data/leveling/`). Tests and docs use made-up names and data only.
 
 ## Security
 
