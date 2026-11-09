@@ -170,12 +170,37 @@ def test_canvas_summary_joins_the_message_and_the_message_date_wins(session):
     assert link.body == LINK
 
 
+def test_a_later_reply_joins_the_same_days_record(session):
+    parent = ts_of(datetime(2026, 10, 26, 15, tzinfo=ZONE))
+    later = ts_of(datetime(2026, 10, 26, 18, tzinfo=ZONE))
+    first = messages.group([hit("Started the refresh and wrote the plan", parent)], ZONE)[0]
+    messages.save(session, [first], [], lambda t: {first.ext_id: "task"})
+    both = messages.group([
+        hit("Started the refresh and wrote the plan", parent),
+        hit("done, merged the listed fix", later, thread=parent),
+    ], ZONE)[0]
+    messages.save(session, [both], [], lambda t: {})
+    rows = session.scalars(select(JournalEntry)).all()
+    assert len(rows) == 1 and rows[0].kind == "task"
+    assert "Started the refresh" in rows[0].text and "done, merged" in rows[0].text
+    both.context = "The refresh plan is in the doc"
+    messages.save(session, [both], [], lambda t: {})
+    text = session.scalar(select(JournalEntry)).text
+    assert text.startswith("In reply to: The refresh plan") and "done, merged" in text
+
+
 def test_an_older_canvas_record_takes_the_message_date(session):
+    from careeros.storage.models import Win
     import_items(session, [canvas_item("2026-10-27")], lambda t: {canvas_item().key: "note"})
+    row = session.scalar(select(JournalEntry))
+    session.add(Win(day=row.day, title="Shipped the hotfix", impact="", size="small", entry_id=row.id,
+                    created_at=datetime.now(), by_ai=True))
+    session.commit()
     g = group_for(date(2026, 10, 26))
     messages.save(session, [g], [], lambda t: {})
     rows = session.scalars(select(JournalEntry)).all()
     assert len(rows) == 1 and rows[0].day == "2026-10-26"
+    assert session.scalar(select(Win.day)) == "2026-10-26"
 
 
 def test_canvas_item_with_a_link_and_no_message_is_marked_from_the_canvas(session):
@@ -231,6 +256,7 @@ def test_sync_step_saves_the_message_and_does_not_duplicate_the_canvas(tmp_path,
     c, token = TestClient(app, base_url="http://127.0.0.1"), app.state.csrf_token
     job = run_sync(c, token, "slack")
     assert job["steps"][0]["state"] == "done" and "1 conversation" in job["steps"][0]["detail"]
+    assert "had no thread start" not in job["steps"][0]["detail"]
     assert job["state"] == "done"
     with Session() as s:
         rows = s.scalars(select(JournalEntry).order_by(JournalEntry.id)).all()
@@ -243,3 +269,23 @@ def test_sync_step_saves_the_message_and_does_not_duplicate_the_canvas(tmp_path,
         assert "/archives/C111/p1700000000000100" in s.scalar(
             select(JournalAttachment.body).where(JournalAttachment.entry_id == msg.id, JournalAttachment.kind == "link"))
     assert any("Deployed the hotfix" in row["text"] and "Stopped the error spike" in row["text"] for row in seen[0])
+
+
+def test_a_reply_with_no_thread_start_is_called_out(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from careeros.slack import classify as cls
+    from careeros.slack import kudos
+    from careeros.web.app import create_app
+    from helpers import personal, run_sync
+    dd, _Session = personal(tmp_path)
+    kudos.save_user(dd, ME, "Jordan")
+    reply = messages.Group("#release-team", "C111", "1700000000.000100", date(2026, 10, 26), [
+        hit("done, merged the listed fix", "1700000001.000000", cid="C111", thread="1700000000.000100")])
+    assert reply.needs_parent and not reply.context
+    monkeypatch.setattr(messages, "fetch", lambda uid, since, today=None, progress=None: ([reply], 0))
+    monkeypatch.setattr(kudos, "fetch", lambda uid, since: ([], 0))
+    monkeypatch.setattr(cls, "ask", lambda p, d: "{}")
+    app = create_app(dd)
+    c, token = TestClient(app, base_url="http://127.0.0.1"), app.state.csrf_token
+    job = run_sync(c, token, "slack")
+    assert "1 reply had no thread start" in job["steps"][0]["detail"]

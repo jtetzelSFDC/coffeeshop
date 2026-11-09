@@ -245,8 +245,10 @@ def run_slack(job: Job, Session_, lock, dd: DataDir) -> None:
         except ClaudeError as exc:
             job.fail(0, str(exc))
         else:
+            bare = sum(1 for g in groups if g.needs_parent and not g.context)
             job.done(0, _plural(len(groups), "conversation")
-                     + (f"; {_plural(short, 'window')} had more messages than could be read" if short else ""))
+                     + (f"; {_plural(short, 'window')} had more messages than could be read" if short else "")
+                     + (f"; {_plural(bare, 'reply')} had no thread start" if bare else ""))
         cid = load_canvas_id(dd)
         items = []
         if not cid:

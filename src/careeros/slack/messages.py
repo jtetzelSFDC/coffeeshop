@@ -183,10 +183,46 @@ def _live(s: Session, g: Group):
     for link in g.links:
         if e := linked_entry(s, link, g.day.isoformat()):
             return e
+    same = s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE,
+                                                 JournalEntry.external_id == g.ext_id)).first()
+    if same:
+        return same
     from ..storage.removal import removed_ids
     if g.ext_id in removed_ids(s, SOURCE) or any(link_removed(s, link) for link in g.links):
         return "removed"
     return None
+
+
+def _grow(s: Session, entry: JournalEntry, g: Group) -> bool:
+    """Add replies from this thread-day that arrived after the record was saved."""
+    have, notes = set(), None
+    for a in s.scalars(select(JournalAttachment).where(JournalAttachment.entry_id == entry.id)):
+        if a.kind == "link":
+            have.add(link_key(a.body))
+        elif a.kind == "notes" and a.title == "From Slack":
+            notes = a
+    fresh = [m for m in g.messages if link_key(m.link) not in have]
+    line = ("In reply to: " + " ".join(g.context.split())[:400]) if g.context else ""
+    full = notes.body if notes else entry.text
+    if not fresh and (not line or line in full):
+        return False
+    if line and line not in full:
+        full = f"{line}\n{full}".strip()
+    if fresh:
+        full = f"{full}\n" + "\n".join(plain(m.text) for m in fresh)
+        full = full.strip()
+    entry.text = full[:500]
+    if notes:
+        notes.body = full[:4000]
+    elif len(full) > 500:
+        s.add(JournalAttachment(entry_id=entry.id, kind="notes", title="From Slack", body=full[:4000],
+                                created_at=datetime.now()))
+    for m in fresh:
+        s.add(JournalAttachment(entry_id=entry.id, kind="link", title=f"Slack message in {g.channel}", body=m.link,
+                                created_at=datetime.now()))
+    if not entry.reviewed:
+        entry.ai_read = False
+    return True
 
 
 def attach(s: Session, groups: list[Group], items: list[SlackItem]) -> list[SlackItem]:
@@ -239,14 +275,22 @@ def _insert(s: Session, groups: list[Group], kinds: dict[str, str]) -> int:
 def save(s: Session, groups: list[Group], items: list[SlackItem], classify) -> tuple[int, dict]:
     """Save new message records, fold canvas items into them or import the ones left, and log the pull.
 
-    When a message and a canvas item disagree on the day, the message's day is the one kept.
+    When a message and a canvas item disagree on the day, the message's day is the one kept. A reply that shows
+    up later in a thread-day already saved is added to that record.
     """
+    from ..storage.models import Win
     from ..storage.sync_log import record
     from .importer import add_canvas_note, import_items, link_removed, linked_entry, new_items
     for g in groups:
         hit = _live(s, g)
-        if hit not in (None, "removed") and hit.day != g.day.isoformat() and not hit.reviewed:
+        if hit in (None, "removed"):
+            continue
+        if hit.day != g.day.isoformat() and not hit.reviewed:
+            old = hit.day
             hit.day = g.day.isoformat()
+            for w in s.scalars(select(Win).where(Win.entry_id == hit.id, Win.by_ai.is_(True), Win.day == old)):
+                w.day = hit.day
+        _grow(s, hit, g)
     new_groups = [g for g in groups if _live(s, g) is None]
     create = []
     for it in items:
