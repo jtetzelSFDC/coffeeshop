@@ -356,7 +356,7 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.post("/slack/sync", dependencies=[Depends(check_csrf)])
     def slack_sync(request: Request):
-        """Read the Slack tracker canvas, then sort and import its new items, in the background."""
+        """Read your Slack messages and the tracker canvas, then sort and import what's new, in the background."""
         return start_sync(request, "slack")
 
     @app.post("/sync/v2mom", dependencies=[Depends(check_csrf)])

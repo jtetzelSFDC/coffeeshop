@@ -21,7 +21,7 @@ Python 3.12, FastAPI, SQLAlchemy on SQLite, Jinja2, Typer, uv. No JavaScript fra
 | `cli.py` | Every `careeros …` command; thin glue over the modules below |
 | `web/` | The pages (`app.py`), background jobs with progress (`jobs.py`, `syncs.py`), templates, static files |
 | `google/` | Calendar, Tasks, Docs, and meeting-note summaries through Claude Code's Google Workspace connector |
-| `slack/` | The activity-tracker canvas, its sorting and import, and kudos from public and private channels (never DMs) |
+| `slack/` | Your own messages and the activity-tracker canvas, their sorting and import, and kudos. Public and private channels only; DMs are never read |
 | `github/` | Merged PRs and weekly review counts through the `gh` CLI |
 | `v2mom/` | Reading the V2MOM (PDF or Google Doc), stable method ids, links from work, per-method report |
 | `guide/` | The leveling guide, links to it, grouping records into work, the Promo map, Claude's read-through |
@@ -78,7 +78,7 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 | Job | Claude sees |
 |---|---|
 | Google sync | Calendar events and their Gemini notes, tasks, and the Docs, Sheets, and Slides you wrote |
-| Slack sync | The activity-tracker canvas, then its items for sorting |
+| Slack sync | Your own messages in public and private channels (never DMs), a thread's first message when you replied in it (up to 20 a sync), the activity-tracker canvas, then the new records for sorting |
 | Kudos | Messages that mention you in public and private channels (never DMs), up to 1,500 characters each, with sender and channel |
 | Sorting and grouping | Records' text and notes, the leveling guide, and the V2MOM methods |
 | V2MOM | The V2MOM text, including your manager's check-in comments |

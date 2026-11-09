@@ -13,7 +13,7 @@ from .v2mom import report as v2mom_report
 
 QUIET_DAYS = 60
 QUEUE_NUDGE = 25  # unchecked records before the queue gets a nudge
-SOURCE_NAME = {"calendar": "meetings", "tasks": "Google Tasks", "slack": "Slack tracker items", "docs": "Google files",
+SOURCE_NAME = {"calendar": "meetings", "tasks": "Google Tasks", "slack": "Slack", "docs": "Google files",
                "github": "GitHub records", "kudos": "kudos", "": "typed notes"}
 
 

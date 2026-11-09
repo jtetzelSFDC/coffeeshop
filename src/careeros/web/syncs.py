@@ -10,8 +10,8 @@ from .jobs import Job
 
 GOOGLE_STEPS = ["Read Google Calendar (yesterday and today)", "Read Google Tasks", "Summarize meeting notes",
                 "Read Google Docs you wrote or edited", "Link new records to the leveling guide"]
-SLACK_STEPS = ["Read your Slack tracker canvas", "Sort the new items", "Look for kudos in your Slack channels",
-               "Link new records to the leveling guide"]
+SLACK_STEPS = ["Read your Slack messages", "Read your Slack tracker canvas", "Sort the new items",
+               "Look for kudos in your Slack channels", "Link new records to the leveling guide"]
 TASKS_LOOKBACK = timedelta(days=14)
 
 
@@ -228,44 +228,56 @@ def run_github(job: Job, Session_, lock) -> None:
 
 
 def run_slack(job: Job, Session_, lock, dd: DataDir) -> None:
-    """Sync Slack: the activity-tracker canvas, sorting its new items, kudos, then guide links."""
+    """Sync Slack: your own messages, then the tracker canvas, sorting, kudos, and guide links."""
+    from ..slack import messages as slack_msgs
     from ..slack.classify import classify
     from ..slack.connector import fetch_canvas
-    from ..slack.importer import import_items, load_canvas_id, new_items
+    from ..slack.importer import import_items, load_canvas_id
+    from ..slack.kudos import user
     from ..slack.parse import CanvasFormatError, parse_canvas
     with Session_() as s:
-        cid = load_canvas_id(dd)
-        if not cid:
-            job.fail(0, "No Slack canvas connected yet. In Terminal run: uv run careeros slack connect <canvas link>")
-            for i in (1, 2, 3):
-                job.skip(i)
-            job.finish("Slack sync couldn't start.")
-            return
         job.start(0)
+        groups, fetched = [], False
         try:
-            items = parse_canvas(fetch_canvas(cid))
-        except (ClaudeError, CanvasFormatError) as exc:
-            job.fail(0, str(exc))
-            for i in (1, 2, 3):
-                job.skip(i)
-            job.finish("Slack sync couldn't read the tracker, so nothing changed.")
-            return
-        todo = new_items(s, items)
-        job.done(0, f"{_plural(len(items), 'item')} on the canvas, {len(todo)} new")
-        job.start(1)
-        try:  # not under the write lock: Claude's sorting takes a while and the page stays usable meanwhile
-            r = import_items(s, items, lambda t: classify(t, progress=job.sub))
+            uid, _name = user(dd)
+            groups, short = slack_msgs.fetch(uid, slack_msgs.since(s), progress=job.sub)
+            fetched = True
         except ClaudeError as exc:
-            job.fail(1, str(exc))
-            job.skip(2)
+            job.fail(0, str(exc))
+        else:
+            job.done(0, _plural(len(groups), "conversation")
+                     + (f"; {_plural(short, 'window')} had more messages than could be read" if short else ""))
+        cid = load_canvas_id(dd)
+        items = []
+        if not cid:
+            job.skip(1, "No Slack canvas connected. In Terminal run: uv run careeros slack connect <canvas link>")
+        else:
+            job.start(1)
+            try:
+                items = parse_canvas(fetch_canvas(cid))
+            except (ClaudeError, CanvasFormatError) as exc:
+                job.fail(1, str(exc))
+            else:
+                job.done(1, f"{_plural(len(items), 'item')} on the canvas")
+        job.start(2)
+        try:  # not under the write lock: Claude's sorting takes a while and the page stays usable meanwhile
+            if fetched:
+                fresh = slack_msgs.attach(s, groups, items)
+                nmsg, r = slack_msgs.save(s, groups, fresh, lambda t: classify(t, progress=job.sub))
+            else:
+                nmsg, r = 0, import_items(s, items, lambda t: classify(t, progress=job.sub))
+        except ClaudeError as exc:
+            job.fail(2, str(exc))
             job.skip(3)
-            job.finish("Slack sync read the tracker but couldn't sort the new items, so nothing was saved.")
+            job.skip(4)
+            job.finish("Slack sync couldn't sort the new items, so nothing was saved.")
             return
-        job.done(1, f"{r['meeting']} meetings, {r['conversation']} conversations, {r['document']} documents, "
-                    f"{r['task']} tasks, {r['note']} other" if r["added"] else "Nothing new since the last pull.")
-        praised = _kudos(job, 2, s, lock, dd)
-        _link_new(job, 3, s)
-    job.finish(f"Slack synced: {_plural(r['added'], 'new item')}" + (f" and {praised} kudos." if praised else "."))
+        added = nmsg + r["added"]
+        job.done(2, f"{r['meeting']} meetings, {r['conversation']} conversations, {r['document']} documents, "
+                    f"{r['task']} tasks, {r['note']} other" if added else "Nothing new since the last pull.")
+        praised = _kudos(job, 3, s, lock, dd)
+        _link_new(job, 4, s)
+    job.finish(f"Slack synced: {_plural(added, 'new item')}" + (f" and {praised} kudos." if praised else "."))
 
 
 V2MOM_STEPS = ["Read your V2MOM", "Save its methods and measures"]
