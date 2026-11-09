@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from careeros.claude_cli import ClaudeError
 from careeros.promo import evidence as pe, write as pw
-from careeros.storage.models import JournalEntry, PromoSection, PromoVersion, V2momLink, WorkItem
+from careeros.storage.models import GuideLink, JournalEntry, PromoSection, PromoVersion, V2momLink, WorkItem
 
 from helpers import TWO, by_key, load_v2mom, open_session, promo_seed
 
@@ -164,3 +164,77 @@ def test_a_sentence_about_a_method_passes_the_check(nb):
 
 def test_prompt_says_to_quote_check_in_comments_as_the_managers_words():
     assert "check-in piece is the manager's own words: quote them exactly" in pw.PROMPT
+
+
+def test_a_count_with_no_work_behind_it_in_a_section_is_left_out(nb):
+    dd, *_ = nb
+    with open_session(dd) as s:
+        promo_seed(s)
+        e = JournalEntry(day="2026-10-15", kind="task", text="Taught a pipeline class", created_at=datetime.now(),
+                         source="slack", activity="mentoring")
+        s.add(e)
+        s.flush()
+        s.add(GuideLink(item_id=s.scalar(select(GuideLink.item_id)), entry_id=e.id, created_at=datetime.now()))
+        s.commit()
+        pieces, slices = pe.build(s, "2025-10-29", "2026-10-29")
+    counts = {p["text"].split(" between")[0]: p["n"] for p in pieces if p["kind"] == "count"}
+    # the sandbox refresh win is in Summary and Impact, so its count is too; the class is only a plain record
+    assert counts == {"Count: 1 sandbox refreshes": counts["Count: 1 sandbox refreshes"]}
+    n = counts["Count: 1 sandbox refreshes"]
+    assert n in slices["summary"] and n in slices["impact"]
+    assert any("Taught a pipeline class" in p["text"] for p in pieces)
+
+
+def test_too_little_data_is_said_before_claude_is_asked(nb):
+    dd, c, token, _ = nb
+    with open_session(dd) as s:
+        s.add(JournalEntry(day="2026-10-20", kind="task", text="One thing", created_at=datetime.now(), source="slack"))
+        s.commit()
+        pieces, _ = pe.build(s, "2025-10-29", "2026-10-29")
+        assert "0 linked wins" in pw.shortage(pieces, "2025-10-29", "2026-10-29")
+        with pytest.raises(ClaudeError, match="too little"):
+            pw.write_case(s, start="2025-10-29", end="2026-10-29", name="Jordan",
+                          reader=lambda *a: pytest.fail("asked Claude"))
+        promo_seed(s)
+        pieces, _ = pe.build(s, "2025-10-29", "2026-10-29")
+        assert pw.shortage(pieces, "2025-10-29", "2026-10-29") == "" and pw.shortage(pieces[:2], "a", "b")
+    r = c.post("/promo/write", data={"csrf": token, "name": "Jordan", "start": "2026-10-01", "end": "2026-10-02"},
+               headers={"X-Sync": "1"})
+    assert r.status_code == 409 and "too little to write a case" in r.json()["message"]
+    assert "promo" not in c.get("/sync/status").json()
+    r = c.post("/promo/write", data={"csrf": token, "start": "2026-10-01", "end": "2026-10-02"}, follow_redirects=True)
+    assert "too little to write a case" in r.text
+
+
+def test_a_style_example_is_sent_as_style_only_and_never_as_evidence(nb, monkeypatch):
+    dd, c, token, _ = nb
+    with open_session(dd) as s:
+        promo_seed(s)
+    sent = []
+
+    def fake(prompt, data, timeout=0):
+        sent.append((prompt, json.loads(data)))
+        return json.dumps({"sentences": [{"text": "Jordan cut release time by 90%.", "sources": [1]}]})
+    monkeypatch.setattr(pw, "ask", fake)
+    example = "Sam led the Maple release and cut release time by 90%."
+    r = c.post("/promo/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29",
+                                     "example": example}, headers={"X-Sync": "1"})
+    assert r.json() == {"started": True}
+    for _ in range(200):
+        job = c.get("/sync/status").json().get("promo")
+        if job and job["state"] != "running":
+            break
+        time.sleep(0.05)
+    prompt, data = sent[0]
+    assert data["style_example"] == example and "only its tone" in prompt and "Never use a fact" in prompt
+    assert all(example not in p["text"] for p in data["evidence"])  # never evidence
+    page = c.get("/promo/case").text
+    assert "Check this (90 isn" in page and example in page  # the claim is still rejected; the box remembers it
+    r = c.post("/promo/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29"},
+               headers={"X-Sync": "1"})  # an empty box clears it, and nothing extra is sent
+    for _ in range(200):
+        job = c.get("/sync/status").json().get("promo")
+        if job and job["state"] != "running":
+            break
+        time.sleep(0.05)
+    assert "style_example" not in sent[-1][1] and example not in c.get("/promo/case").text

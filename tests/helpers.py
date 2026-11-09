@@ -131,8 +131,13 @@ def promo_seed(s):
             size="large", entry_id=e.id, created_at=datetime.now())
     s.add(w)
     s.flush()
+    more = [JournalEntry(day=d, kind="task", text=x, created_at=datetime.now(), source="slack")
+            for d, x in [("2026-10-14", "Wrote the refresh checklist"), ("2026-10-16", "Reviewed the runbook")]]
+    s.add_all(more)
+    s.flush()
     s.add_all([GuideLink(item_id=item, win_id=w.id, created_at=datetime.now()),
-               GuideLink(item_id=item, entry_id=old.id, created_at=datetime.now())])
+               GuideLink(item_id=item, entry_id=old.id, created_at=datetime.now()),
+               *(GuideLink(item_id=item, entry_id=m.id, created_at=datetime.now()) for m in more)])
     s.commit()
     return w
 

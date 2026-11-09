@@ -911,9 +911,11 @@ def create_app(dd: DataDir) -> FastAPI:
         return sheet_back(request, s, ret, eid)
 
     @app.post("/promo/write", dependencies=[Depends(check_csrf)])
-    def promo_write(request: Request, start: str = Form(""), end: str = Form(""), name: str = Form("", max_length=80)):
-        """Start writing a draft in the background; the page shows progress per section."""
-        from ..promo import write as pw
+    def promo_write(request: Request, start: str = Form(""), end: str = Form(""), name: str = Form("", max_length=80),
+                    example: str = Form("", max_length=6_000), s: Session = Depends(db)):
+        """Start writing a draft in the background; the page shows progress per section. Too little data to write
+        from is said here, before Claude is asked."""
+        from ..promo import evidence as pe, write as pw
         if not personal:
             return back("Writing the case only works with your personal notebook.", "/promo/case")
         lo, hi = pw.default_window()
@@ -921,8 +923,13 @@ def create_app(dd: DataDir) -> FastAPI:
             start, end = date.fromisoformat(start or lo).isoformat(), date.fromisoformat(end or hi).isoformat()
         except ValueError:
             return back("Those dates don't look right; use the date pickers.", "/promo/case")
+        if msg := pw.shortage(pe.build(s, start, end)[0], start, end):
+            if request.headers.get("x-sync") == "1":
+                return JSONResponse({"started": False, "message": msg}, status_code=409)
+            return back(msg, "/promo/case")
         name = " ".join(name.split()) or pw.load_name(dd) or "the candidate"
         pw.save_name(dd, name)
+        pw.save_example(dd, example)
         labels = [f"Write {h}" for _k, h, *_r in pw.SECTIONS]
         return started_reply(request, jobs.start("promo", labels, lambda j: syncs.run_promo(j, Session_, start, end, name)),
                              "Writing your promo case. This takes a minute or two; refresh to see it.",
@@ -1007,7 +1014,7 @@ def create_app(dd: DataDir) -> FastAPI:
                          sources=[by_n[n] for n in cited if n in by_n], latest=versions[0].id if versions else None,
                          texts={x.key: pw.to_text(x.sentences) for x in sections},
                          flagged=sum(1 for sec in sections for x in sec.sentences if not x["valid"]), start=lo,
-                         end=hi, name=pw.load_name(dd), guided=gsvc.has_guide(s), msg=msg)
+                         end=hi, name=pw.load_name(dd), example=gsvc.profile(s).get("example", ""), guided=gsvc.has_guide(s), msg=msg)
 
     @app.get("/promo/export")
     def promo_export(s: Session = Depends(db)):
