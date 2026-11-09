@@ -4,6 +4,7 @@ values, methods with measures, obstacles, and check-ins."""
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -17,6 +18,7 @@ PAGE_MARKER = re.compile(r"^[ \t]*(?:--[ \t]*\d+[ \t]+of[ \t]+\d+[ \t]*--|Page[ 
                          re.M | re.I)
 MAX_READ = 60_000
 MAX_PDF = 8_000_000  # a V2MOM export is a few pages; bigger than this is not one
+UPLOAD_DIR = "v2mom"  # its own folder, so the sync's newest-PDF scan cannot pick a different file beside the notebook
 STORED_PDF = "V2MOM.pdf"  # fixed name: the upload's own name is untrusted, and the sync looks for "V2MOM" in it
 
 _REPLY = """Reply with only JSON, in the text's order, using its own words (don't summarize or invent):
@@ -63,13 +65,19 @@ def source_file(dd: DataDir) -> Path:
 
 def store_upload(dd: DataDir, data: bytes) -> Path:
     """Save an uploaded V2MOM PDF into the notebook (only you can read it). ValueError when it isn't a PDF or is too big.
-    The bytes are checked, not the file name the browser sent."""
+    The bytes are checked, not the file name the browser sent. Written beside the final name, then renamed, so a sync
+    already reading the old file never sees a half-written one."""
     if len(data) > MAX_PDF:
         raise ValueError("That PDF is too big. A V2MOM export is a few pages.")
     if not data.startswith(b"%PDF"):
         raise ValueError("That isn't a PDF. Download your V2MOM as a PDF from the V2MOM app.")
-    path = dd.root / STORED_PDF
-    write_private(path, data)
+    folder = dd.root / UPLOAD_DIR
+    folder.mkdir(exist_ok=True)
+    os.chmod(folder, 0o700)
+    path = folder / STORED_PDF
+    tmp = folder / ".V2MOM.upload"  # not a .pdf, so the newest-PDF scan ignores it
+    write_private(tmp, data)
+    os.replace(tmp, path)
     return path
 
 
