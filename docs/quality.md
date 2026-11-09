@@ -105,7 +105,7 @@ Good output:
 | | Sentence |
 |---|---|
 | Good | Pat led the Maple 2.4 release across three teams, coordinating 4 deployments between Mar 2 and Mar 20. [12, 31] |
-| Good | Sam Sample wrote that Pat "saved us a day before the freeze". [18] |
+| Good | Sam Sample wrote that Pat's work on the merge conflicts "saved us a day". [18] |
 | Bad | Pat spearheaded a transformational release program. [12] (hype, no fact) |
 | Bad | Pat cut release time by 40%. [12] (40 isn't in the evidence; flagged **Check this**) |
 | Bad | Pat's runbook work advances V2MOM M3. [22] (piece 22 doesn't say it advances M3) |
@@ -122,5 +122,5 @@ Good output:
 | | Nudge |
 |---|---|
 | Good | 2 big wins without "why it mattered". A sentence each makes them count in the promo case. → Open Wins |
-| Good | Nothing new for V2MOM M3 (Grow the pipeline toolkit) in 30 days (last: Feb 2). → Open the V2MOM |
+| Good | Nothing new for V2MOM M3 (Grow the pipeline toolkit) in 30 days (last: 2026-02-02). → Open the V2MOM |
 | Bad | You should do more this week. (No action, no link.) |
