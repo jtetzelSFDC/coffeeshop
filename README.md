@@ -24,14 +24,15 @@
 
 ## Begin
 
-You need a Mac, [uv](https://docs.astral.sh/uv/), and Claude Code signed in to the Google Workspace and Slack connectors.
+You need [uv](https://docs.astral.sh/uv/) and Claude Code signed in to the Google Workspace and Slack connectors. The same commands work on a Mac and on Windows.
 
 ```
 cd ~/Documents/coffeeshop
 uv run careeros notebook init
 uv run careeros schedule install
-open http://127.0.0.1:8765
 ```
+
+Then open http://127.0.0.1:8765 in a browser. On a Mac you can run `open http://127.0.0.1:8765`.
 
 Then load your leveling guide and connect your V2MOM ([INSTRUCTIONS.md](docs/INSTRUCTIONS.md)); without them there is nothing to sort against.
 

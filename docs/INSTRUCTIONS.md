@@ -10,7 +10,7 @@ There's also a **practice notebook** of made-up data, for trying things out with
 
 ## Start your notebook (the everyday way)
 
-Your real, permanent notebook lives in `~/Library/Application Support/coffeeshop`. It survives restarts. Open Terminal and run:
+Your real, permanent notebook lives in `~/Library/Application Support/coffeeshop` on a Mac, and in `%LOCALAPPDATA%\coffeeshop` on Windows. It survives restarts. Open Terminal, or PowerShell on Windows, and run:
 
 ```
 cd ~/Documents/coffeeshop
@@ -18,23 +18,23 @@ uv run careeros notebook init   # first time only: makes the notebook folder
 uv run careeros serve
 ```
 
-Open **http://127.0.0.1:8765** in a browser. Leave the terminal running. Press **Ctrl+C** in it to stop the app. If the page stops loading (for example after the Mac restarts), run the same command again. Your entries and wins are still there.
+Open **http://127.0.0.1:8765** in a browser. Leave the terminal running. Press **Ctrl+C** in it to stop the app. If the page stops loading (for example after a restart), run the same command again. Your entries and wins are still there.
 
 Don't add `--data-dir` to this command. That flag points the app at a different folder, such as the practice demo below.
 
 ## Let it run on its own (recommended)
 
-One command sets up three small macOS scheduled tasks, so you never start the app or press Sync yourself:
+One command sets up three scheduled tasks, so you never start the app or press Sync yourself. On a Mac they are launchd agents. On Windows they are Task Scheduler tasks.
 
 ```
 cd ~/Documents/coffeeshop
 uv run careeros schedule install
 ```
 
-- **The app** starts when you log in and restarts by itself if it ever stops. It's always at http://127.0.0.1:8765. If you'd started it yourself in a Terminal, stop that one (Ctrl+C) first.
+- **The app** starts when you log in and comes back if it stops. On Windows, Task Scheduler starts it at logon and, if it exits with an error, starts it again one minute later (up to 255 times). A clean exit waits until the next logon. It's at http://127.0.0.1:8765 once it's running. If you'd started it yourself in a Terminal, stop that one (Ctrl+C) first.
 - **The sync** runs at 8:00 AM and 6:00 PM (after your 5 PM Slack automation), and once when you log in if a run was missed while the laptop was closed. Each run backs up the notebook first, then does exactly what the Sync Slack tracker and Sync Google buttons do, then pulls your GitHub pull requests. If nothing is due, it does nothing.
-- **If something fails**, for example a connector's sign-in expired, a macOS notification says which sync and what to do (usually: open Claude Code's connector settings and sign in again). Nothing is shown when everything works; the status chips show the times.
-- **The daily three** come as the last step of the morning sync, so they're ready by about 8:15 to 8:30 AM and always see the work just pulled in. If the Mac was off that morning, the login or 6 PM sync makes them. See **Daily three** below.
+- **If something fails**, for example a connector's sign-in expired, a notification says which sync and what to do (usually: open Claude Code's connector settings and sign in again). On Windows, if the toast is blocked, the same words go in the sync log instead. Nothing is shown when everything works; the status chips show the times.
+- **The daily three** come as the last step of the morning sync, so they're ready by about 8:15 to 8:30 AM and always see the work just pulled in. If the computer was off that morning, the login or 6 PM sync makes them. See **Daily three** below.
 - **The digest** shows a notification on Fridays at 12:00 PM (if the laptop was asleep, as soon as it wakes). See **Weekly digest** below.
 - `uv run careeros schedule status` shows whether each is on and the last sync log line. Logs are in `logs/` in your notebook folder.
 - `uv run careeros sync all --force` runs a sync right now from Terminal.
@@ -48,7 +48,7 @@ uv run careeros demo seed --data-dir /tmp/cos-demo
 uv run careeros serve --data-dir /tmp/cos-demo
 ```
 
-It holds a week of made-up meetings, Slack items, tasks, and notes, two wins, and a tiny made-up leveling guide, so every page has something to show. It never syncs with Slack or Google. `/tmp` is cleared when the Mac restarts; just run `demo seed` again. Never put real notes here.
+It holds a week of made-up meetings, Slack items, tasks, and notes, two wins, and a tiny made-up leveling guide, so every page has something to show. It never syncs with Slack or Google. `/tmp` is cleared when the Mac restarts; on Windows, use a folder such as `$env:TEMP\cos-demo` instead of `/tmp/cos-demo`. Just run `demo seed` again. Never put real notes here.
 
 ## Wins: your accomplishments for reviews, promotion, and your resume
 
@@ -191,7 +191,7 @@ At the top are **nudges**, each with a link to where to act:
 
 When nothing needs you, it says so. The page is worked out when you open it, from the notebook only: no Claude, nothing stored.
 
-On Fridays at 12:00 PM the schedule shows a macOS notification like "This week: 13 wins, 54 records, 3 nudges. Open http://127.0.0.1:8765/digest". macOS doesn't open links from these notifications, so open the page from the Menu. To see it now: `uv run careeros digest notify`.
+On Fridays at 12:00 PM the schedule shows a notification like "This week: 13 wins, 54 records, 3 nudges. Open http://127.0.0.1:8765/digest". The notification doesn't open the link, so open the page from the Menu. To see it now: `uv run careeros digest notify`.
 
 ## Kudos: recognition from other people
 
@@ -418,7 +418,7 @@ Yes, on this laptop. `uv run careeros backup now` copies the notebook into `back
 
 **How do I restore from a backup?**
 1. Stop the app (Ctrl+C in its Terminal window).
-2. In `~/Library/Application Support/coffeeshop`, move `coffeeshop.db`, `coffeeshop.db-wal`, and `coffeeshop.db-shm` into a spare folder (don't delete them yet).
+2. In the notebook folder (`~/Library/Application Support/coffeeshop` on a Mac, `%LOCALAPPDATA%\coffeeshop` on Windows), move `coffeeshop.db`, `coffeeshop.db-wal`, and `coffeeshop.db-shm` into a spare folder (don't delete them yet).
 3. Copy the backup you want from `backups/` (for example `coffeeshop-2026-10-28.db`) into the notebook folder and rename it `coffeeshop.db`.
 4. Start the app again with `uv run careeros serve` and check your entries. Once you're happy, the moved files can go.
 
@@ -437,7 +437,7 @@ Before using it on a work calendar, check that titles of meetings (which can nam
 Yes. On Home, press **Sync Google** (or run `uv run careeros calendar pull` for the calendar part only). Sync Google does Calendar, the Google Docs you wrote (see that section), Google Tasks (only ones you've marked complete in Google, from the task lists changed since the last pull; open tasks never come in, and one you finish shows up on the next sync, dated the day you completed it; a task you removed while it was open still comes in once you finish it; a task list that couldn't be read is reported, never treated as deleted; the pull then isn't counted, so the next Sync Google looks back to the same point and picks up what was missed), and meeting-note summaries in one go, then has Claude link the new records to the leveling guide. Only meetings that have ended come in: a meeting later today shows up on the first sync after it's over, by which time its Gemini notes are usually attached (the 8 AM sync then catches notes that arrived overnight). A progress bar under the button ticks through each step and shows any error in plain words; you can keep using the app while it runs. If the calendar connector answers with an error (for example an expired Google sign-in), that step stops with the message instead of reading it as an empty calendar, so no meetings are removed. For the calendar part, it starts Claude Code in the background with permission to use only the calendar tool, fetches yesterday's and today's meetings through the Google Workspace connector, and saves title, time, and Google file links (Gemini notes, recordings). Declined meetings and all-day items are skipped. It then reads the Google Docs attached to each meeting (Gemini notes, shared notes) and saves a short "AI summary" under the meeting, with the notes linked beside it; meetings without notes say so. Expect a few minutes when there are many meetings. Nothing duplicates, and a failed summary is retried the next time you press the button. Recordings and chat files aren't read. Meeting titles, times, and attendee details pass through the AI tool on the way, so it only runs when you press it or when the schedule you installed runs it. It needs Claude Code installed and the Google Workspace connector signed in. `careeros calendar pull --days 7` reaches further back (max 14).
 
 **Where is my information stored, and is it backed up?**
-Everything (entries, pasted notes, wins) is in one file: `~/Library/Application Support/coffeeshop/coffeeshop.db`, on this laptop only. It is not in iCloud or any synced folder, and the app refuses to keep a real notebook in one. Time Machine backs it up if Time Machine is on. Daily copies go into `backups/` next to it (see "Is my real notebook backed up?" above).
+Everything (entries, pasted notes, wins) is in one file, `coffeeshop.db`, in the notebook folder (`~/Library/Application Support/coffeeshop` on a Mac, `%LOCALAPPDATA%\coffeeshop` on Windows), on this computer only. It is not in iCloud, OneDrive, or any synced folder, and the app refuses to keep a real notebook in one. Time Machine backs it up on a Mac if Time Machine is on. Daily copies go into `backups/` next to it (see "Is my real notebook backed up?" above).
 
 **Can I export everything, not just wins?**
 Yes. Click **Download everything (CSV)** at the bottom of any page. You get one zip with six spreadsheets: `entries.csv` (every meeting, task, and note), `pasted_notes.csv` (everything pasted under them, with the entry it belongs to), `wins.csv`, `guide_links.csv` (which wins and entries you linked to which leveling guide items), `v2mom_links.csv` (which ones advance which V2MOM method), and `promo_drafts.csv` (every section of every promo case draft). They open in Excel, Numbers, or Google Sheets, so the data stays readable even without this app. It's a snapshot of that moment; download a fresh one whenever you like, for example at year end. The zip holds everything you pasted, so keep it somewhere as safe as this laptop, and remember that removing something in the app doesn't remove it from zips you already downloaded. Text that starts with `=`, `+`, `-`, or `@` gets a leading `'` so a spreadsheet shows it instead of running it as a formula.

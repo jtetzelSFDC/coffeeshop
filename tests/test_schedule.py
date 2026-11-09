@@ -1,11 +1,14 @@
 import plistlib
+import subprocess
+import sys
+import types
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
-from careeros import schedule, sync_all
+from careeros import config, schedule, sync_all
 from careeros.cli import app as cli
 from careeros.config import DataDir
 from careeros.storage.db import init_db, make_engine, make_session_factory
@@ -210,6 +213,157 @@ def test_cli_install_prints_the_error_instead_of_a_traceback(dd, monkeypatch):
     monkeypatch.setattr(schedule, "install", refuse)
     r = CliRunner().invoke(cli, ["schedule", "install", "--data-dir", str(dd.root)])
     assert r.exit_code == 1 and "wouldn't load" in r.output and "Traceback" not in r.output
+
+
+def test_mac_data_dir_is_unchanged(monkeypatch):
+    monkeypatch.setattr(config.sys, "platform", "darwin")
+    monkeypatch.setattr(config.Path, "home", lambda: Path("/Users/jordan"))
+    assert config.support_dir("coffeeshop") == Path("/Users/jordan/Library/Application Support/coffeeshop")
+    assert config.support_dir("coffeeshop-demo") == Path("/Users/jordan/Library/Application Support/coffeeshop-demo")
+    assert config.notebook_default_help() == "Default: ~/Library/Application Support/coffeeshop"
+
+
+def test_windows_data_dir_uses_localappdata(monkeypatch):
+    monkeypatch.setattr(config.sys, "platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", r"C:\Users\steve\AppData\Local")
+    assert config.support_dir("coffeeshop") == Path(r"C:\Users\steve\AppData\Local") / "coffeeshop"
+    assert config.support_dir("coffeeshop-demo") == Path(r"C:\Users\steve\AppData\Local") / "coffeeshop-demo"
+    assert config.notebook_default_help() == r"Default: %LOCALAPPDATA%\coffeeshop"
+
+
+def test_windows_data_dir_falls_back_when_localappdata_is_missing(monkeypatch):
+    monkeypatch.setattr(config.sys, "platform", "win32")
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    monkeypatch.setattr(config.Path, "home", lambda: Path(r"C:\Users\steve"))
+    assert config.support_dir("coffeeshop") == Path(r"C:\Users\steve") / "AppData" / "Local" / "coffeeshop"
+
+
+def _schtasks(monkeypatch, code=0, stdout="", stderr=""):
+    ran = []
+
+    def fake(*args):
+        ran.append(args)
+        return subprocess.CompletedProcess(["schtasks", *args], code, stdout, stderr)
+    monkeypatch.setattr(schedule, "schtasks", fake)
+    return ran
+
+
+def test_windows_schedule_builds_schtasks_commands(dd, monkeypatch):
+    monkeypatch.setattr(schedule.sys, "platform", "win32")
+    ran = _schtasks(monkeypatch)
+    uv, repo = r"C:\Tools\uv.exe", Path("C:/repo")
+    written = schedule.install(dd, uv=uv, repo=repo)
+    assert [p.name for p in written] == ["com.careeros.app.ps1", "com.careeros.sync.ps1", "com.careeros.digest.ps1"]
+    creates = [a for a in ran if a[0] == "/Create"]
+    assert [a[2] for a in creates] == [schedule.APP, schedule.SYNC, schedule.DIGEST]
+    assert all(a[1] == "/TN" and a[3] == "/XML" and a[-1] == "/F" for a in creates)
+    assert [a[2] for a in ran if a[0] == "/Run"] == [schedule.APP, schedule.SYNC]
+    sync = (dd.root / "tasks" / "com.careeros.sync.ps1").read_text(encoding="utf-8-sig")
+    assert f"& '{uv}' run --project '{repo}' careeros sync all" in sync
+    assert f"$env:COFFEESHOP_DATA_DIR = '{dd.root}'" in sync and "exit $LASTEXITCODE" in sync
+    xml = (dd.root / "tasks" / "com.careeros.sync.xml").read_text(encoding="utf-16")
+    assert "T08:00:00" in xml and "T18:00:00" in xml and "LogonTrigger" in xml
+    assert "powershell.exe" in xml and "com.careeros.sync.ps1" in xml
+    app = (dd.root / "tasks" / "com.careeros.app.xml").read_text(encoding="utf-16")
+    assert "RestartOnFailure" in app and "<Count>255</Count>" in app and "T08:00:00" not in app
+    digest_xml = (dd.root / "tasks" / "com.careeros.digest.xml").read_text(encoding="utf-16")
+    digest = (dd.root / "tasks" / "com.careeros.digest.ps1").read_text(encoding="utf-8-sig")
+    assert "Friday" in digest_xml and "T12:00:00" in digest_xml and "LogonTrigger" not in digest_xml
+    assert "careeros digest notify" in digest
+    removed = schedule.uninstall()
+    deletes = [a for a in ran if a[0] == "/Delete"]
+    assert [a[2] for a in deletes] == [schedule.APP, schedule.SYNC, schedule.DIGEST]
+    assert all("/F" in a for a in deletes) and [str(p) for p in removed] == list(deletes[i][2] for i in range(3))
+
+
+def test_windows_install_reports_a_schtasks_error(dd, monkeypatch):
+    monkeypatch.setattr(schedule.sys, "platform", "win32")
+
+    def fake(*args):
+        if args[0] == "/Create":
+            return subprocess.CompletedProcess(args, 1, "", "Access is denied.")
+        return subprocess.CompletedProcess(args, 0, "", "")
+    monkeypatch.setattr(schedule, "schtasks", fake)
+    with pytest.raises(RuntimeError, match="wouldn't schedule"):
+        schedule.install(dd, uv=r"C:\Tools\uv.exe", repo=Path("C:/repo"))
+
+
+def test_windows_status_reads_schtasks_not_the_real_scheduler(dd, monkeypatch):
+    monkeypatch.setattr(schedule.sys, "platform", "win32")
+    seen = []
+
+    def fake(*args):
+        seen.append(args)
+        label = args[2]
+        if label == schedule.APP:
+            return subprocess.CompletedProcess(args, 0, "<Enabled>true</Enabled>", "")
+        if label == schedule.SYNC:
+            return subprocess.CompletedProcess(args, 0, "<Enabled>false</Enabled>", "")
+        return subprocess.CompletedProcess(args, 1, "", "not found")
+    monkeypatch.setattr(schedule, "schtasks", fake)
+    (dd.root / "logs").mkdir(exist_ok=True)
+    (dd.root / "logs" / "sync-2026-10-28.log").write_text("18:00:09  Google: Google synced\n")
+    lines = schedule.status(dd)
+    assert lines[:3] == ["Keeps the app running: on", "Syncs at 8 AM, 6 PM, and login: installed but not loaded",
+                         "Weekly digest on Fridays at noon: off"]
+    assert "Google synced" in lines[-1]
+    assert seen == [("/Query", "/TN", label, "/XML") for label in (schedule.APP, schedule.SYNC, schedule.DIGEST)]
+
+
+def test_mac_install_does_not_call_schtasks(dd, tmp_path, monkeypatch):
+    monkeypatch.setattr(schedule.sys, "platform", "darwin")
+    called = []
+    monkeypatch.setattr(schedule, "schtasks", lambda *a: called.append(a))
+    monkeypatch.setattr(schedule, "launchctl", lambda *a: 0)
+    schedule.install(dd, agents_dir=tmp_path / "LaunchAgents", uv="/opt/uv", repo=Path("/repo"))
+    assert called == []
+
+
+def test_desktop_notify_on_mac_is_osascript(monkeypatch):
+    monkeypatch.setattr(sync_all.sys, "platform", "darwin")
+    seen = []
+    monkeypatch.setattr(sync_all.subprocess, "run", lambda args, **kw: seen.append(args))
+    assert sync_all.desktop_notify("t", "m") is None and seen[0][0] == "osascript"
+
+
+def test_windows_toast_uses_powershell_and_keeps_the_message_out_of_the_script(monkeypatch):
+    monkeypatch.setattr(sync_all.sys, "platform", "win32")
+    seen = {}
+
+    def record(args, **kw):
+        seen["args"] = args
+        seen["env"] = kw["env"]
+        return subprocess.CompletedProcess(args, 0, "", "")
+    monkeypatch.setattr(sync_all.subprocess, "run", record)
+    assert sync_all.desktop_notify('Say "hi"', "the body") is None
+    assert seen["args"][0].endswith("powershell.exe") and "osascript" not in seen["args"]
+    assert seen["env"]["COFFEESHOP_NOTIFY_TITLE"] == 'Say "hi"'
+    assert seen["env"]["COFFEESHOP_NOTIFY_BODY"] == "the body"
+    assert 'Say "hi"' not in " ".join(seen["args"][1:])
+
+
+def test_windows_toast_failure_is_a_log_line_and_does_not_fail_the_sync(dd, monkeypatch):
+    monkeypatch.setattr(sync_all.sys, "platform", "win32")
+    fake_syncs(monkeypatch, fail="slack")
+
+    def boom(*a, **k):
+        raise OSError("blocked")
+    monkeypatch.setattr(sync_all.subprocess, "run", boom)
+    assert sync_all.desktop_notify("t", "m") == "Notification skipped: blocked"
+    assert sync_all.run(dd, force=True) == 1
+    log = next((dd.root / "logs").glob("sync-*.log")).read_text()
+    assert "Notification skipped: blocked" in log
+
+
+def test_a_windows_lock_held_by_another_sync_exits(dd, monkeypatch):
+    monkeypatch.setattr(sync_all, "fcntl", None)
+    fake = types.ModuleType("msvcrt")
+    fake.LK_NBLCK = 2
+    fake.locking = lambda fd, mode, n: (_ for _ in ()).throw(OSError(13, "locked"))
+    monkeypatch.setitem(sys.modules, "msvcrt", fake)
+    calls = fake_syncs(monkeypatch)
+    assert sync_all.run(dd, force=True, notify=lambda *a: None) == sync_all.LOCKED
+    assert calls == []
 
 
 def test_a_failed_backup_notifies_and_the_syncs_still_run(dd, monkeypatch):
