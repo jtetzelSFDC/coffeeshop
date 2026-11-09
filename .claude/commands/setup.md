@@ -1,7 +1,11 @@
 ---
 description: Set up Coffee Shop on this laptop: your notebook, role and level, V2MOM, connectors, and schedule.
 disable-model-invocation: true
-allowed-tools: Bash(uv run careeros *) Bash(uv --version) Bash(git config core.hooksPath .githooks) Bash(ls .githooks)
+allowed-tools:
+  - Bash(uv run careeros *)
+  - Bash(uv --version)
+  - Bash(git config core.hooksPath .githooks)
+  - Bash(ls .githooks)
 ---
 
 You are setting up Coffee Shop for the person at this keyboard, in this repo. Talk in short, plain sentences, one
@@ -33,9 +37,10 @@ If "Local notebook" failed, run `uv run careeros notebook init`. Never use `--da
 If "Role and level saved" passed, say what is saved and ask whether it is still right. Skip the rest of this step
 unless they want to change it (for example after a promotion).
 
-Otherwise ask for their role first. Run `uv run careeros setup level` to list the roles. It then asks a question
-that cannot be answered here, so it ends with "Aborted"; that is fine, the list is what you wanted. Show the list in
-a short form and ask which one is theirs. Then run `uv run careeros setup level --role "<role>"` to list that
+Otherwise ask for their role first. Run `uv run careeros setup level < /dev/null` to list the roles. It then asks
+a question that cannot be answered here, so it ends with "Aborted"; that is fine, the list is what you wanted.
+Always add `< /dev/null` so it cannot wait for typing. Show the list in
+a short form and ask which one is theirs. Then run `uv run careeros setup level --role "<role>" < /dev/null` to list that
 role's levels with their job titles (again it ends with "Aborted"). Ask which is their level now. Some roles list two
 job titles at one grade; read both out. Save it with `uv run careeros setup level --role "<role>" --grade <number>`.
 This also loads the role's leveling guide. Tell them the next level it found.

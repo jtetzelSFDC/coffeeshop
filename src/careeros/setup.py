@@ -58,7 +58,7 @@ def _level(dd: DataDir) -> tuple[str, str]:
 
 def _guide(dd: DataDir) -> tuple[str, str]:
     try:
-        with closing(sqlite3.connect(f"{dd.db.as_uri()}?mode=ro", uri=True)) as c:
+        with closing(sqlite3.connect(f"{dd.db.resolve().as_uri()}?mode=ro", uri=True)) as c:
             if c.execute("SELECT 1 FROM guide_item WHERE active LIMIT 1").fetchone():
                 return "pass", ""
     except sqlite3.Error:
@@ -69,10 +69,11 @@ def _guide(dd: DataDir) -> tuple[str, str]:
 def _v2mom(dd: DataDir) -> tuple[str, str]:
     from .v2mom import connector
     src = connector.load_source(dd)
-    if src and not (src["kind"] == "pdf" and not connector.newest_pdf(src["value"])):
+    moved = bool(src) and src["kind"] == "pdf" and not connector.newest_pdf(src["value"])
+    if src and not moved:
         return "pass", ""
-    return "fail", ("Your V2MOM PDF has moved. Connect it again: uv run careeros v2mom connect <path to the PDF>"
-                    if src else "Connect your V2MOM PDF: uv run careeros v2mom connect <path to the PDF>")
+    return "fail", f"{'Your V2MOM PDF has moved. Connect it again' if moved else 'Connect your V2MOM PDF'}: " \
+                   "uv run careeros v2mom connect <path to the PDF>"
 
 
 def _read(tool: str, prompt: str, service: str) -> tuple[str, str]:
@@ -128,7 +129,7 @@ def run_checks(dd: DataDir, skip: set[str] = frozenset()) -> list[Check]:
 
     def run(step) -> Check:
         key, label, fn = step
-        state, todo = ("skipped", "Skipped. Add it later by running setup again.") if key in skip else fn()
+        state, todo = ("skipped", "") if key in skip else fn()
         return Check(key, label, state, todo)
 
     with ThreadPoolExecutor(len(steps)) as ex:

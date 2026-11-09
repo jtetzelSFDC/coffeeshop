@@ -54,6 +54,14 @@ def test_local_steps_fail_until_done_and_pass_after(tmp_path, workbook):
     assert states(setup.run_checks(DataDir(tmp_path / "nothing")))["database"] == "fail"
 
 
+def test_checks_work_from_a_relative_notebook_folder(tmp_path, workbook, monkeypatch):
+    dd, _ = personal(tmp_path)
+    CliRunner().invoke(cli, ["setup", "level", "--role", ROLE, "--grade", "5", "--data-dir", str(dd.root)])
+    monkeypatch.chdir(tmp_path)
+    r = CliRunner().invoke(cli, ["setup", "check", "--skip", "google", "--skip", "slack", "--data-dir", "nb"])
+    assert "pass    Leveling guide loaded" in r.output and "skipped Google connector reachable\n" in r.output
+
+
 def test_checks_write_nothing(tmp_path, workbook):
     dd, _ = personal(tmp_path)
     CliRunner().invoke(cli, ["setup", "level", "--role", ROLE, "--grade", "5", "--data-dir", str(dd.root)])

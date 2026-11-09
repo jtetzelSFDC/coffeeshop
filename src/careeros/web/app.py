@@ -821,6 +821,8 @@ def create_app(dd: DataDir) -> FastAPI:
         return page_html(request, "v2mom.html", "/v2mom", r=v2mom_report.build(s),
                          connected=bool(v2mom_conn.load_source(dd)) if personal else False)
 
+    needs_personal = "Setup and Settings only work with your personal notebook."
+
     def setup_view(request: Request, s: Session, role: str = "", checks=None, skip=(), msg: str | None = None):
         try:
             guides = read_workbook()
@@ -835,13 +837,13 @@ def create_app(dd: DataDir) -> FastAPI:
     def setup_page(request: Request, role: str = "", msg: str | None = None, s: Session = Depends(db)):
         """The fallback for `/setup` in Claude Code: your role and level, the V2MOM, and a check of the connections."""
         if not personal:
-            return back("Setup only works with your personal notebook.")
+            return back(needs_personal)
         return setup_view(request, s, role, msg=msg)
 
     @app.post("/setup/level", dependencies=[Depends(check_csrf)])
     def setup_level(role: str = Form("", max_length=200), grade: int = Form(...), s: Session = Depends(db)):
         if not personal:
-            return back("Setup only works with your personal notebook.")
+            return back(needs_personal)
         try:
             g = find_role(read_workbook(), role)
             if g is None:
@@ -857,14 +859,14 @@ def create_app(dd: DataDir) -> FastAPI:
     def setup_check(request: Request, on: list[str] = Form([]), s: Session = Depends(db)):
         """Runs every check (reads only); the connectors not ticked are skipped."""
         if not personal:
-            return back("Setup only works with your personal notebook.")
+            return back(needs_personal)
         skip = {"google", "slack", "github"} - set(on)
         return setup_view(request, s, checks=run_checks(dd, skip), skip=skip)
 
     @app.get("/settings", response_class=HTMLResponse)
     def settings_page(request: Request, msg: str | None = None, s: Session = Depends(db)):
         if not personal:
-            return back("Settings only work with your personal notebook.")
+            return back(needs_personal)
         return page_html(request, "settings.html", "/settings", lv=gsvc.level(s), msg=msg)
 
     @app.get("/kso", response_class=HTMLResponse)
