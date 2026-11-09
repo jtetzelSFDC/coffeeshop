@@ -912,7 +912,7 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.post("/promo/write", dependencies=[Depends(check_csrf)])
     def promo_write(request: Request, start: str = Form(""), end: str = Form(""), name: str = Form("", max_length=80),
-                    example: str = Form("", max_length=6_000), s: Session = Depends(db)):
+                    example: str = Form(""), s: Session = Depends(db)):
         """Start writing a draft in the background; the page shows progress per section. Too little data to write
         from is said here, before Claude is asked."""
         from ..promo import evidence as pe, write as pw
