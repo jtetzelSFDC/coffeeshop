@@ -16,6 +16,8 @@ DOC_ID = re.compile(r"(?:/document/d/)?([\w-]{25,})")
 PAGE_MARKER = re.compile(r"^[ \t]*(?:--[ \t]*\d+[ \t]+of[ \t]+\d+[ \t]*--|Page[ \t]+\d+[ \t]+of[ \t]+\d+)[ \t]*\n?",
                          re.M | re.I)
 MAX_READ = 60_000
+MAX_PDF = 8_000_000  # a V2MOM export is a few pages; bigger than this is not one
+STORED_PDF = "V2MOM.pdf"  # fixed name: the upload's own name is untrusted, and the sync looks for "V2MOM" in it
 
 _REPLY = """Reply with only JSON, in the text's order, using its own words (don't summarize or invent):
 {"fiscal_year": "FY27" or "", "published": the published date as written, e.g. "Mar 25, 2026", or "",
@@ -57,6 +59,18 @@ if any.
 
 def source_file(dd: DataDir) -> Path:
     return dd.root / SOURCE_FILE
+
+
+def store_upload(dd: DataDir, data: bytes) -> Path:
+    """Save an uploaded V2MOM PDF into the notebook (only you can read it). ValueError when it isn't a PDF or is too big.
+    The bytes are checked, not the file name the browser sent."""
+    if len(data) > MAX_PDF:
+        raise ValueError("That PDF is too big. A V2MOM export is a few pages.")
+    if not data.startswith(b"%PDF"):
+        raise ValueError("That isn't a PDF. Download your V2MOM as a PDF from the V2MOM app.")
+    path = dd.root / STORED_PDF
+    write_private(path, data)
+    return path
 
 
 def save_source(dd: DataDir, value: str) -> dict:

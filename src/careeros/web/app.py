@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlencode, urlparse
 
-from fastapi import Depends, FastAPI, Form, Request
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import delete, false, func, select
@@ -363,6 +363,19 @@ def create_app(dd: DataDir) -> FastAPI:
     def v2mom_sync(request: Request):
         """Re-read the V2MOM (after a check-in, say), in the background."""
         return start_sync(request, "v2mom")
+
+    @app.post("/v2mom/upload", dependencies=[Depends(check_csrf)])
+    def v2mom_upload(request: Request, pdf: UploadFile | None = File(None)):
+        """Save a new V2MOM PDF into this notebook and read it now. Personal notebook only."""
+        if not personal:
+            return back("Uploading a V2MOM only works with your personal notebook.", "/v2mom")
+        raw = pdf.file.read(v2mom_conn.MAX_PDF + 1) if pdf is not None and pdf.file is not None else b""
+        try:
+            path = v2mom_conn.store_upload(dd, raw)
+            v2mom_conn.save_source(dd, str(path))
+        except ValueError as exc:
+            return back(str(exc), "/v2mom")
+        return start_sync(request, "v2mom", to="/v2mom")
 
     def sync_view(s: Session) -> dict[str, dict]:
         st = sync_status(s)

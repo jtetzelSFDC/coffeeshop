@@ -13,6 +13,7 @@
   <div class="qhead"><h2>KSOs {{ fw.fiscal_year }}{% if fw.track %} &middot; {{ fw.track }}{% endif %}</h2>
   {% if r.years|length > 1 %}<form method="get" action="/kso" style="margin-left:auto"><label class="sr" for="kso-fy">Year</label>
     <select id="kso-fy" name="fy">{% for y in r.years %}<option {{ 'selected' if y == fw.fiscal_year }}>{{ y }}</option>{% endfor %}</select> <button>Show</button></form>{% endif %}</div>
+  <p class="sub">KSOs: {{ fw.fiscal_year }}{% if fw.track %} {{ fw.track }}{% endif %}</p>
   <p class="sub">Your manager rates each KSO from 1 to 5, {{ 'once a year' if d.rated == 'yearly' else 'each quarter' }}, against the goals in your V2MOM. Each rating pays a share of that KSO's part of your bonus:
     {% for k, p in d.payout.items() %}<span class="chip" title="{{ d.level_names[k] }}">{{ k }} = {{ '%g'|format(p) }}%</span>{% endfor %}</p>
   {% if r.current %}<div class="row">{{ sync_chips(sync, [("kso", "KSO estimate")]) }}
