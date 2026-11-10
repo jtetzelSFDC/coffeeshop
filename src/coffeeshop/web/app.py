@@ -4,7 +4,6 @@ from __future__ import annotations
 import hashlib
 import os
 import hmac
-import re
 import threading
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -912,7 +911,7 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.get("/kso", response_class=HTMLResponse)
     def kso_page(request: Request, fy: str = "", msg: str | None = None, s: Session = Depends(db)):
-        """This year's KSOs: how each is measured, how you stand (plain math from your V2MOM), and what it pays."""
+        """This year's KSOs: how each is measured, and how you stand (plain math from your V2MOM)."""
         from ..kso import progress as kso_progress
         return page_html(request, "kso.html", "/kso", r=kso_progress.build(s, fy or None), msg=msg, sync=sync_view(s))
 
@@ -924,23 +923,6 @@ def create_app(dd: DataDir) -> FastAPI:
     def _kso_fw(s: Session, fy: str):
         from ..kso import framework as kso_fw
         return kso_fw.get(s, fy) if fy else None
-
-    @app.post("/kso/target", dependencies=[Depends(check_csrf)])
-    def kso_target(fy: str = Form(""), target: str = Form("", max_length=20), s: Session = Depends(db)):
-        from ..kso import progress as kso_progress
-        to = f"/kso?fy={quote(fy)}"
-        if _kso_fw(s, fy) is None:
-            return back("Those KSOs aren't here any more.", "/kso")
-        digits = re.sub(r"[$,\s]", "", target)
-        whole = re.fullmatch(r"(\d+)(?:\.\d{1,2})?", digits)
-        try:
-            if digits and not whole:
-                raise ValueError
-            with _write_lock:
-                kso_progress.set_target(s, fy, int(whole.group(1)) if digits else None)
-        except ValueError:
-            return back("Enter your yearly target incentive in dollars, like 12000.", to)
-        return back("Saved. It stays on this laptop." if digits else "Target cleared.", to)
 
     @app.post("/kso/rating", dependencies=[Depends(check_csrf)])
     def kso_rating(fy: str = Form(""), kso: str = Form(""), rating: str = Form(""), s: Session = Depends(db)):

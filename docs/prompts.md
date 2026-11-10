@@ -125,9 +125,9 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 
 ## 14. KSO framework
 
-`kso/framework.py` `PROMPT`. Turns the KSO deck and canvases into KSOs, weights, components, rubric, examples, payouts, and dates for your track.
+`kso/framework.py` `PROMPT`. Turns the KSO deck and canvases into KSOs, weights, components, rubric, examples, and dates for your track.
 - **Gets:** the material's text, clipped to `MAX_READ` 120,000; the track (Delivery by default) and whether you're a people manager.
-- **Checked by:** `validate()`: ratings 1 to 5 everywhere; payouts numbers from 0 to 300 that rise with the rating; unique keys; weights above 0, at most 100 each and in all; 2 or more examples per part, each up to `MAX_EXAMPLE` 140; dates in ISO form. A bad answer changes nothing.
+- **Checked by:** `validate()`: ratings 1 to 5 everywhere; a 1-to-5 number table from 0 to 300 that rises with the rating; unique keys; weights above 0, at most 100 each and in all; 2 or more examples per part, each up to `MAX_EXAMPLE` 140; dates in ISO form. A bad answer changes nothing.
 - **New user:** doesn't depend on records.
 - **Decision: keep.** The strictest check in the app; once a year, by hand.
 
@@ -142,7 +142,7 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 ## 16. KSO estimate
 
 `kso/estimate.py` `PROMPT`. Guesses the 1 to 5 your manager would give each KSO, with a reason per part and 3 next steps.
-- **Gets:** the rubric, the V2MOM methods matched to each part (6 measures, text and comments clipped to 160 and 200), this fiscal year's linked work titles (100 each, newest first, `MAX_EVIDENCE` 8,000 split evenly across parts), and a kudos count for feedback parts. Never money.
+- **Gets:** the rubric, the V2MOM methods matched to each part (6 measures, text and comments clipped to 160 and 200), this fiscal year's linked work titles (100 each, newest first, `MAX_EVIDENCE` 8,000 split evenly across parts), and a kudos count for feedback parts.
 - **Checked by:** `validate()`: every KSO once, a whole number from 1 to 5, a reason for every part (cut to `MAX_WHY` 200; prompt asks 160), exactly `STEPS` 3 next steps up to `MAX_STEP` 110 (prompt asks 90). A bad answer changes nothing.
 - **New user:** runs only once KSOs are read and matched. With little work it rates low, which the prompt asks for ("honest, not kind").
 - **Decision: keep.** Evidence is capped per part, and the shape is checked.

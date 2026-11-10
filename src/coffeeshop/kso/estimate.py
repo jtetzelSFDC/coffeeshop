@@ -1,6 +1,5 @@
 """Claude's monthly guess at the 1-5 your manager would give each KSO, from the rubric and what your V2MOM and
-notebook show, with a reason per part and three small next steps. Marked AI; your own rating always wins. It never
-sees your target incentive or any dollar amount."""
+notebook show, with a reason per part and three small next steps. Marked AI. Your own rating is separate."""
 from __future__ import annotations
 
 import json
@@ -21,7 +20,7 @@ MAX_EVIDENCE = 8_000
 MAX_WHY, MAX_STEP, STEPS = 200, 110, 3
 ASK_WHY, ASK_STEP = 160, 90  # asked for less than checked: Claude aims right at a stated limit
 
-PROMPT = """You estimate the 1 to 5 rating a manager would give someone on each of their KSOs (bonus objectives), \
+PROMPT = """You estimate the 1 to 5 rating a manager would give someone on each of their KSOs, \
 the way the manager would: against the rubric, and against what their V2MOM (yearly plan) shows. On stdin is JSON: \
 "ksos", each with components holding the rubric "levels" (1 to 5), the V2MOM "methods" that count toward the \
 component (with status, progress, and measures), the titles of "work" linked to those methods this year, and for \
@@ -38,7 +37,7 @@ Reply with only JSON: {{"ksos": [{{"key": "1", "rating": 3, "why": {{"1.1": "...
 
 
 def context(s: Session, fw: KsoFramework, today: date | None = None) -> dict:
-    """What Claude reads: the rubric, the matched V2MOM methods, and work titles (newest first, capped). No money."""
+    """What Claude reads: the rubric, the matched V2MOM methods, and work titles (newest first, capped)."""
     from ..v2mom import links, report
     today = today or date.today()
     _, lo, hi = report.fiscal_year(fw.fiscal_year, today)

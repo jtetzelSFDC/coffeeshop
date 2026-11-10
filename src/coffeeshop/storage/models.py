@@ -201,7 +201,7 @@ class DailyTask(Base):
 
 
 class KsoFramework(Base):
-    """One fiscal year's KSOs as read from the KSO deck and guides: weights, components, rubric, payout per rating.
+    """One fiscal year's KSOs as read from the KSO deck and guides: weights, components, and the rubric.
     Internal material, so it stays in the notebook."""
     __tablename__ = "kso_framework"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -224,8 +224,8 @@ class KsoMap(Base):
 
 
 class KsoYear(Base):
-    """What you enter for a fiscal year: your target incentive (dollars, never sent anywhere) and your own 1-5
-    rating per KSO (a guess, or the final one once your manager has rated you)."""
+    """Your own 1-5 rating per KSO for a fiscal year (a guess, or the final one once your manager has rated you).
+    target_incentive is unused and kept so older notebooks still open."""
     __tablename__ = "kso_year"
     id: Mapped[int] = mapped_column(primary_key=True)
     fiscal_year: Mapped[str] = mapped_column(String, unique=True)
