@@ -4,13 +4,13 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack tracker, kudos, and GitHub pull requests, has Claude sort each one against your role's leveling guide, your V2MOM, and your KSOs, and keeps your wins, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
+Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests, has Claude sort each one against your role's leveling guide, your V2MOM, and your KSOs, and keeps your wins, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
 ## Start your notebook (the everyday way)
 
-Your real, permanent notebook lives in `~/Library/Application Support/coffeeshop`. It survives restarts. Open Terminal and run:
+Your real, permanent notebook lives in `~/Library/Application Support/coffeeshop` on a Mac, and in `%LOCALAPPDATA%\coffeeshop` on Windows. It survives restarts. Open Terminal, or PowerShell on Windows, and run:
 
 ```
 cd ~/Documents/coffeeshop
@@ -19,7 +19,7 @@ uv run careeros setup level     # first time only: your role and grade (see Leve
 uv run careeros serve
 ```
 
-Open **http://127.0.0.1:8765** in a browser. Leave the terminal running. Press **Ctrl+C** in it to stop the app. If the page stops loading (for example after the Mac restarts), run the same command again. Your entries and wins are still there.
+Open **http://127.0.0.1:8765** in a browser. Leave the terminal running. Press **Ctrl+C** in it to stop the app. If the page stops loading (for example after a restart), run the same command again. Your entries and wins are still there.
 
 Don't add `--data-dir` to this command. That flag points the app at a different folder, such as the practice demo below.
 
@@ -33,17 +33,17 @@ The fallback is the **Setup** page in the Menu (http://127.0.0.1:8765/setup): pi
 
 ## Let it run on its own (recommended)
 
-One command sets up three small macOS scheduled tasks, so you never start the app or press Sync yourself:
+One command sets up three scheduled tasks, so you never start the app or press Sync yourself. On a Mac they are launchd agents. On Windows they are Task Scheduler tasks.
 
 ```
 cd ~/Documents/coffeeshop
 uv run careeros schedule install
 ```
 
-- **The app** starts when you log in and restarts by itself if it ever stops. It's always at http://127.0.0.1:8765. If you'd started it yourself in a Terminal, stop that one (Ctrl+C) first.
+- **The app** starts when you log in and comes back if it stops. On Windows, Task Scheduler starts it at logon and, if it exits with an error, starts it again one minute later (up to 255 times). A clean exit waits until the next logon. It's at http://127.0.0.1:8765 once it's running. If you'd started it yourself in a Terminal, stop that one (Ctrl+C) first.
 - **The sync** runs at 8:00 AM and 6:00 PM (after your 5 PM Slack automation), and once when you log in if a run was missed while the laptop was closed. Each run backs up the notebook first, then does exactly what the Sync Slack tracker and Sync Google buttons do, then pulls your GitHub pull requests. If nothing is due, it does nothing.
-- **If something fails**, for example a connector's sign-in expired, a macOS notification says which sync and what to do (usually: open Claude Code's connector settings and sign in again). Nothing is shown when everything works; the status chips show the times.
-- **The daily three** come as the last step of the morning sync, so they're ready by about 8:15 to 8:30 AM and always see the work just pulled in. If the Mac was off that morning, the login or 6 PM sync makes them. See **Daily three** below.
+- **If something fails**, for example a connector's sign-in expired, a notification says which sync and what to do (usually: open Claude Code's connector settings and sign in again). On Windows, if the toast is blocked, the same words go in the sync log instead. Nothing is shown when everything works; the status chips show the times.
+- **The daily three** come as the last step of the morning sync, so they're ready by about 8:15 to 8:30 AM and always see the work just pulled in. If the computer was off that morning, the login or 6 PM sync makes them. See **Daily three** below.
 - **The digest** shows a notification on Fridays at 12:00 PM (if the laptop was asleep, as soon as it wakes). See **Weekly digest** below.
 - `uv run careeros schedule status` shows whether each is on and the last sync log line. Logs are in `logs/` in your notebook folder.
 - `uv run careeros sync all --force` runs a sync right now from Terminal.
@@ -57,7 +57,7 @@ uv run careeros demo seed --data-dir /tmp/cos-demo
 uv run careeros serve --data-dir /tmp/cos-demo
 ```
 
-It holds a week of made-up meetings, Slack items, tasks, and notes, two wins, and a tiny made-up leveling guide, so every page has something to show. It never syncs with Slack or Google. `/tmp` is cleared when the Mac restarts; just run `demo seed` again. Never put real notes here.
+It holds a week of made-up meetings, Slack items, tasks, and notes, two wins, and a tiny made-up leveling guide, so every page has something to show. It never syncs with Slack or Google. `/tmp` is cleared when the Mac restarts; on Windows, use a folder such as `$env:TEMP\cos-demo` instead of `/tmp/cos-demo`. Just run `demo seed` again. Never put real notes here.
 
 ## Wins: your accomplishments for reviews, promotion, and your resume
 
@@ -118,7 +118,7 @@ Colors come from points. A linked entry is worth 1, and a small, medium, or larg
 The **Intake Review Queue** (in the Menu) lists every record (calendar meetings, Google Tasks, Slack items, and what you typed) as rows, newest first, 100 to a page. Each row has one-click buttons:
 
 - **Type**: Meeting, Convo, Doc, Task, or Other. The lit one is the current type.
-- **Leveling guide**: the guide items the record shows, and the V2MOM methods it moves forward (**V2MOM M2**). Click &times; to remove one, or **edit**/**link** to pick them yourself.
+- **Leveling guide**: the guide items the record shows, and the V2MOM methods it moves forward (the method's name, shortened if it's long; hover for the full name). Click &times; to remove one, or **edit**/**link** to pick them yourself.
 - **Win**: **S**, **M**, or **L** makes the record a small, medium, or large win (or resizes it), and &times; removes the win. Click the win's title to see why it mattered, then **Edit on Wins** to reword it.
 - **Looks right** marks the row checked. Whatever Claude picked for it becomes yours, and the row leaves the **Not checked yet** list, so you can work down the list until it's empty.
 - **Remove** (under Looks right) takes a record out for good, for example a meeting you didn't attend. Its pasted notes, guide links, and any win Claude drafted from it go too; wins you made or edited stay. Calendar, Tasks, and Slack syncs skip removed records so they don't come back. Choose **Removed** in the Show menu to see them and **Restore** one if you change your mind.
@@ -159,7 +159,11 @@ It never touches rows you've marked checked or guide links you picked yourself. 
 
 Your Slack Work Activity Tracker canvas (the one Slackbot fills in every day) comes into the notebook as entries. Claude reads each work item and decides whether it was a meeting, a conversation, a document, or a task. Anything it can't place goes to **Other**. Every entry from Slack has a **from Slack** label, the tracker's notes underneath (marked as written by Slack's AI), and a link back to the Slack thread. Items that are already in the notebook are skipped, so syncing again is safe. Tasks from Slack come in as done. When the tracker says why something mattered, the entry gets a dashed **suggested win** label and the **Count this as a win** form is pre-filled with that reason, so you can edit it into your own words and save.
 
-**The Sync Slack tracker button** on Home reads the canvas through Claude Code's Slack connector, sorts the new items, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again in Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
+**Your own messages.** The same sync searches Slack for messages you sent, in public and private channels only. DMs and group DMs are never searched. The first search looks back 90 days; after that, only the last couple of days. Messages you sent in one thread on one day become one record, with a link to the message, dated from the message's own time. Very short replies, emoji-only messages, and bots are left out before Claude reads anything. When you replied in someone else's thread, the sync reads that thread's first message (up to 20 threads a sync) so a short reply still has what it answers.
+
+**The canvas confirms.** The tracker is still read. When one of its items links to a message already in the notebook, its summary is added to that record's notes and the message's date stays. An item with a date and a link but no matching message is still added, marked as from the canvas. An item with no link is added as before.
+
+**The Sync Slack tracker button** on Home reads your messages and the canvas through Claude Code's Slack connector, sorts the new records, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again in Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
 
 ```
 cd ~/Documents/coffeeshop
@@ -179,7 +183,7 @@ uv run careeros daily suggest --force   # a new three, keeping any you've alread
 uv run careeros daily show              # print today's three
 ```
 
-**On Home**, a **Today's three** card sits at the top. Each line is a checkbox, the task, and a small `~5 min · V2MOM M4` hint (hover the task for why it helps).
+**On Home**, **Promotion Progress** is the top cell. Its title row has a small green bar for the next grade, and clicking the cell opens it. Under that are **Today's Three**, **New Entry**, and **Sync Status**. Each stays closed until you click it.
 
 - **Check one off:** press its box, add what you did if you like (optional), and press **Done**. It's logged as a finished task (from "daily"), so it counts like any other work, and the next sync links it to the leveling guide and your V2MOM.
 - **Changed your mind:** press the checked box. The record it logged goes too, unless you wrote what you did, checked it in the Intake Review Queue, or made a win from it. Then the record stays, and checking the box again reuses it.
@@ -202,7 +206,7 @@ At the top are **nudges**, each with a link to where to act:
 
 When nothing needs you, it says so. The page is worked out when you open it, from the notebook only: no Claude, nothing stored.
 
-On Fridays at 12:00 PM the schedule shows a macOS notification like "This week: 13 wins, 54 records, 3 nudges. Open http://127.0.0.1:8765/digest". macOS doesn't open links from these notifications, so open the page from the Menu. To see it now: `uv run careeros digest notify`.
+On Fridays at 12:00 PM the schedule shows a notification like "This week: 13 wins, 54 records, 3 nudges. Open http://127.0.0.1:8765/digest". The notification doesn't open the link, so open the page from the Menu. To see it now: `uv run careeros digest notify`.
 
 ## Kudos: recognition from other people
 
@@ -277,8 +281,9 @@ If `gh` isn't signed in, the sync says so; run `gh auth login`.
 
 The V2MOM app won't let the command line sign in, so the app reads your V2MOM from the PDF the V2MOM app exports (recommended: it has every measure's progress and comments, and your check-ins) or from a Google Doc you paste it into.
 
-1. **Download it as a PDF.** In the V2MOM app, use **download as PDF** and save it to your Desktop. Keep the name it gives you (something like "FY27 V2MOM Your Name.pdf").
-2. **Connect it** once, with the file's path:
+**The easy way.** In the V2MOM app, use **download as PDF**. Open **V2MOM** in the Menu and press **Upload and read**. The PDF is saved in your notebook folder, readable only by you, and the app starts reading it. The page says which one is active, like "Active: FY27 V2MOM, read Nov 3". A new fiscal year is kept beside the old one; last year's methods and the work already linked to them stay as they were.
+
+The command still works. Save the PDF (keep the name it gives you, something like "FY27 V2MOM Your Name.pdf") and connect it once:
 
 ```
 cd ~/Documents/coffeeshop
@@ -290,11 +295,11 @@ The app pulls the text out of the PDF on your laptop (with pypdf), then Claude (
 
 **Or a Google Doc** (still works): open your V2MOM in the V2MOM app, expand each method so its measures show, select the whole page, copy, and paste it into a new Google Doc; the page's extra text is ignored. Then connect the Doc's link instead: `uv run careeros v2mom connect "https://docs.google.com/document/d/…/edit"`. The sync reads it through Claude Code's Google Workspace connector. The Doc has no check-ins or measure comments. Connecting the PDF later keeps your methods and their links.
 
-**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again into the same folder and press **Sync V2MOM** on Home. Each sync reads the newest PDF with "V2MOM" in its name in that folder, so a re-download saved as "… (1).pdf" is picked up without connecting again. The latest fiscal year in the name comes first, so downloading last year's PDF to look back at doesn't replace this year's, and next year's FY28 PDF is picked up by itself. If the file is gone, the sync says where to save it. With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
+**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again and upload it on the V2MOM page (or, if you connected a folder, save the new PDF there and press **Sync V2MOM** on Home). Each sync reads the newest PDF with "V2MOM" in its name in that folder, so a re-download saved as "… (1).pdf" is picked up without connecting again. The latest fiscal year in the name comes first, so downloading last year's PDF to look back at doesn't replace this year's, and next year's FY28 PDF is picked up by itself. If the file is gone, the sync says where to save it. With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
 
-**The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when your V2MOM was read in the last 31 days, orange when it's older, and grey with a hint when nothing is connected yet. The PDF's path or the Doc's id is kept in `v2mom.json` in the notebook folder, readable only by you (a `v2mom.doc` from before still works). The text passes through Claude Code to be read; the PDF itself stays where it is.
+**The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when your V2MOM was read in the last 31 days, orange when it's older, and grey with a hint when nothing is connected yet. The PDF's path or the Doc's id is kept in `v2mom.json` in the notebook folder, readable only by you (a `v2mom.doc` from before still works). An upload is saved in that folder as `v2mom/V2MOM.pdf`, also only you can read it. A PDF you connected with the command stays where you saved it. The text passes through Claude Code to be read.
 
-**Linking your work to methods.** Once the V2MOM is loaded, Claude's read-through of new records (after every sync, and the queue's **Have Claude read** button) also picks the V2MOM methods each record really moves forward: none for routine meetings and status pings, at most two. It's the same read as the leveling-guide links, so it costs no extra Claude time. In the Intake Review Queue they show as purple **AI: V2MOM M2** chips next to the guide chips (hover for the method's name). **Looks right** makes them yours, **&times;** on a chip removes it for good (Claude won't put it back), and **edit** opens the linking page, which now has a **Which V2MOM methods does this move forward?** list at the top. Once you've changed a record's methods, Claude leaves them alone. A chip that says **V2MOM old** points at a method that's no longer in your current V2MOM (dropped, or last year's); it stays so the history makes sense.
+**Linking your work to methods.** Once the V2MOM is loaded, Claude's read-through of new records (after every sync, and the queue's **Have Claude read** button) also picks the V2MOM methods each record really moves forward: none for routine meetings and status pings, at most two. It's the same read as the leveling-guide links, so it costs no extra Claude time. In the Intake Review Queue they show as chips with the method's name, shortened if it's long (hover for the full name), purple when Claude picked them. **Looks right** makes them yours, **&times;** on a chip removes it for good (Claude won't put it back), and **edit** opens the linking page, which now has a **Which V2MOM methods does this move forward?** list at the top. Once you've changed a record's methods, Claude leaves them alone. A method that's no longer in your current V2MOM (dropped, or last year's) still shows its name; hover says so. It stays so the history makes sense.
 
 **Linking what's already in the notebook** (once, after the first V2MOM sync). Records Claude read before the V2MOM existed have no methods yet. This reads them in batches of 40 (about 16 batches for 600 records, a few minutes):
 
@@ -307,7 +312,7 @@ It skips records already read against the V2MOM and ones whose methods you set, 
 
 ### The V2MOM page
 
-**V2MOM** in the Menu shows your current V2MOM. At the top: the fiscal year, how many methods had work this quarter, when it was published, and when the app last read your PDF or Doc. **Vision and values** folds open to its vision and values.
+**V2MOM** in the Menu shows your current V2MOM. At the top it says which one is active, like "Active: FY27 V2MOM, read Nov 3", then how many methods had work this quarter, when it was published, and when the app last read your PDF or Doc. **Upload and read** takes a new PDF. **Vision and values** folds open to its vision and values.
 
 Below, one row per method, in your V2MOM's order:
 
@@ -341,7 +346,7 @@ It reads the deck through the Google connector and the canvases through the Slac
 
 **The KSOs page** (Menu > KSOs) shows this year's KSOs, with a year picker once there's more than one.
 
-- **At the top:** how you're rated, the payout for each rating, and the next key dates.
+- **At the top:** the year in use, like "KSOs: FY27 Delivery", then how you're rated, the payout for each rating, and the next key dates. Older years stay in the year picker.
 - **One card per KSO:** its share of your bonus, what it measures, and a bar. Then one row per part:
   - **The bar:** the average progress of the V2MOM methods that count toward the part, taken from your V2MOM. A part with no V2MOM goal gets a warning and counts as 0 in the KSO's bar, because your manager counts a missing one against you too.
   - **What the manager looks at,** in plain words.
@@ -364,14 +369,15 @@ At year end, pick the year on the Wins tab and click **Download as Markdown**. T
 
 The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, V2MOM, KSOs, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
 
-- **Home**: today's three small tasks, then one card about the goal.
-  - **Today's three:** see **Daily three** above. The practice notebook shows a made-up three (run `demo seed` again on a new day to see it).
+- **Home**: Promotion Progress, Today's Three, New Entry, then Sync Status. Each cell stays closed until you click it.
+  - **Promotion Progress:** a small green bar for the next grade on the title. Clicking the tile opens it; it does not leave Home.
+  - **Today's Three:** see **Daily three** above. The practice notebook shows a made-up three (run `demo seed` again on a new day to see it).
   - **Promotion readiness:** a bar each for Grade 6 and Grade 7, showing how many key experiences are shown, with a percentage (hover for the detail; click for the Promo map).
   - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method (see **The V2MOM page**). Hidden until a V2MOM is loaded.
   - **Four tiles:** leveling-guide skills with evidence, wins this half, kudos this half, and records waiting in the Intake Review Queue.
   - **Momentum:** a small chart of evidence per week (wins plus records linked to the guide) for the last 12 weeks, with the current week in darker green. Hover over a bar for its count.
   - **Next:** one line with the Promo map's top Aim for next.
-  - **Below:** the Sync buttons with their status chips, and one slim line to add something the syncs missed. Pick a kind, type a few words, and click **Add**; you land on that kind's tab with the new entry. **Paste notes, a link, or a transcript** folds out under it.
+  - **Sync Status:** the Sync buttons and the last-pull chips for Calendar, Tasks, Docs, Slack, Kudos, and the V2MOM. Closed until you click it.
   - There's no day-by-day list here any more. The daily review happens in the Intake Review Queue, and the Friday digest covers the week. Every record is still on its tab.
 - **Wins**, **Promo map**, **V2MOM**, **KSOs**, and the **Intake Review Queue**: described in their own sections above.
 - **Meetings / Conversations / Documents / Tasks / Kudos / Other**: one tab per kind of entry, newest first. Each entry is one line: a small icon for where it came from (calendar, Slack, Docs, GitHub, Tasks, kudos, or a pencil for typed), the text, and four icon buttons on the right (hover for their names):
@@ -405,9 +411,9 @@ Every test should pass: the last line says `passed`, with no `failed`. A failure
 
 ## What comes next
 
-Your personal notebook is connected to Google Calendar, Google Tasks, Google Docs, the Slack tracker canvas, Slack kudos, and GitHub, and Claude links what comes in to the leveling guide. Ideas still open:
+Your personal notebook is connected to Google Calendar, Google Tasks, Google Docs, your Slack messages and tracker canvas, Slack kudos, and GitHub, and Claude links what comes in to the leveling guide. Ideas still open:
 
-1. **Fill in older history.** Older Google Calendar history needs a little setup: the Claude connector reaches back 14 days at most (`uv run careeros calendar pull --days 14`), while connecting the calendar's private iCal address (`calendar connect`) lets `calendar sync --days 60` go back two months at a time. Older Slack work could be found by searching your messages, then read by Claude like everything else.
+1. **Fill in older history.** Older Google Calendar history needs a little setup: the Claude connector reaches back 14 days at most (`uv run careeros calendar pull --days 14`), while connecting the calendar's private iCal address (`calendar connect`) lets `calendar sync --days 60` go back two months at a time. Slack messages older than 90 days are not searched.
 2. **Keep the approvals questions in mind:**
    - Do the owners of the customer-related channels and repos mind a personal tool keeping titles and short notes from them?
    - Is Claude, through Claude Code, approved for this kind of work content?
@@ -429,7 +435,7 @@ Yes, on this laptop. `uv run careeros backup now` copies the notebook into `back
 
 **How do I restore from a backup?**
 1. Stop the app (Ctrl+C in its Terminal window).
-2. In `~/Library/Application Support/coffeeshop`, move `coffeeshop.db`, `coffeeshop.db-wal`, and `coffeeshop.db-shm` into a spare folder (don't delete them yet).
+2. In the notebook folder (`~/Library/Application Support/coffeeshop` on a Mac, `%LOCALAPPDATA%\coffeeshop` on Windows), move `coffeeshop.db`, `coffeeshop.db-wal`, and `coffeeshop.db-shm` into a spare folder (don't delete them yet).
 3. Copy the backup you want from `backups/` (for example `coffeeshop-2026-10-28.db`) into the notebook folder and rename it `coffeeshop.db`.
 4. Start the app again with `uv run careeros serve` and check your entries. Once you're happy, the moved files can go.
 
@@ -448,7 +454,7 @@ Before using it on a work calendar, check that titles of meetings (which can nam
 Yes. On Home, press **Sync Google** (or run `uv run careeros calendar pull` for the calendar part only). Sync Google does Calendar, the Google Docs you wrote (see that section), Google Tasks (only ones you've marked complete in Google, from the task lists changed since the last pull; open tasks never come in, and one you finish shows up on the next sync, dated the day you completed it; a task you removed while it was open still comes in once you finish it; a task list that couldn't be read is reported, never treated as deleted; the pull then isn't counted, so the next Sync Google looks back to the same point and picks up what was missed), and meeting-note summaries in one go, then has Claude link the new records to the leveling guide. Only meetings that have ended come in: a meeting later today shows up on the first sync after it's over, by which time its Gemini notes are usually attached (the 8 AM sync then catches notes that arrived overnight). A progress bar under the button ticks through each step and shows any error in plain words; you can keep using the app while it runs. If the calendar connector answers with an error (for example an expired Google sign-in), that step stops with the message instead of reading it as an empty calendar, so no meetings are removed. For the calendar part, it starts Claude Code in the background with permission to use only the calendar tool, fetches yesterday's and today's meetings through the Google Workspace connector, and saves title, time, and Google file links (Gemini notes, recordings). Declined meetings and all-day items are skipped. It then reads the Google Docs attached to each meeting (Gemini notes, shared notes) and saves a short "AI summary" under the meeting, with the notes linked beside it; meetings without notes say so. Expect a few minutes when there are many meetings. Nothing duplicates, and a failed summary is retried the next time you press the button. Recordings and chat files aren't read. Meeting titles, times, and attendee details pass through the AI tool on the way, so it only runs when you press it or when the schedule you installed runs it. It needs Claude Code installed and the Google Workspace connector signed in. `careeros calendar pull --days 7` reaches further back (max 14).
 
 **Where is my information stored, and is it backed up?**
-Everything (entries, pasted notes, wins) is in one file: `~/Library/Application Support/coffeeshop/coffeeshop.db`, on this laptop only. It is not in iCloud or any synced folder, and the app refuses to keep a real notebook in one. Time Machine backs it up if Time Machine is on. Daily copies go into `backups/` next to it (see "Is my real notebook backed up?" above).
+Everything (entries, pasted notes, wins) is in one file, `coffeeshop.db`, in the notebook folder (`~/Library/Application Support/coffeeshop` on a Mac, `%LOCALAPPDATA%\coffeeshop` on Windows), on this computer only. It is not in iCloud, OneDrive, or any synced folder, and the app refuses to keep a real notebook in one. Time Machine backs it up on a Mac if Time Machine is on. Daily copies go into `backups/` next to it (see "Is my real notebook backed up?" above).
 
 **Can I export everything, not just wins?**
 Yes. Click **Download everything (CSV)** at the bottom of any page. You get one zip with six spreadsheets: `entries.csv` (every meeting, task, and note), `pasted_notes.csv` (everything pasted under them, with the entry it belongs to), `wins.csv`, `guide_links.csv` (which wins and entries you linked to which leveling guide items), `v2mom_links.csv` (which ones advance which V2MOM method), and `promo_drafts.csv` (every section of every promo case draft). They open in Excel, Numbers, or Google Sheets, so the data stays readable even without this app. It's a snapshot of that moment; download a fresh one whenever you like, for example at year end. The zip holds everything you pasted, so keep it somewhere as safe as this laptop, and remember that removing something in the app doesn't remove it from zips you already downloaded. Text that starts with `=`, `+`, `-`, or `@` gets a leading `'` so a spreadsheet shows it instead of running it as a formula.

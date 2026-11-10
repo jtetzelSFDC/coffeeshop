@@ -150,23 +150,24 @@ def test_cli_import(tmp_path, monkeypatch):
 
 
 def test_web_sync_and_cards(tmp_path, monkeypatch):
-    from careeros.slack import connector
+    from careeros.slack import connector, kudos, messages
     dd, Session = personal(tmp_path)
     app = create_app(dd)
     c, token = TestClient(app, base_url=BASE), app.state.csrf_token
     assert "Not connected yet" in c.get("/").text
+    kudos.save_user(dd, "U1", "Jordan")
+    monkeypatch.setattr(messages, "fetch", lambda uid, since, today=None, progress=None: ([], 0))
+    monkeypatch.setattr(kudos, "fetch", lambda uid, since: ([], 0))
     job = run_sync(c, token, "slack")
-    assert job["state"] == "error" and "No Slack canvas connected" in job["steps"][0]["detail"]
+    assert job["steps"][0]["state"] == "done"
+    assert job["steps"][1]["state"] == "skipped" and "No Slack canvas connected" in job["steps"][1]["detail"]
 
     save_canvas_id(dd, "F0EXAMPLE01")
     monkeypatch.setattr(connector, "call_tool", lambda prompt, tool: json.dumps({"markdown_content": TRACKER}))
     monkeypatch.setattr(cls, "ask", lambda p, d: '{"i0": "task", "i1": "document", "i2": "conversation"}')
-    from careeros.slack import kudos
-    kudos.save_user(dd, "U1", "Jordan")
-    monkeypatch.setattr(kudos, "fetch", lambda uid, since: ([], 0))
     job = run_sync(c, token, "slack")
     assert job["message"] == "Slack synced: 3 new items." and job["pct"] == 100
-    assert [st["state"] for st in job["steps"]] == ["done", "done", "done", "skipped"]  # no leveling guide loaded
+    assert [st["state"] for st in job["steps"]] == ["done", "done", "done", "done", "skipped"]  # no leveling guide loaded
     tasks = c.get("/tasks").text
     assert 'title="Slack &middot; Finished a task' in tasks and "suggested win" in tasks and "Stopped the error spike before the weekend." in tasks
     assert "Written by Slack" in tasks
@@ -174,7 +175,7 @@ def test_web_sync_and_cards(tmp_path, monkeypatch):
 
     monkeypatch.setattr(connector, "call_tool", lambda prompt, tool: 'MCP tool call failed: status 401 {"error": "invalid_token"}')
     job = run_sync(c, token, "slack")
-    assert job["state"] == "error" and "sign-in has expired" in job["steps"][0]["detail"]
+    assert job["state"] == "partial" and "sign-in has expired" in job["steps"][1]["detail"]
 
 
 

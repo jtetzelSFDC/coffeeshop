@@ -46,7 +46,7 @@ def test_the_week_counts_wins_records_kudos_links_and_activity(nb):
         d = digest.build(s, TODAY)
     assert d["first"] == TODAY - timedelta(days=6) and [w.title for w in d["wins"]] == ["Shipped Pine 5.1 with no downtime"]
     assert d["records"] == 3 and len(d["kudos"]) == 1  # the open task doesn't count
-    assert dict(d["sources"]) == {"Slack tracker items": 2, "kudos": 1}
+    assert dict(d["sources"]) == {"Slack": 2, "kudos": 1}
     assert d["gained"] == [dict(name=item.name, topic=d["gained"][0]["topic"], n=1)]
     assert [(c["key"], c["n"]) for c in d["activity"]] == [("deployment", 2)]
     assert any('without "why it mattered"' in n["text"] and n["link"] == "/wins" for n in d["nudges"])

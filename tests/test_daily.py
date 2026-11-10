@@ -301,11 +301,11 @@ def test_home_card_shows_three_ticks_and_the_empty_state(nb):
     setup(dd)
     c, _ = _web(nb)
     home = c.get("/").text
-    assert "Today's three" in home and "No three yet today" in home and 'data-label="Suggest now"' in home
+    assert "Today's Three" in home and "No three yet today" in home and 'data-label="Suggest now"' in home
     _three(dd)
     home = c.get("/").text
     assert home.count('aria-label="Mark done: Write a two-line summary') == 3 and "~5 min" in home
-    assert 'data-label="New three"' in home and home.index("Today's three") < home.index('aria-label="Progress"')
+    assert 'data-label="New three"' in home and home.index('aria-label="Progress"') < home.index("Today's Three")
 
 
 def test_done_logs_a_record_with_details_and_undo_keeps_your_note(nb):

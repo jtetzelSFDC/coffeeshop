@@ -2,11 +2,27 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_DEMO_DIR = Path.home() / "Library" / "Application Support" / "coffeeshop-demo"
-PERSONAL_DIR = Path.home() / "Library" / "Application Support" / "coffeeshop"
+
+def support_dir(name: str) -> Path:
+    """Notebook folder: ~/Library/Application Support on Mac, %LOCALAPPDATA% on Windows."""
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        return Path(local) / name
+    return Path.home() / "Library" / "Application Support" / name
+
+
+def notebook_default_help() -> str:
+    if sys.platform == "win32":
+        return r"Default: %LOCALAPPDATA%\coffeeshop"
+    return "Default: ~/Library/Application Support/coffeeshop"
+
+
+DEFAULT_DEMO_DIR = support_dir("coffeeshop-demo")
+PERSONAL_DIR = support_dir("coffeeshop")
 DB_NAME = "coffeeshop.db"
 BACKUP_PREFIX = "coffeeshop-"
 DATA_DIR_ENV = "COFFEESHOP_DATA_DIR"
@@ -84,9 +100,9 @@ def resolve(path: str | None, *, demo: bool = False) -> DataDir:
     return DataDir(Path(chosen).expanduser())
 
 
-def write_private(path: Path, text: str) -> None:
+def write_private(path: Path, data: str | bytes) -> None:
     """Write a notebook file only you can read (0600 from the start, and kept that way if it already existed)."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(text)
+    with os.fdopen(fd, "wb" if isinstance(data, bytes) else "w") as fh:
+        fh.write(data)
     os.chmod(path, 0o600)

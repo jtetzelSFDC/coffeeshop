@@ -62,10 +62,15 @@ def _url(text: str) -> str | None:
     return m.group(1).rstrip(".,") if m else None
 
 
-def _key(origin: str, link: str | None, *parts: str) -> str:
+def link_key(link: str | None) -> str:
+    """slack:C…/p… for a message permalink, or "" when the link isn't a Slack message."""
     if link and (m := re.search(r"/archives/(\w+)/p(\d+)", link)):
         return f"slack:{m.group(1)}/p{m.group(2)}"
-    return "slack:" + hashlib.sha1("\n".join((origin, link or "", *parts)).encode()).hexdigest()[:20]
+    return ""
+
+
+def _key(origin: str, link: str | None, *parts: str) -> str:
+    return link_key(link) or "slack:" + hashlib.sha1("\n".join((origin, link or "", *parts)).encode()).hexdigest()[:20]
 
 
 def _plain(s: str) -> str:
