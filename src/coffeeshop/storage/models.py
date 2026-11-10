@@ -14,12 +14,13 @@ class Base(DeclarativeBase):
 
 
 class JournalEntry(Base):
-    """One record of your work: a meeting, conversation, document, task, kudos, or note, typed by you or pulled in
-    by a sync. Claude sorts it (kind, guide links, V2MOM methods, activity) and marks its picks AI until you check it."""
+    """One record of your work: a meeting, conversation, document, task, kudos, certification, or note, typed by
+    you or pulled in by a sync. Claude sorts it (kind, guide links, V2MOM methods, activity) and marks its picks
+    AI until you check it."""
     __tablename__ = "journal_entry"
     id: Mapped[int] = mapped_column(primary_key=True)
     day: Mapped[str] = mapped_column(String, index=True)  # YYYY-MM-DD
-    kind: Mapped[str] = mapped_column(String)  # meeting | conversation | document | task | recognition | note
+    kind: Mapped[str] = mapped_column(String)  # meeting | conversation | document | task | recognition | certification | note
     text: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime)
     source: Mapped[str] = mapped_column(String, default="")  # "" typed | calendar, tasks, slack, docs, github, kudos, daily

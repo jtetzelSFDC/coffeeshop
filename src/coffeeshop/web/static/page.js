@@ -29,3 +29,19 @@ function openTarget() {
 }
 window.addEventListener("hashchange", openTarget);
 openTarget();
+
+// Gained a certification uses its own date, so the usual day field steps aside and only one date is posted.
+const entryKind = document.querySelector("[data-entry-kind]");
+const entryDay = document.querySelector("[data-entry-day]");
+const certDate = document.querySelector("[data-cert-date]");
+const certDay = document.querySelector("[data-cert-day]");
+if (entryKind && entryDay && certDate && certDay) {
+  entryKind.addEventListener("change", () => {
+    const on = entryKind.value === "certification";
+    certDate.hidden = !on;
+    entryDay.hidden = on;
+    entryDay.disabled = on;
+    certDay.disabled = !on;
+    certDay.name = on ? "day" : "";
+  });
+}

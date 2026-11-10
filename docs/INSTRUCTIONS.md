@@ -197,6 +197,8 @@ uv run coffeeshop daily show              # print today's three
 
 **On Home**, **Promotion Progress** is the top cell. Its title row has a small green bar for the next grade, and clicking the cell opens it. Under that are **Today's Three**, **New Entry**, and **Sync Status**. Each stays closed until you click it.
 
+**New Entry** is for something a sync missed. **Gained a certification** is for a credential you earned, including one from before this notebook. **Date earned** appears so you can put the real date. It lands on the **Certifications** tab and counts as a training or certification. The next Claude read links it to the leveling guide and your V2MOM, the same as any other new record.
+
 - **Check one off:** press its box, add what you did if you like (optional), and press **Done**. It's logged as a finished task (from "daily"), so it counts like any other work, and the next sync links it to the leveling guide and your V2MOM.
 - **Changed your mind:** press the checked box. The record it logged goes too, unless you wrote what you did, checked it in the Intake Review Queue, or made a win from it. Then the record stays, and checking the box again reuses it.
 - **Suggest now** (when today's three aren't there yet) or **New three** (replace all three, even ones you checked off) asks Claude right away, with a progress box like the Sync buttons. A checked-off task stays in your notebook.
@@ -401,7 +403,7 @@ The app has these pages, opened from the three-bar **Menu** at the top left (Hom
   - **Sync Status:** the Sync buttons and the last-pull chips for Calendar, Tasks, Docs, Slack, Kudos, and the V2MOM. Closed until you click it.
   - There's no day-by-day list here any more. The daily review happens in the Intake Review Queue, and the Friday digest covers the week. Every record is still on its tab.
 - **Wins**, **Promo map**, **V2MOM**, **KSOs**, and the **Intake Review Queue**: described in their own sections above.
-- **Meetings / Conversations / Documents / Tasks / Kudos / Other**: one tab per kind of entry, newest first. Each entry is one line: a small icon for where it came from (calendar, Slack, Docs, GitHub, Tasks, kudos, or a pencil for typed), the text, and four icon buttons on the right (hover for their names):
+- **Meetings / Conversations / Documents / Tasks / Kudos / Certifications / Other**: one tab per kind of entry, newest first. Each entry is one line: a small icon for where it came from (calendar, Slack, Docs, GitHub, Tasks, kudos, or a pencil for typed), the text, and four icon buttons on the right (hover for their names):
   - **+** adds notes or a link to it.
   - **Trophy** counts it as a win.
   - **Target** links it to the leveling guide.

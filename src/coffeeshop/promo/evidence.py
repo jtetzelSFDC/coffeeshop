@@ -41,7 +41,7 @@ def section_words(lv: dict) -> dict[str, str]:
 SIZE_ORDER = {"large": 0, "medium": 1, "small": 2}
 CAPS = dict(summary=40, accomplishments=50, impact=40, behaviors=40, growth=40)
 SUMMARY_WINS = 15  # leaves room in the summary for the counts and the Promo map progress
-SKILL_ACTIVITIES = {"mentoring", "process_change", "document", "demo"}
+SKILL_ACTIVITIES = {"mentoring", "process_change", "document", "demo", "training"}
 
 
 def _label(g: GuideItem, devops: bool) -> str:
