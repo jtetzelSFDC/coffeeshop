@@ -60,7 +60,7 @@ Every record lands as a `JournalEntry`. Claude's read-through sets its kind, gui
 
 ## Where data lives
 
-Outside the repo, in `~/Library/Application Support/coffeeshop/` (the practice notebook uses `coffeeshop-demo/`). That folder holds the database, backups, logs, and connector settings, and `profile.json` (the promo case name, and the role, grade, and job title from `setup level`). The leveling guide workbook is shared company-wide, so it lives in the repo at `data/leveling/leveling-guides.xlsx`; `setup level` imports one role of it into `guide_item`, keyed so links survive a re-import, and the next grades are derived from the grades that role has. The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`; your target incentive lives only in `kso_year`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Run `git config core.hooksPath .githooks` once per clone so the pre-commit check is on (a spreadsheet is allowed only under `data/leveling/`). Tests and docs use made-up names and data only.
+Outside the repo, in `~/Library/Application Support/coffeeshop/` (the practice notebook uses `coffeeshop-demo/`). That folder holds the database, backups, logs, and connector settings, and `profile.json` (the promo case name, the optional pasted style example for it, and the role, grade, and job title from `setup level`). The leveling guide workbook is shared company-wide, so it lives in the repo at `data/leveling/leveling-guides.xlsx`; `setup level` imports one role of it into `guide_item`, keyed so links survive a re-import, and the next grades are derived from the grades that role has. The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`; your target incentive lives only in `kso_year`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Run `git config core.hooksPath .githooks` once per clone so the pre-commit check is on (a spreadsheet is allowed only under `data/leveling/`). Tests and docs use made-up names and data only.
 
 ## Security
 
@@ -82,9 +82,9 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 | Kudos | Messages that mention you in public and private channels (never DMs), up to 1,500 characters each, with sender and channel |
 | Sorting and grouping | Records' text and notes, the leveling guide, and the V2MOM methods |
 | V2MOM | The V2MOM text, including your manager's check-in comments |
-| Promo case | The numbered evidence list |
+| Promo case | The numbered evidence list, and your pasted style example if you added one (tone only) |
 | Send to Google Docs | The whole case, written into a new Doc in your Drive |
-| Daily three | Goals (V2MOM methods with open measures, Promo map items, and KSO parts with their explanation and two examples) and recent record and win titles, about 8k characters at most |
+| Daily three | Goals (V2MOM methods with open measures, Promo map items, and KSO parts with their explanation and two examples) and recent record and win titles, plus this week's meeting, open task, and project titles, about 8k characters at most |
 | KSO connect (yearly, by hand) | The KSO deck and guide canvases, through the Google and Slack connectors |
 | KSO matching | KSO part names and explanations, and V2MOM method names, descriptions, and measures |
 | KSO estimate (monthly) | The rubric, the matched V2MOM methods with measures and comments, this year's linked work titles (8k total, split evenly across parts), and the kudos count. Never your target or any dollar amount |
