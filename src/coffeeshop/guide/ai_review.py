@@ -37,9 +37,9 @@ list is better than a weak link.
 2. "kind": meeting (a scheduled call), conversation (a Slack or chat discussion, coordinating, answering), \
 document (writing or updating a doc, runbook, SOP, canvas, template, release notes), task (hands-on work done: a \
 deployment, refresh, merge, fix, access change, PR review), certification (they earned a credential), or note \
-(anything else). Keep the current kind unless it is clearly wrong. Keep certification when the record says they \
-earned one, link the skill or guide item it shows, and link a V2MOM method only when that method is really about \
-that learning.
+(anything else). Keep the current kind unless it is clearly wrong. A certification is real evidence: keep that \
+kind when the record says they earned one, link the skill or guide item it covers, and link a V2MOM method only \
+when that method is really about that learning.
 3. "win": null, or an accomplishment worth keeping for the promotion case or a resume. Be selective; most \
 records are not wins. Give {{"title": what they did, past tense, under 15 words, no "I"; "impact": one sentence \
 on why it mattered, using only facts in the record, no invented numbers; "size": small (a useful one-off: a quick \

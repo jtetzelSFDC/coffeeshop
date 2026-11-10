@@ -80,7 +80,7 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 | Google sync | Calendar events and their Gemini notes, tasks, and the Docs, Sheets, and Slides you wrote |
 | Slack sync | Your own messages in public and private channels (never DMs), a thread's first message when you replied in it (up to 20 a sync), the activity-tracker canvas, then the new records for sorting |
 | Kudos | Messages that mention you in public and private channels (never DMs), up to 1,500 characters each, with sender and channel |
-| Sorting and grouping | Records' text and notes, the leveling guide, and the V2MOM methods |
+| Sorting and grouping | Records' text and notes, the leveling guide, and the V2MOM methods. Runs at the end of each sync, right after you add an entry or check off a daily task, and from the queue's button |
 | V2MOM | The V2MOM text, including your manager's check-in comments |
 | Promo case | The numbered evidence list, and your pasted style example if you added one (tone only) |
 | Send to Google Docs | The whole case, written into a new Doc in your Drive |

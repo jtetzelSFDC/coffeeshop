@@ -31,10 +31,16 @@ REVIEW_STEPS = ["Have Claude read the new records"]
 
 
 def run_review(job: Job, Session_) -> None:
-    """The queue's "Have Claude read" button: the same linking step every sync ends with. No write lock: Claude
-    takes minutes, and the review re-checks each record before it saves."""
+    """The queue's "Have Claude read" button, and what starts after you add an entry: the same linking step every
+    sync ends with. No write lock: Claude takes minutes, and the review re-checks each record before it saves."""
+    from ..guide.ai_review import pending
+    n = 0
     with Session_() as s:
-        n = _link_new(job, 0, s)
+        for _ in range(3):  # shortcut: 3 passes; raise it if you add entries faster than Claude reads them
+            got = _link_new(job, 0, s)
+            n += got
+            if not got or not pending(s):
+                break
     job.finish(f"Claude read {_plural(n, 'record')}. Everything it picked is marked AI." if n
                else "Claude didn't read anything new, so nothing changed.")
 

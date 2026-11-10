@@ -79,6 +79,42 @@ def test_a_certification_keeps_its_kind_and_gains_its_guide_link(nb):
         assert s.scalar(select(GuideLink.id).where(GuideLink.entry_id == eid))
 
 
+def test_an_unread_row_waits_instead_of_offering_looks_right(nb):
+    dd, c, *_ = nb
+    with open_session(dd) as s:
+        eid = add(s, "Earned the Admin cert", kind="certification", source="")
+    html = c.get("/sheet?show=all").text
+    assert "Claude is reading" in html and f"/sheet/{eid}/ok" not in html
+    with open_session(dd) as s:
+        s.get(JournalEntry, eid).ai_read = True
+        s.commit()
+    html = c.get("/sheet?show=all").text
+    assert "Looks right" in html and "Claude is reading" not in html
+
+
+def test_an_entry_added_while_claude_reads_gets_its_own_pass(nb, monkeypatch):
+    from coffeeshop.web import syncs
+    from coffeeshop.web.jobs import Job
+    dd, *_ = nb
+    with open_session(dd) as s:
+        add(s, "first")
+    passes = []
+
+    def fake_pass(job, i, s):
+        todo = ai_review.pending(s)
+        passes.append([e.text for e in todo])
+        for e in todo:
+            e.ai_read = True
+        if len(passes) == 1:  # typed while Claude was reading
+            s.add(JournalEntry(day="2026-10-21", kind="note", text="late", created_at=datetime.now()))
+        s.commit()
+        return len(todo)
+
+    monkeypatch.setattr(syncs, "_link_new", fake_pass)
+    syncs.run_review(Job(syncs.REVIEW_STEPS), lambda: open_session(dd))
+    assert passes == [["first"], ["late"]]
+
+
 def test_review_keeps_user_links_and_checked_rows(nb):
     dd, *_ = nb
     with open_session(dd) as s:
