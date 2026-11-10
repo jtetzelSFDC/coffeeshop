@@ -2,7 +2,7 @@
 description: Set up Coffee Shop on this laptop: your notebook, role and level, V2MOM, connectors, and schedule.
 disable-model-invocation: true
 allowed-tools:
-  - Bash(uv run careeros *)
+  - Bash(uv run coffeeshop *)
   - Bash(uv --version)
   - Bash(git config core.hooksPath .githooks)
   - Bash(ls .githooks)
@@ -24,37 +24,37 @@ Run `uv --version`. If it is missing, tell them to install it from https://docs.
 
 ## 2. See what is already in place
 
-Run `uv run careeros setup check --skip google --skip slack --skip github` (no connector reads yet). It prints each
+Run `uv run coffeeshop setup check --skip google --skip slack --skip github` (no connector reads yet). It prints each
 step as pass, fail, or skipped, with what to do. It exits with an error when a step fails; that is expected here.
 Use it to skip the steps below that already pass.
 
 ## 3. The notebook
 
-If "Local notebook" failed, run `uv run careeros notebook init`. Never use `--data-dir`.
+If "Local notebook" failed, run `uv run coffeeshop notebook init`. Never use `--data-dir`.
 
 ## 4. Role and level
 
 If "Role and level saved" passed, say what is saved and ask whether it is still right. Skip the rest of this step
 unless they want to change it (for example after a promotion).
 
-Otherwise ask for their role first. Run `uv run careeros setup level < /dev/null` to list the roles. It then asks
+Otherwise ask for their role first. Run `uv run coffeeshop setup level < /dev/null` to list the roles. It then asks
 a question that cannot be answered here, so it ends with "Aborted"; that is fine, the list is what you wanted.
 Always add `< /dev/null` so it cannot wait for typing. Show the list in
-a short form and ask which one is theirs. Then run `uv run careeros setup level --role "<role>" < /dev/null` to list that
+a short form and ask which one is theirs. Then run `uv run coffeeshop setup level --role "<role>" < /dev/null` to list that
 role's levels with their job titles (again it ends with "Aborted"). Ask which is their level now. Some roles list two
-job titles at one grade; read both out. Save it with `uv run careeros setup level --role "<role>" --grade <number>`.
+job titles at one grade; read both out. Save it with `uv run coffeeshop setup level --role "<role>" --grade <number>`.
 This also loads the role's leveling guide. Tell them the next level it found.
 
 ## 5. V2MOM
 
 If "V2MOM connected" failed, ask where their V2MOM PDF is (downloaded from the V2MOM app), then run
-`uv run careeros v2mom connect "<path>"`. If they have no PDF yet, skip this and say they can add it later on the
+`uv run coffeeshop v2mom connect "<path>"`. If they have no PDF yet, skip this and say they can add it later on the
 V2MOM page of the app.
 
 ## 6. Connectors
 
 Ask which of Google, Slack, and GitHub they want to turn on. Google and Slack are what most people want; GitHub is
-optional (pull requests). Then run `uv run careeros setup check`, adding `--skip google`, `--skip slack`, or
+optional (pull requests). Then run `uv run coffeeshop setup check`, adding `--skip google`, `--skip slack`, or
 `--skip github` for each one they did not choose. This reads one small thing from each connector and changes
 nothing. It takes up to a minute.
 
@@ -72,13 +72,13 @@ committed by mistake. If there is no `.githooks` folder, skip this.
 
 ## 8. The schedule
 
-Offer `uv run careeros schedule install`. It keeps the app running and syncs twice a day. Run it only if they say
+Offer `uv run coffeeshop schedule install`. It keeps the app running and syncs twice a day. Run it only if they say
 yes. If it says scheduling is not supported on this computer, skip it and tell them to start the app with
-`uv run careeros serve`.
+`uv run coffeeshop serve`.
 
 ## 9. Finish
 
-Tell them to open http://127.0.0.1:8765 (or start it with `uv run careeros serve` if they skipped the schedule).
+Tell them to open http://127.0.0.1:8765 (or start it with `uv run coffeeshop serve` if they skipped the schedule).
 If anything is still unfinished, point them to the setup page at http://127.0.0.1:8765/setup, which does the same
 steps by hand.
 

@@ -3,10 +3,10 @@ from datetime import date, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from careeros.config import DataDir
-from careeros.google import calendar as gcal
-from careeros.storage.db import init_db, make_engine, make_session_factory
-from careeros.storage.models import JournalAttachment, JournalEntry
+from coffeeshop.config import DataDir
+from coffeeshop.google import calendar as gcal
+from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+from coffeeshop.storage.models import JournalAttachment, JournalEntry
 
 D = date.today() - timedelta(days=1)
 STAMP = D.strftime("%Y%m%d")
@@ -32,6 +32,17 @@ def s(tmp_path):
 def pull(s, *events):
     first, last = D - timedelta(days=3), date.today()
     return gcal.sync(s, gcal.parse_events(ics(*events), first, last), first, last)
+
+
+def test_ical_sync_does_not_copy_or_delete_a_google_meeting(s):
+    s.add(JournalEntry(day=D.isoformat(), kind="meeting", text="3:00 PM–3:30 PM  Rollout sync",
+                       created_at=datetime.now(), source="calendar", external_id="ev1_20261019T150000Z"))
+    s.commit()
+    first, last = D - timedelta(days=3), date.today()
+    r = gcal.sync(s, gcal.parse_events(ics(ev("ical1", "Rollout sync")), first, last), first, last, ical=True)
+    rows = list(s.scalars(select(JournalEntry)))
+    assert r["added"] == 0 and r["removed"] == 0 and len(rows) == 1
+    assert rows[0].external_id == "ev1_20261019T150000Z"
 
 
 def test_sync_adds_updates_and_dedupes(s):
@@ -116,7 +127,7 @@ CONNECTOR_TEXT = """Successfully retrieved 3 events from calendar 'primary' for 
 
 
 def test_connector_text_keeps_title_times_links_only_and_drops_declined_and_all_day():
-    from careeros.google import connector
+    from coffeeshop.google import connector
     items = connector.parse_events_text(CONNECTOR_TEXT)
     assert items == [dict(id="ev1_20261023T143000Z", title="Planning", start="2026-10-23T10:30:00-04:00",
                           end="2026-10-23T11:00:00-04:00",
@@ -124,7 +135,7 @@ def test_connector_text_keeps_title_times_links_only_and_drops_declined_and_all_
 
 
 def test_import_events_dedupes_links_and_removes_vanished(s):
-    from careeros.google import connector
+    from coffeeshop.google import connector
     items = connector.parse_events_text(CONNECTOR_TEXT)
     first, last = date(2026, 10, 22), date(2026, 10, 23)
     r = gcal.import_events(s, items, first, last)
@@ -161,7 +172,7 @@ def test_meetings_come_in_only_once_they_have_ended(s):
 
 
 def test_summaries_only_pending_for_meetings_with_a_notes_doc(s):
-    from careeros.google import connector, summaries
+    from coffeeshop.google import connector, summaries
     items = connector.parse_events_text(CONNECTOR_TEXT) + [
         dict(id="nonotes", title="Chat", start="2026-10-23T09:00:00-04:00", end="2026-10-23T09:15:00-04:00",
              links=[dict(title="Deployment plan", url="https://docs.google.com/spreadsheets/d/xyz/edit")])]
@@ -177,7 +188,7 @@ def test_summaries_only_pending_for_meetings_with_a_notes_doc(s):
 
 @pytest.mark.parametrize("reply", ["MCP tool call failed: status 401", "Needs authentication", "Error: boom"])
 def test_failed_calendar_reply_is_an_error_not_an_empty_calendar(monkeypatch, reply):
-    from careeros.google import connector
+    from coffeeshop.google import connector
     monkeypatch.setattr(connector, "call_tool", lambda *a, **k: reply)
     with pytest.raises(gcal.CalendarError):
         connector.fetch(D, D)
@@ -192,8 +203,8 @@ def test_times_use_the_offset_of_their_own_date_across_daylight_saving():
 
 def test_calendar_sync_and_pull_commands_run(tmp_path, monkeypatch):
     from typer.testing import CliRunner
-    from careeros.cli import app as cli
-    from careeros.google import connector, summaries
+    from coffeeshop.cli import app as cli
+    from coffeeshop.google import connector, summaries
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
     windows = []

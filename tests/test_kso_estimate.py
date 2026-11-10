@@ -8,11 +8,11 @@ from datetime import date, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from careeros import daily
-from careeros.claude_cli import ClaudeError
-from careeros.kso import estimate as est, framework, progress
-from careeros.storage.models import KsoEstimate
-from careeros.storage.sync_log import status
+from coffeeshop import daily
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.kso import estimate as est, framework, progress
+from coffeeshop.storage.models import KsoEstimate
+from coffeeshop.storage.sync_log import status
 
 from helpers import TWO, add, form, kso_setup, load_v2mom, open_session
 
@@ -92,9 +92,9 @@ def test_it_runs_monthly_once_ksos_are_matched(nb):
 
 
 def test_the_sync_step_and_the_button(nb, monkeypatch):
-    from careeros.web import syncs
-    from careeros.web.jobs import Job
-    from careeros.storage.db import make_engine, make_session_factory
+    from coffeeshop.web import syncs
+    from coffeeshop.web.jobs import Job
+    from coffeeshop.storage.db import make_engine, make_session_factory
     dd, c, token, _ = nb
     kso_setup(dd)
     monkeypatch.setattr(est, "ask", lambda p, d, timeout=0: answer())
@@ -117,8 +117,8 @@ def test_the_sync_step_and_the_button(nb, monkeypatch):
 
 
 def test_the_morning_sync_estimates_after_the_v2mom(nb, monkeypatch):
-    from careeros import sync_all
-    from careeros.web import syncs
+    from coffeeshop import sync_all
+    from coffeeshop.web import syncs
     dd, *_ = nb
     order = []
 
@@ -148,7 +148,7 @@ def test_kso_parts_without_a_goal_become_daily_goals(nb):
 
 
 def test_a_busy_part_leaves_room_for_the_others(nb):
-    from careeros.storage.models import V2momLink
+    from coffeeshop.storage.models import V2momLink
     dd, *_ = nb
     m = kso_setup(dd)
     with open_session(dd) as s:

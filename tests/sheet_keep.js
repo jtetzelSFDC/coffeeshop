@@ -242,7 +242,7 @@ async function save(client, server, action, submitter) {
     createElement,
     getElementById() { return null; },
   };
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/careeros/web/static/sheet.js"), "utf8"), vm.createContext({
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/coffeeshop/web/static/sheet.js"), "utf8"), vm.createContext({
     document,
     location: { reload() { throw new Error("reloaded"); } },
     fetch: async () => ({ ok: true, headers: { get: () => null }, text: async () => server }),

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block body %}
+{% from "_sync.html" import sync_chips %}
+{% macro pct_bar(p, label) %}{% if p is not none %}<span class="vm-pct"><span class="bar" role="img" aria-label="{{ label }}: {{ p }} percent"><span class="b-strong" style="width:{{ p }}%"></span></span><span class="muted">{{ p }}%</span></span>{% endif %}{% endmacro %}
+{% macro method_li(m, by_ai, current) %}
+      <li><a href="/v2mom/{{ m.id }}">{{ m.label }} {{ m.name }}</a>{% if by_ai %} <span class="chip ai" title="Picked by Claude">AI</span>{% endif %}
+        <form method="post" action="/kso/map" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="fy" value="{{ r.fw.fiscal_year }}"><input type="hidden" name="method_id" value="{{ m.id }}">
+          <label class="sr" for="map-{{ m.id }}">Counts toward, for {{ m.label }}</label>
+          <select id="map-{{ m.id }}" name="component">{% for key, name in r.choices %}<option value="{{ key }}" {{ 'selected' if key == current }}>{{ key }} {{ name }}</option>{% endfor %}<option value="" {{ 'selected' if not current }}>No KSO part</option></select>
+          <button>Move</button></form></li>{% endmacro %}
+{% if r %}{% set fw = r.fw %}{% set d = fw.data %}
+<section class="card">
+  <div class="qhead"><h2>KSOs {{ fw.fiscal_year }}{% if fw.track %} &middot; {{ fw.track }}{% endif %}</h2>
+  {% if r.years|length > 1 %}<form method="get" action="/kso" style="margin-left:auto"><label class="sr" for="kso-fy">Year</label>
+    <select id="kso-fy" name="fy">{% for y in r.years %}<option {{ 'selected' if y == fw.fiscal_year }}>{{ y }}</option>{% endfor %}</select> <button>Show</button></form>{% endif %}</div>
+  <p class="sub">KSOs: {{ fw.fiscal_year }}{% if fw.track %} {{ fw.track }}{% endif %}</p>
+  <p class="sub">Your manager rates each KSO from 1 to 5, {{ 'once a year' if d.rated == 'yearly' else 'each quarter' }}, against the goals in your V2MOM. Each rating pays a share of that KSO's part of your bonus:
+    {% for k, p in d.payout.items() %}<span class="chip" title="{{ d.level_names[k] }}">{{ k }} = {{ '%g'|format(p) }}%</span>{% endfor %}</p>
+  {% if r.current %}<div class="row">{{ sync_chips(sync, [("kso", "KSO estimate")]) }}
+    <form method="post" action="/kso/estimate" data-sync="kso"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button data-label="Re-estimate" title="Have Claude read the rubric against your V2MOM and work now">Re-estimate</button></form>
+    {% if r.estimated_at %}<span class="help">Claude's estimate from {{ r.estimated_at.date()|short_day }}. It runs once a month with the sync.</span>{% endif %}</div>
+  <div class="job" data-job="kso" hidden></div>{% endif %}
+  {% if r.upcoming %}<p class="help">Coming up: {% for x in r.upcoming[:3] %}<b>{{ x.date|short_day }}</b> {{ x.what }}{{ ' · ' if not loop.last }}{% endfor %}</p>{% endif %}
+  {% call howto("How the bars work") %}
+    <p class="help">A part's bar is the average progress of the V2MOM methods that count toward it, as your V2MOM shows it. A KSO's bar averages its parts, and a part with no V2MOM goal counts as 0, because your manager counts a missing one against you too. It's plain math, not a rating: your manager also weighs how good and how big the work was.</p>
+    <p class="help">Which method counts toward which part was picked by Claude (marked AI) when the KSOs were read; change any of them below. Re-read next year's KSOs with <code>uv run coffeeshop kso connect</code>.</p>
+  {% endcall %}
+</section>
+
+{% for k in r.ksos %}
+<section class="card" aria-label="KSO {{ k.key }}">
+  <div class="vm-head"><h2>KSO {{ k.key }} &middot; {{ k.name }}</h2><span class="chip">{{ '%g'|format(k.weight) }}% of your bonus</span>{{ pct_bar(k.bar, "KSO " ~ k.key) }}</div>
+  <p class="sub">{{ k.what }}</p>
+  {% if k.gaps %}<p class="warn">{{ k.gaps }} of its {{ k.components|length }} parts {{ 'has' if k.gaps == 1 else 'have' }} no V2MOM goal yet. Every part needs one: add a measure for it at your next check-in.</p>{% endif %}
+  {% set e = k.estimate %}
+  {% if e %}<div class="exp ai"><b>Claude's estimate: {{ e.rating }} &middot; {{ d.level_names[e.rating|string] }}</b> <span class="chip ai" title="Claude's guess; your own rating below wins">AI</span>
+    <p class="help">What would raise it most:</p>
+    <ul class="kso-methods">{% for x in e.next %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+  <form method="post" action="/kso/rating" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="fy" value="{{ fw.fiscal_year }}"><input type="hidden" name="kso" value="{{ k.key }}">
+    <label for="rate-{{ k.key }}">Your rating (a guess, or the real one once it's in)</label>
+    <select id="rate-{{ k.key }}" name="rating"><option value="">Not set</option>{% for n, name in d.level_names.items() %}<option value="{{ n }}" {{ 'selected' if r.ratings.get(k.key)|string == n }}>{{ n }}: {{ name }}</option>{% endfor %}</select>
+    <button>Save</button></form>
+  {% for c in k.components %}
+  <div class="exp {{ 'started' if c.gap else 'strong' if (c.bar or 0) >= 75 else 'shown' }}" id="c{{ c.key }}">
+    <div class="vm-head"><b>{{ c.key }} {{ c.name }}</b>
+      {% if c.gap %}<span class="chip">No V2MOM goal yet</span>{% elif c.bar is none %}<span class="muted">no percent in your V2MOM yet</span>{% else %}{{ pct_bar(c.bar, c.key ~ " " ~ c.name) }}{% endif %}
+      <span class="vm-nums muted">{% if c.work is not none %}{{ c.work }} wins and records in {{ fw.fiscal_year }}{% endif %}{% if c.kudos is not none %} &middot; {{ c.kudos }} kudos{% endif %}</span></div>
+    <p class="help">{{ c.what }}</p>
+    {% if e and e.why[c.key] %}<p class="help"><span class="chip ai">AI</span> {{ e.why[c.key] }}</p>{% endif %}
+    {% if c.methods %}<ul class="kso-methods">{% for x in c.methods %}{{ method_li(x.m, x.by_ai, c.key) }}{% endfor %}</ul>{% endif %}
+    {% call howto("Try this week") %}<ul>{% for e in c.examples[:3] %}<li>{{ e }}</li>{% endfor %}</ul>{% endcall %}
+    {% call howto("What a 4 and a 5 look like") %}
+      {% for n in ("4", "5") %}<p class="help"><b>{{ n }}: {{ d.level_names[n] }}.</b> {{ c.levels[n] }}</p>{% endfor %}
+    {% endcall %}
+  </div>
+  {% endfor %}
+</section>
+{% endfor %}
+
+{% if r.loose %}<section class="card" aria-label="Not counting toward a KSO">
+  <h2>Not counting toward any KSO part</h2>
+  <p class="help">These V2MOM methods don't count toward a KSO yet. Move one to the part it gives evidence for.</p>
+  <ul class="kso-methods">{% for m in r.loose %}{{ method_li(m, false, "") }}{% endfor %}</ul>
+</section>{% endif %}
+
+<section class="card" aria-label="Bonus projection">
+  <h2>What the KSOs pay</h2>
+  {% set p = r.projection %}
+  <form method="post" action="/kso/target" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="fy" value="{{ fw.fiscal_year }}">
+    <label for="kso-target">Your yearly target incentive ($)</label>
+    <input id="kso-target" name="target" inputmode="numeric" maxlength="20" value="{{ r.target or '' }}" placeholder="e.g. 12000" style="width:8rem">
+    <button>Save</button></form>
+  <p class="help">It's in your incentive compensation plan. It stays on this laptop and is never sent to Claude.</p>
+  {% if p %}
+  <table class="sheet kso-pay"><thead><tr><th>KSO</th><th>Share</th><th>Rating</th><th>Pays</th></tr></thead><tbody>
+    {% for x in p.rows %}<tr><td>KSO {{ x.key }} {{ x.name }}</td><td>{{ '%g'|format(x.weight) }}% = ${{ "{:,}".format(x.share) }}</td>
+      <td>{% if x.rating %}{{ x.rating }} ({{ '%g'|format(x.payout) }}%){% if x.ai %} <span class="chip ai" title="Claude's estimate; set your own above">AI</span>{% endif %}{% else %}<span class="muted">not set</span>{% endif %}</td>
+      <td>{% if x.pays is not none %}<b>${{ "{:,}".format(x.pays) }}</b>{% else %}<span class="muted">&mdash;</span>{% endif %}</td></tr>{% endfor %}
+  </tbody></table>
+  {% if p.total is not none %}<p><b>KSO part of your bonus: ${{ "{:,}".format(p.total) }}</b> of ${{ "{:,}".format(p.share) }}.{% if p.rows|selectattr("ai")|list %} <span class="chip ai" title="Uses Claude's estimate where you haven't set a rating">AI</span>{% endif %}</p>{% endif %}
+  <p class="help">If every KSO were rated 3: ${{ "{:,}".format(p.scenarios["3"]) }} &middot; 4: ${{ "{:,}".format(p.scenarios["4"]) }} &middot; 5: ${{ "{:,}".format(p.scenarios["5"]) }}.</p>
+  <p class="help">The other {{ '%g'|format(100 - p.weight) }}% of your bonus (utilization) isn't measured here. Quarterly draws are squared up in the year-end payout.</p>
+  {% else %}<p class="muted">Enter your target to see what each rating would pay.</p>{% endif %}
+</section>
+{% else %}
+<section class="card">
+  <h2>KSOs</h2>
+  <p class="muted">No KSOs loaded yet. In Terminal run <code>uv run coffeeshop kso connect --deck &lt;the KSO framework deck link&gt; --canvas &lt;the KSO guide canvas link&gt;</code>. It reads them into this notebook only.</p>
+</section>
+{% endif %}
+<script src="/static/sync.js" defer></script>
+{% endblock %}

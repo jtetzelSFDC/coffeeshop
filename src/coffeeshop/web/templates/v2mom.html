@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block body %}
+{% set EXP = {"active": "strong", "quiet": "started", "none": ""} %}
+{% set STATE = {"active": "Active: work in the last 30 days", "quiet": "Quiet: nothing in 30 days", "none": "No work linked yet"} %}
+{% macro upload() %}{% if personal %}
+  <form method="post" action="/v2mom/upload" enctype="multipart/form-data" class="row">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="v2mom-pdf">V2MOM PDF</label>
+    <input id="v2mom-pdf" type="file" name="pdf" accept="application/pdf,.pdf" required>
+    <button>Upload and read</button>
+  </form>
+  <p class="help">Download it as a PDF from the V2MOM app. It stays in this notebook, only you can read it, and it's read right away. The command <code>uv run coffeeshop v2mom connect</code> still works.</p>
+{% endif %}{% endmacro %}
+{% if r %}{% set v = r.version %}
+<section class="card">
+  <h2>V2MOM{% if v.fiscal_year %} {{ v.fiscal_year }}{% endif %}</h2>
+  <p class="sub">Active: {{ v.fiscal_year or r.fy }} V2MOM, read {{ v.pulled_at.date()|short_day }}</p>
+  <p class="sub">{{ r.active }} of {{ r.methods|length }} methods active this quarter{% if v.published %} &middot; published {{ v.published }}{% endif %} &middot; read from your {{ 'PDF' if v.doc_id.lower().endswith('.pdf') else 'Doc' }} {{ v.pulled_at.date()|short_day }}</p>
+  {{ upload() }}
+  {% if v.vision or v.values %}{% call howto("Vision and values") %}
+    {% if v.vision %}<p><b>Vision.</b> {{ v.vision }}</p>{% endif %}
+    {% for x in v.values %}<p><b>{{ x.name }}.</b> {{ x.text }}</p>{% endfor %}
+  {% endcall %}{% endif %}
+  {% call howto() %}
+    <p class="help">Each method shows its status and percent (from the Doc, or worked out from its measures when the PDF doesn't give one), its measures with their own status, percent, and comments, and how many wins and records are linked to it: this quarter ({{ r.q_lo|short_day }} to {{ r.q_hi|short_day }}) and in {{ r.fy }} ({{ r.fy_lo|short_day }} to {{ r.fy_hi|short_day }}). A win made from a linked record counts too.</p>
+    <p class="help">The dot is green when the method had work in the last 30 days, orange when it has gone quiet, and grey when nothing is linked yet. Claude links records to methods as it reads them; fix a link in the <a href="/sheet?show=all">Intake Review Queue</a>.</p>
+  {% endcall %}
+</section>
+
+<section class="card" aria-label="Methods">
+  {% for x in r.methods %}{% set m = x.m %}
+  <div class="exp vm {{ EXP[x.state] }}" id="m{{ m.id }}">
+    <div class="vm-head">
+      <span class="st" title="{{ STATE[x.state] }}"><i></i><span class="sr">{{ STATE[x.state] }}</span></span>
+      <b>{{ m.label }} {{ m.name }}</b>
+      {% if m.status %}<span class="chip {{ m.status|status_class }}">{{ m.status }}</span>{% endif %}
+      {% if m.progress is not none %}<span class="vm-pct"><span class="bar" role="img" aria-label="{{ m.progress }} percent done"><span class="b-strong" style="width:{{ m.progress }}%"></span></span><span class="muted">{{ m.progress }}%</span></span>{% endif %}
+      <span class="vm-nums">{% if x.state == "none" %}nothing linked yet{% else %}<b>{{ x.quarter }}</b> this quarter &middot; <b>{{ x.year }}</b> in {{ r.fy }} &middot; last <span title="{{ x.last }}">{{ x.last|short_day }}</span> &middot; <a href="/v2mom/{{ m.id }}">see the work</a>{% endif %}</span>
+    </div>
+    {% if m.measures %}<ul>{% for ms in m.measures %}<li>{{ ms.text }}{% if ms.status %} <span class="chip {{ ms.status|status_class }}">{{ ms.status }}</span>{% endif %}
+      {%- if ms.progress is number %} <span class="vm-pct"><span class="bar" role="img" aria-label="{{ ms.progress }} percent done"><span class="b-strong" style="width:{{ ms.progress }}%"></span></span><span class="muted">{{ ms.progress }}%</span></span>{% endif %}
+      {%- if ms.comments %}{% call howto("Comments") %}<p class="help">{{ ms.comments }}</p>{% endcall %}{% endif %}</li>{% endfor %}</ul>{% endif %}
+    {% set n = x.obstacles|length %}
+    {% if m.description or n %}{% call howto("About this method" ~ ((" and its " ~ n ~ " obstacle" ~ ("" if n == 1 else "s")) if n else "")) %}
+      {% if m.description %}<p class="help">{{ m.description }}</p>{% endif %}
+      {% for o in x.obstacles %}<p class="help"><b>Obstacle: {{ o.name }}.</b> {{ o.text }}</p>{% endfor %}
+    {% endcall %}{% endif %}
+  </div>
+  {% else %}<p class="muted">The Doc has no methods yet.</p>{% endfor %}
+  {% if r.loose %}<h3>Obstacles</h3>
+  {% for o in r.loose %}<div class="exp line"><b>{{ o.name }}.</b> {{ o.text }}</div>{% endfor %}{% endif %}
+</section>
+{% if v.check_ins %}<section class="card" aria-label="Check-ins">
+  {% call howto("Check-ins (" ~ v.check_ins|length ~ ")") %}
+    {% for c in v.check_ins %}<p class="help"><b>{{ c.name }}.</b> {% if c.manager_comments %}Manager comments: {{ c.manager_comments }}{% else %}<span class="muted">No manager comments.</span>{% endif %}</p>{% endfor %}
+  {% endcall %}
+</section>{% endif %}
+{% else %}
+<section class="card">
+  <h2>V2MOM</h2>
+  {% if connected %}<p class="muted">Your V2MOM is connected but hasn't been read yet. Press <b>Sync V2MOM</b> on <a href="/">Home</a>, or upload a new PDF below.</p>
+  {% else %}<p class="muted">No V2MOM loaded yet. Download it as a PDF from the V2MOM app{% if personal %} and upload it here{% endif %}, or in Terminal run <code>uv run coffeeshop v2mom connect &lt;path to the PDF&gt;</code>.</p>{% endif %}
+  {{ upload() }}
+</section>
+{% endif %}
+{% endblock %}

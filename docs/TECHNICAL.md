@@ -16,9 +16,9 @@ For people reviewing the code. The user guide is [INSTRUCTIONS.md](INSTRUCTIONS.
 
 Python 3.12, FastAPI, SQLAlchemy on SQLite, Jinja2, Typer, uv. No JavaScript framework; a few small scripts in `web/static/`.
 
-| Path under `src/careeros/` | What it does |
+| Path under `src/coffeeshop/` | What it does |
 |---|---|
-| `cli.py` | Every `careeros …` command; thin glue over the modules below |
+| `cli.py` | Every `coffeeshop …` command; thin glue over the modules below |
 | `web/` | The pages (`app.py`), background jobs with progress (`jobs.py`, `syncs.py`), templates, static files |
 | `google/` | Calendar, Tasks, Docs, and meeting-note summaries through Claude Code's Google Workspace connector |
 | `slack/` | Your own messages and the activity-tracker canvas, their sorting and import, and kudos. Public and private channels only; DMs are never read |
@@ -97,15 +97,15 @@ Every prompt, with its input, size caps, and checks, is listed in [prompts.md](p
 
 ## Schedules
 
-`careeros schedule install` registers three tasks. On a Mac they are launchd agents. On Windows they are Task Scheduler tasks (`schtasks`), and `install`, `uninstall`, and `status` pick the right one.
+`coffeeshop schedule install` registers three tasks. On a Mac they are launchd agents. On Windows they are Task Scheduler tasks (`schtasks`), and `install`, `uninstall`, and `status` pick the right one.
 
 | Task | When | Runs |
 |---|---|---|
-| `com.careeros.app` | At login, kept alive | `careeros serve` |
-| `com.careeros.sync` | 8 AM, 6 PM, and at login | `careeros sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly, and new methods get matched to KSO parts), the KSO estimate (monthly, once KSOs are read and matched), then the daily three (once a day, after 8 AM) |
-| `com.careeros.digest` | Friday at noon | `careeros digest notify` |
+| `com.coffeeshop.app` | At login, kept alive | `coffeeshop serve` |
+| `com.coffeeshop.sync` | 8 AM, 6 PM, and at login | `coffeeshop sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly, and new methods get matched to KSO parts), the KSO estimate (monthly, once KSOs are read and matched), then the daily three (once a day, after 8 AM) |
+| `com.coffeeshop.digest` | Friday at noon | `coffeeshop digest notify` |
 
-Each one runs `uv run --project <this repo> careeros …` with `COFFEESHOP_DATA_DIR` set to the notebook. A missed time runs on wake (`StartWhenAvailable` on Windows). A failed step doesn't stop the others; each source that fails sends one notification (a Windows toast, or one log line if that toast is blocked), and the chips on the pages show each source's last run.
+Each one runs `uv run --project <this repo> coffeeshop …` with `COFFEESHOP_DATA_DIR` set to the notebook. A missed time runs on wake (`StartWhenAvailable` on Windows). A failed step doesn't stop the others; each source that fails sends one notification (a Windows toast, or one log line if that toast is blocked), and the chips on the pages show each source's last run. GitHub is optional: if `gh` is missing or not signed in, that step is skipped and does not notify. A Doc is summarized only if it was saved in the last 7 days; a failure is tried again on the next sync while it is still inside that window. The iCal calendar command only updates or removes meetings it saved (ids containing `@`). A meeting Sync Google already saved, with the same day and title, is left in place.
 
 On Windows the keep-alive task starts the server at logon and, if the process exits with an error, starts it again after one minute, up to 255 times (Task Scheduler's maximum). A clean exit waits until the next logon. The task's time limit is unlimited, so the scheduler does not stop the server after three days. Tasks run on battery. The scripts it writes live in `tasks/` inside the notebook; `schedule uninstall` removes the tasks and leaves those files, which do nothing once the tasks are gone.
 
@@ -129,4 +129,4 @@ uv run pytest -q
 - A ponytail review runs on each PR; its findings and fixes are a comment on the PR.
 - Larger choices get a short note in [`docs/decisions/`](decisions/): what was decided, why, and how to roll back.
 
-The backdrop photos in `src/careeros/web/static/img/` are AI-generated, each in a light and dark version. To swap one, keep the file name and composition, about 1500 px on the long side. README screenshots in `docs/img/` come from the practice notebook only.
+The backdrop photos in `src/coffeeshop/web/static/img/` are AI-generated, each in a light and dark version. To swap one, keep the file name and composition, about 1500 px on the long side. README screenshots in `docs/img/` come from the practice notebook only.

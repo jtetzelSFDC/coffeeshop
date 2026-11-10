@@ -2,7 +2,7 @@ import re
 
 from sqlalchemy import select
 
-from careeros.storage.models import JournalEntry
+from coffeeshop.storage.models import JournalEntry
 
 from helpers import form, open_session
 

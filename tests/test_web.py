@@ -3,13 +3,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from typer.testing import CliRunner
 
-from careeros.cli import app as cli
-from careeros.config import DataDir, NotDemoData
+from coffeeshop.cli import app as cli
+from coffeeshop.config import DataDir, NotDemoData
 from datetime import date
 
-from careeros.storage.db import init_db, make_engine, make_session_factory
-from careeros.storage.models import DailyTask, GuideItem, JournalAttachment, JournalEntry, Win
-from careeros.web.app import create_app
+from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+from coffeeshop.storage.models import DailyTask, GuideItem, JournalAttachment, JournalEntry, Win
+from coffeeshop.web.app import create_app
 
 BASE = "http://127.0.0.1"
 
@@ -114,7 +114,7 @@ def test_journal_add_show_and_remove(seeded):
     assert "Met with Sam about the rollout" in c.get("/meetings").text
     docs = c.get("/documents").text
     assert "&lt;b&gt;runbook" in docs and "<b>runbook" not in docs
-    from careeros.storage.models import JournalEntry
+    from coffeeshop.storage.models import JournalEntry
     with make_session_factory(make_engine(dd.db))() as s:
         eid = s.scalar(select(JournalEntry.id).where(JournalEntry.kind == "meeting"))
     form(c, f"/journal/{eid}/delete", token)
@@ -140,7 +140,7 @@ def test_journal_attachments_multiple_escaped_and_removed_with_entry(seeded):
     big = "Transcript line <script>alert(1)</script>\n" * 3000
     form(c, "/journal/add", token, kind="meeting", text="Rollout sync", a_kind="transcript",
          a_title="Gemini notes", a_body=big)
-    from careeros.storage.models import JournalAttachment, JournalEntry
+    from coffeeshop.storage.models import JournalAttachment, JournalEntry
     with make_session_factory(make_engine(dd.db))() as s:
         eid = s.scalar(select(JournalEntry.id))
     form(c, f"/journal/{eid}/attach", token, a_kind="link", a_body="https://docs.example.com/x")
@@ -198,7 +198,7 @@ def test_personal_init_refuses_synced_folders(tmp_path):
 
 
 def test_tabs_list_by_kind_and_tasks_open_first(tmp_path):
-    from careeros.google.tasks import Task, merge
+    from coffeeshop.google.tasks import Task, merge
     from datetime import datetime
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
@@ -228,7 +228,7 @@ def test_tabs_list_by_kind_and_tasks_open_first(tmp_path):
 
 
 def test_wins_add_from_entry_edit_filter_search_and_export(seeded):
-    from careeros.storage.models import Win
+    from coffeeshop.storage.models import Win
     dd, c, token = seeded
     form(c, "/journal/add", token, kind="task", text="Fixed the deploy script", day="2026-03-04")
     with make_session_factory(make_engine(dd.db))() as s:
@@ -330,11 +330,13 @@ def test_switching_the_theme_comes_back_to_the_same_page_and_never_leaves_the_ap
         r = c.post("/theme", data={"csrf": app.state.csrf_token, "theme": "light", "next": nxt}, follow_redirects=False)
         assert r.headers["location"] == to
     assert c.get("/static/sync.js").status_code == 200 and c.get("/static/nope.js").status_code == 404
+    assert c.get("/static/img/latte-dark.jpg").status_code == 200
+    assert c.get("/static/img/a%5C..%5C..%5Csecret.jpg").status_code == 404
 
 
 def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
     import time
-    from careeros.web import syncs
+    from coffeeshop.web import syncs
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
     app = create_app(dd)
@@ -353,11 +355,36 @@ def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
     assert ran
 
 
+def test_have_claude_read_waits_while_a_sync_runs(tmp_path, monkeypatch):
+    import threading
+    from coffeeshop.web import syncs
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    started, release = threading.Event(), threading.Event()
+
+    def hang(job, *a):
+        started.set()
+        release.wait(2)
+        for i in range(len(job.steps)):
+            job.done(i)
+        job.finish("ok")
+
+    monkeypatch.setattr(syncs, "run_google", hang)
+    assert c.post("/sync/google", data={"csrf": app.state.csrf_token}, headers={"X-Sync": "1"}).json() == {"started": True}
+    assert started.wait(1)
+    try:
+        assert c.post("/sheet/ai", data={"csrf": app.state.csrf_token}, headers={"X-Sync": "1"}).json() == {"started": False}
+    finally:
+        release.set()
+
+
 def test_the_export_includes_v2mom_links_and_promo_drafts(nb):
     import csv as _csv
     import io as _io
     import zipfile as _zip
-    from careeros.export.csv_all import notebook_zip
+    from coffeeshop.export.csv_all import notebook_zip
     from helpers import add, draft, link, load_v2mom, open_session
     dd, *_ = nb
     with open_session(dd) as s:
@@ -373,7 +400,7 @@ def test_the_export_includes_v2mom_links_and_promo_drafts(nb):
 
 def test_v2mom_goals_and_chips_show_the_method_name(nb):
     from datetime import datetime
-    from careeros.storage.models import DailyTask
+    from coffeeshop.storage.models import DailyTask
     from helpers import add, link, load_v2mom, open_session
     dd, c, *_ = nb
     with open_session(dd) as s:

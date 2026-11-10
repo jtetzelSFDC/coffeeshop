@@ -4,9 +4,9 @@ from datetime import date
 import pytest
 from sqlalchemy import select
 
-from careeros.github import connector as gh
-from careeros.storage.models import JournalAttachment, JournalEntry, SyncRun
-from careeros.storage.removal import add_skip_rule, remove_entry
+from coffeeshop.github import connector as gh
+from coffeeshop.storage.models import JournalAttachment, JournalEntry, SyncRun
+from coffeeshop.storage.removal import add_skip_rule, remove_entry
 
 ORG = "example-co/example-org"
 
@@ -16,7 +16,7 @@ def pr(n, title, repo=ORG, author="cmorgan-example", closed="2026-10-20T18:00:00
                 repository={"nameWithOwner": repo}, closedAt=closed, updatedAt="2026-10-21T12:00:00Z")
 
 
-MINE = [pr(1, "Add sandbox refresh job"), pr(2, "Career OS thing", repo="example-org/notes-app")]
+MINE = [pr(1, "Add sandbox refresh job"), pr(2, "Coffee Shop thing", repo="example-org/notes-app")]
 REVIEWED = [pr(7, "Fix deploy gate", author="rvale-example"), pr(1, "Add sandbox refresh job"),
             pr(8, "Still open", author="someone", closed=None),
             pr(9, "Last week", author="someone", closed="2026-10-14T15:00:00Z")]
@@ -106,11 +106,30 @@ def test_first_pull_goes_back_a_year_then_from_the_last_one(session, fake_gh):
     assert (date.today() - gh.since(session)).days == 2
 
 
+def test_missing_github_is_skipped_without_a_notification(tmp_path, monkeypatch):
+    from coffeeshop import sync_all
+    from coffeeshop.config import DataDir
+    from coffeeshop.github.connector import GitHubError
+    from coffeeshop.storage.db import init_db, make_engine
+    from coffeeshop.web import syncs
+    from helpers import fake_syncs
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    init_db(make_engine(dd.db))
+    fake_syncs(monkeypatch)
+    monkeypatch.setattr(sync_all.syncs, "run_github", syncs.run_github)
+    monkeypatch.setattr("coffeeshop.github.connector.fetch", lambda since: (_ for _ in ()).throw(
+        GitHubError("The GitHub command `gh` isn't installed (brew install gh, then gh auth login).")))
+    notes = []
+    assert sync_all.run(dd, force=True, notify=lambda t, m: notes.append((t, m))) == 0
+    assert notes == []
+
+
 def test_sync_step_reports_counts(fake_gh, tmp_path):
     import threading
-    from careeros.storage.db import init_db, make_engine, make_session_factory
-    from careeros.web import syncs
-    from careeros.web.jobs import Job
+    from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+    from coffeeshop.web import syncs
+    from coffeeshop.web.jobs import Job
     engine = make_engine(tmp_path / "j.db")
     init_db(engine)
     job = Job(syncs.GITHUB_STEPS)

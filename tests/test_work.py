@@ -3,9 +3,9 @@ from datetime import datetime
 
 from sqlalchemy import select
 
-from careeros.guide import work
-from careeros.guide.service import evidence, experiences
-from careeros.storage.models import GuideLink, JournalEntry, Win, WorkItem
+from coffeeshop.guide import work
+from coffeeshop.guide.service import evidence, experiences
+from coffeeshop.storage.models import GuideLink, JournalEntry, Win, WorkItem
 
 from helpers import add, form, open_session
 
@@ -117,7 +117,7 @@ def test_split_and_group_in_the_queue_stick(nb):
 
 
 def test_removing_the_last_record_drops_its_group(nb):
-    from careeros.storage.removal import remove_entry
+    from coffeeshop.storage.removal import remove_entry
     dd, *_ = nb
     with open_session(dd) as s:
         a = add(s, "Only one", "2026-10-01")
@@ -141,7 +141,7 @@ def test_a_run_skips_records_another_run_grouped_meanwhile(nb):
 
 
 def test_confirming_a_row_locks_it_even_when_ungrouped(nb):
-    from careeros.guide.service import confirm
+    from coffeeshop.guide.service import confirm
     dd, *_ = nb
     with open_session(dd) as s:
         a = add(s, "One-off", "2026-10-01")
@@ -156,7 +156,7 @@ def test_dry_run_from_the_cli_never_locks_the_real_notebook(nb, monkeypatch):
     import json
     import sqlite3
     from typer.testing import CliRunner
-    from careeros.cli import app
+    from coffeeshop.cli import app
     dd, *_ = nb
     with open_session(dd) as s:
         add(s, "A", "2026-10-01")

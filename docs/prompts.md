@@ -4,7 +4,7 @@ The one place to look for the prompts. Each is a module constant next to the cod
 
 Every prompt runs through `claude_cli.ask()`: tools off, one turn, data on stdin, and the prompt says the data is never instructions (the meeting-notes prompt is the one exception, below). Prompts that only tell Claude to call one connector tool (`call_tool`, `call_tools`) aren't listed: Claude's words are thrown away there, and code parses the tool's answer.
 
-**Role and grade wording.** "DevOps release manager" is hardcoded in 2, 5, 6, and 7. `GRADES` from `guide/service.py` ("Grade 5, going for Grade 6, with some Grade 7 work") goes into 1, 2, and 7. Literal "Grades 6 and 7" are in 2, and in `promo/evidence.py`'s `SECTIONS`, which fill 7's `{what}`. The feat-role-and-level branch replaces these with the saved role and levels. DevOps-shaped examples without the role word remain in 5's example titles, 6's `ACTIVITIES` list, and 8's kind examples.
+**Role and level.** Prompts 1, 2, 6, and 7 use the role and level you saved. A DevOps Grade 5 reads as someone on the DevOps path, going for Grade 6, with some Grade 7 work. Another role or grade changes those words. A few sample titles in the grouping, impact, and Slack prompts are still written as DevOps work.
 
 | # | File and constant | For | Decision |
 |---|---|---|---|
@@ -33,7 +33,7 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 - **Gets:** up to `MAX_GOALS` 15 goals (V2MOM methods, KSO parts, Promo map items, skills; each clipped to 50 to 160 characters, at most 3 open measures and 2 KSO ideas) and up to `MAX_RECENT` 40 titles from the last `RECENT_DAYS` 14 days, each clipped to 100. All of it fits `MAX_CONTEXT` 8,000 characters: old titles go first, then the least useful goals, but `MIN_RECENT` 10 titles stay.
 - **Checked by:** `validate()`: exactly 3 tasks, text up to 110 characters (prompt asks 90), why up to 90 (prompt asks 75), minutes a whole number from 1 to 10, goal one of the ids offered. A bad answer saves nothing.
 - **New user:** no guide and no V2MOM means no goals, and it refuses with a plain message before asking. With a few records, `recent` is short and the prompt still asks for work-specific tasks, so Claude may invent detail.
-- **Decision: change.** US-5 adds this week's records and tells Claude to lean on goals and say so when records are few; `GRADES` comes from the saved level.
+- **Decision: keep.** It uses this week's records and the saved level, and it says so when there are few records.
 
 ## 2. Read-through
 
@@ -73,7 +73,7 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 - **Gets:** the 13 `ACTIVITIES` (key and meaning) and `BATCH` 40 records, text clipped to 500 and notes to 600. 3 batches at a time.
 - **Checked by:** `tag()`: an unknown key becomes no activity; one you set is never changed.
 - **New user:** fine with few records.
-- **Decision: change.** Replace "DevOps release manager" with the saved role. The `ACTIVITIES` list itself (deployments, sandbox refreshes, branch audits) is DevOps work; other roles need their own list later.
+- **Decision: keep.** The prompt uses the saved role. The activity list is still DevOps work (deployments, sandbox refreshes, branch audits). Other roles need their own list later.
 
 ## 7. Promo case section
 
@@ -81,7 +81,7 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 - **Gets:** the section's slice of `promo/evidence.py`'s pieces, capped by `CAPS` (40, or 50 for accomplishments), from a window of 365 days by default. Piece text is clipped: check-in comments 600, kudos 400, single records 200, 4 records per piece of work at 120, 3 V2MOM examples at 80; at most 15 wins in the summary, 20 kudos, 60 single records. 3 sections at a time.
 - **Checked by:** `check()`: sources must be in this section's evidence, and every number in a sentence must appear in it. A failing sentence is kept and flagged **Check this**. A section with no evidence says so; no linked work at all refuses before asking; if every section fails, nothing is saved.
 - **New user:** with little evidence the prompt still asks for 3 to 8 sentences per section, which invites padding.
-- **Decision: change.** Replace "DevOps release manager", `GRADES`, and the Grade 6 and 7 wording in `SECTIONS` with the saved role and levels. US-6 adds a too-little-data message and drops activity counts unrelated to a section.
+- **Decision: keep.** The prompt and the section descriptions use the saved role and level. Too little evidence refuses before asking Claude, and an activity count is used only in a section that also cites that kind of work.
 
 ## 8. Slack tracker kinds
 
@@ -89,7 +89,7 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 - **Gets:** `BATCH` 30 items, each its headline plus the canvas description clipped to 1,200. 3 batches at a time.
 - **Checked by:** `_batch()`: anything not one of the five becomes note. A failed batch imports as note; only if every batch fails is nothing imported.
 - **New user:** fine with few items.
-- **Decision: keep, then change.** It works today, but it re-sorts text Slackbot already summarized; US-7 replaces the canvas with your own messages, and this prompt changes with it.
+- **Decision: keep.** It sorts new Slack messages and canvas items into a kind. An answer that is not one of the five kinds is saved as a note.
 
 ## 9. Kudos filter
 

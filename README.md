@@ -3,7 +3,7 @@
 <p align="center"><em>Do the work. It remembers.</em></p>
 
 <p align="center">
-  <img src="docs/img/home.jpg" width="820" alt="Coffee Shop's Home page in dark mode: a latte in the corner, house plants down the side, a Today's three card with three small tasks, and a card with Grade 6 and Grade 7 readiness bars, tiles for skills, wins, kudos and records to check, a 12-week evidence chart, and the next step.">
+  <img src="docs/img/home.jpg" width="820" alt="Coffee Shop's Home page in dark mode, on the practice notebook: a latte in the corner, house plants down the side, and three closed tiles. Promotion Progress has a short green bar. Today's Three and New Entry are closed.">
 </p>
 
 ## What it does
@@ -24,22 +24,22 @@
 
 ## Begin
 
-First time? Follow [SETUP.md](SETUP.md): open this folder in Claude Code and type `/setup`. The steps below are the same thing by hand.
+First time? Follow [SETUP.md](SETUP.md): open this folder in Claude Code and type `/setup`. The same steps are on the setup page once the app is running: http://127.0.0.1:8765/setup. The commands below are the same thing by hand.
 
 You need [uv](https://docs.astral.sh/uv/) and Claude Code signed in to the Google Workspace and Slack connectors. The same commands work on a Mac and on Windows.
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros notebook init
-uv run careeros setup level
-uv run careeros schedule install
+uv run coffeeshop notebook init
+uv run coffeeshop setup level
+uv run coffeeshop schedule install
 ```
 
 `setup level` asks for your role and your grade now, and loads that role's leveling guide. Then open http://127.0.0.1:8765 in a browser. On a Mac you can run `open http://127.0.0.1:8765`.
 
-Then connect your V2MOM ([INSTRUCTIONS.md](docs/INSTRUCTIONS.md)); without them there is nothing to sort against.
+Records are sorted against the leveling guide from `setup level`. A V2MOM is optional. It adds your methods to that sort ([INSTRUCTIONS.md](docs/INSTRUCTIONS.md)).
 
-To try it with made-up data: `uv run careeros demo seed --data-dir /tmp/cos-demo && uv run careeros serve --data-dir /tmp/cos-demo`. The screenshot above is that practice notebook.
+To try it with made-up data: `uv run coffeeshop demo seed --data-dir /tmp/cos-demo && uv run coffeeshop serve --data-dir /tmp/cos-demo`. The screenshot above is that practice notebook.
 
 ## Read more
 

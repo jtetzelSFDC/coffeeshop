@@ -1,8 +1,8 @@
 from datetime import date, datetime, timedelta
 
-from careeros import dashboard
-from careeros.guide.service import experiences, promo_map
-from careeros.storage.models import GuideLink, JournalEntry, Win
+from coffeeshop import dashboard
+from coffeeshop.guide.service import experiences, promo_map
+from coffeeshop.storage.models import GuideLink, JournalEntry, Win
 
 from helpers import open_session
 
@@ -59,10 +59,10 @@ def test_home_is_the_dashboard_not_a_day_list(nb):
 
 def test_home_without_a_guide_says_how_to_load_it(tmp_path):
     from starlette.testclient import TestClient
-    from careeros.config import DataDir
-    from careeros.web.app import create_app
+    from coffeeshop.config import DataDir
+    from coffeeshop.web.app import create_app
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
     html = TestClient(create_app(dd), base_url="http://127.0.0.1").get("/").text
-    assert "careeros setup level" in html and html.count("<rect class=") == dashboard.WEEKS
+    assert "coffeeshop setup level" in html and html.count("<rect class=") == dashboard.WEEKS
     assert 'class="nextbar"' not in html

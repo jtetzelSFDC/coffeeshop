@@ -4,15 +4,15 @@ import csv
 import json
 from datetime import datetime
 
-from careeros.config import DataDir
-from careeros.fixtures.kso import reply as fw_reply
-from careeros.guide.service import experiences
-from careeros.kso import framework, map as kmap
-from careeros.promo import write as pw
-from careeros.storage.db import init_db, make_engine, make_session_factory
-from careeros import sync_all
-from careeros.storage.models import GuideLink, JournalEntry, SyncRun, V2momLink, Win
-from careeros.v2mom import connector, store
+from coffeeshop.config import DataDir
+from coffeeshop.fixtures.kso import reply as fw_reply
+from coffeeshop.guide.service import experiences
+from coffeeshop.kso import framework, map as kmap
+from coffeeshop.promo import write as pw
+from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+from coffeeshop import sync_all
+from coffeeshop.storage.models import GuideLink, JournalEntry, SyncRun, V2momLink, Win
+from coffeeshop.v2mom import connector, store
 
 BASE = "http://127.0.0.1"
 

@@ -4,8 +4,8 @@ import json
 
 from sqlalchemy import select
 
-from careeros.kso import map as kmap, progress
-from careeros.storage.models import KsoMap
+from coffeeshop.kso import map as kmap, progress
+from coffeeshop.storage.models import KsoMap
 
 from helpers import BASE, TWO, connect, form, kso_setup, load_v2mom, open_session
 
@@ -90,10 +90,10 @@ def test_older_years_get_a_picker(nb):
 
 def test_the_practice_notebook_has_made_up_ksos(tmp_path):
     from fastapi.testclient import TestClient
-    from careeros.config import DataDir
-    from careeros.fixtures.demo import seed
-    from careeros.storage.db import init_db, make_engine, make_session_factory
-    from careeros.web.app import create_app
+    from coffeeshop.config import DataDir
+    from coffeeshop.fixtures.demo import seed
+    from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+    from coffeeshop.web.app import create_app
     dd = DataDir(tmp_path / "demo")
     dd.init_demo()
     engine = make_engine(dd.db)
@@ -133,11 +133,11 @@ def test_a_target_pasted_with_cents_is_kept_in_dollars(nb):
 
 
 def test_an_older_practice_notebook_gets_the_made_up_ksos(tmp_path):
-    from careeros.config import DataDir
-    from careeros.fixtures.demo import seed
-    from careeros.kso import framework
-    from careeros.storage.db import init_db, make_engine, make_session_factory
-    from careeros.storage.models import KsoFramework
+    from coffeeshop.config import DataDir
+    from coffeeshop.fixtures.demo import seed
+    from coffeeshop.kso import framework
+    from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+    from coffeeshop.storage.models import KsoFramework
     dd = DataDir(tmp_path / "demo")
     dd.init_demo()
     engine = make_engine(dd.db)

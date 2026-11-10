@@ -3,9 +3,9 @@ links that resolve. All made-up data."""
 import re
 from datetime import date, datetime, timedelta
 
-from careeros import digest
-from careeros.storage.models import JournalEntry, Win
-from careeros.v2mom import report
+from coffeeshop import digest
+from coffeeshop.storage.models import JournalEntry, Win
+from coffeeshop.v2mom import report
 
 from helpers import TWO, add, link, load_v2mom, open_session
 

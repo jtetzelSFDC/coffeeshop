@@ -5,13 +5,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from typer.testing import CliRunner
 
-from careeros.claude_cli import ClaudeError
-from careeros.cli import app as cli
-from careeros.slack import classify as cls
-from careeros.slack.importer import import_items, impact_of, load_canvas_id, save_canvas_id
-from careeros.slack.parse import CanvasFormatError, parse_canvas
-from careeros.storage.models import JournalAttachment, JournalEntry
-from careeros.web.app import create_app
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.cli import app as cli
+from coffeeshop.slack import classify as cls
+from coffeeshop.slack.importer import import_items, impact_of, load_canvas_id, save_canvas_id
+from coffeeshop.slack.parse import CanvasFormatError, parse_canvas
+from coffeeshop.storage.models import JournalAttachment, JournalEntry
+from coffeeshop.web.app import create_app
 
 from helpers import personal, run_sync
 
@@ -150,7 +150,7 @@ def test_cli_import(tmp_path, monkeypatch):
 
 
 def test_web_sync_and_cards(tmp_path, monkeypatch):
-    from careeros.slack import connector, kudos, messages
+    from coffeeshop.slack import connector, kudos, messages
     dd, Session = personal(tmp_path)
     app = create_app(dd)
     c, token = TestClient(app, base_url=BASE), app.state.csrf_token
@@ -180,7 +180,7 @@ def test_web_sync_and_cards(tmp_path, monkeypatch):
 
 
 def test_saved_big_answers_are_read_back(tmp_path, monkeypatch):
-    from careeros import claude_cli
+    from coffeeshop import claude_cli
     monkeypatch.setattr(claude_cli, "SAVED_DIRS", (tmp_path.resolve(),))
     f = tmp_path / "slack-x.json"
     f.write_text(json.dumps({"content": [{"type": "text", "text": json.dumps({"markdown_content": TRACKER})}]}))
@@ -193,7 +193,7 @@ def test_saved_big_answers_are_read_back(tmp_path, monkeypatch):
 
 
 def test_a_long_answer_that_mentions_saved_to_is_kept_as_is():
-    from careeros import claude_cli
+    from coffeeshop import claude_cli
     text = "# Tracker\n" + "x" * 5000 + "\nExport saved to: notes.txt\n"
     assert claude_cli._result_text(text) == text
 

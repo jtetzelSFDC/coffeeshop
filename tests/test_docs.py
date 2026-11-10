@@ -1,12 +1,12 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
 
-from careeros.claude_cli import ClaudeError
-from careeros.google import docs as gdocs
-from careeros.storage.models import JournalAttachment, JournalEntry
-from careeros.storage.removal import add_skip_rule, remove_entry
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.google import docs as gdocs
+from coffeeshop.storage.models import JournalAttachment, JournalEntry
+from coffeeshop.storage.removal import add_skip_rule, remove_entry
 
 ME = "casey@example.com"
 
@@ -79,17 +79,38 @@ def test_fetch_searches_a_month_at_a_time_and_counts_incomplete(monkeypatch):
         out = [("t", {"query": q}, OWNED if "'me' in owners" in q and not q.startswith("not") else OTHERS) for q in qs]
         out[0] = (out[0][0], out[0][1], answer(row("x", "Big month"), more=True))
         return out[:-1]  # the last search never came back
-    monkeypatch.setattr("careeros.claude_cli.call_tools", fake)
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", fake)
     found, short = gdocs.fetch(date(2025, 10, 29), date(2026, 10, 29))
     assert seen["n"] == 24 and short == 2
     assert "own1" in {d.gid for d in found} and "oth2" not in {d.gid for d in found}
 
 
 def test_signed_out_google_stops_the_step(monkeypatch):
-    monkeypatch.setattr("careeros.claude_cli.call_tools", lambda *a, **k: [
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", lambda *a, **k: [
         ("t", {"query": gdocs._query(True, date(2026, 10, 27), date(2026, 10, 29))}, "Error: invalid_token")])
     with pytest.raises(ClaudeError, match="sign-in has expired"):
         gdocs.fetch(date(2026, 10, 27), date(2026, 10, 29))
+
+
+def test_a_file_older_than_a_week_is_not_summarized_again(session):
+    gdocs.merge(session, gdocs.parse(OWNED, True))
+    for e in session.scalars(select(JournalEntry)):
+        e.created_at = datetime.now() - timedelta(days=8)
+    session.commit()
+    assert gdocs.pending(session) == []
+
+
+def test_a_summary_for_a_deleted_record_is_skipped(session):
+    from coffeeshop.google.summaries import save_summaries
+    e = JournalEntry(day="2026-10-20", kind="document", text="Wrote doc: Old", created_at=datetime.now(),
+                     source="docs", external_id="gdoc:gone")
+    session.add(e)
+    session.commit()
+    eid = e.id
+    session.delete(e)
+    session.commit()
+    assert save_summaries(session, [(eid, "A doc.\nIt covers things."), (eid, None)], "AI summary") == dict(
+        summarized=0, failed=1)
 
 
 def test_summaries_saved_and_a_failure_keeps_the_record_for_next_time(session, monkeypatch):
@@ -113,8 +134,8 @@ def test_summaries_saved_and_a_failure_keeps_the_record_for_next_time(session, m
 
 def test_summary_reads_the_file_then_summarizes_it_without_tools(monkeypatch):
     calls = []
-    monkeypatch.setattr("careeros.claude_cli.call_tool", lambda prompt, tool, timeout=0: calls.append(tool) or "body text")
-    monkeypatch.setattr("careeros.claude_cli.ask", lambda prompt, data, timeout=0: calls.append(data) or
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tool", lambda prompt, tool, timeout=0: calls.append(tool) or "body text")
+    monkeypatch.setattr("coffeeshop.claude_cli.ask", lambda prompt, data, timeout=0: calls.append(data) or
                         " A runbook.\n\nIt covers releases.\nSkipped: the tabs.\nA third line.")
     assert gdocs.summarize("own1", "doc", "Runbook") == "A runbook.\nIt covers releases."
     assert calls == [gdocs.READ_TOOL, "body text"]

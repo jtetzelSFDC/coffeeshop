@@ -38,7 +38,7 @@ def test_personal_paths_are_refused_and_the_leveling_workbook_is_allowed():
         "Data\\secret.xlsx",
     ]
     allowed = [
-        "src/careeros/cli.py",
+        "src/coffeeshop/cli.py",
         "docs/TECHNICAL.md",
         "data/leveling/leveling-guides.xlsx",
         "data/Leveling/older/Guide.XLSX",

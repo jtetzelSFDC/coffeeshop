@@ -1,14 +1,14 @@
 import pytest
 
-from careeros.storage.db import init_db, make_engine, make_session_factory
+from coffeeshop.storage.db import init_db, make_engine, make_session_factory
 
 from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
-from careeros.cli import app as cli
-from careeros.config import DataDir
-from careeros.guide.service import save_profile
-from careeros.web.app import create_app
+from coffeeshop.cli import app as cli
+from coffeeshop.config import DataDir
+from coffeeshop.guide.service import save_profile
+from coffeeshop.web.app import create_app
 from helpers import BASE, write_guide
 
 
@@ -26,16 +26,16 @@ def new_york_time(monkeypatch):
 @pytest.fixture(autouse=True)
 def no_real_claude(monkeypatch):
     """Tests never start the real `claude` command; a test that needs Claude passes a fake reader or patches ask."""
-    from careeros import claude_cli
+    from coffeeshop import claude_cli
 
     def refuse():
         raise claude_cli.ClaudeError("tests never call the real Claude")
     monkeypatch.setattr(claude_cli, "_claude", refuse)
 
     def no_gh(*args):
-        from careeros.github.connector import GitHubError
+        from coffeeshop.github.connector import GitHubError
         raise GitHubError("tests never call the real gh")
-    monkeypatch.setattr("careeros.github.connector._gh", no_gh)
+    monkeypatch.setattr("coffeeshop.github.connector._gh", no_gh)
 
 
 @pytest.fixture

@@ -4,7 +4,9 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests, has Claude sort each one against your role's leveling guide, your V2MOM, and your KSOs, and keeps your wins, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
+Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests. Claude sorts each one against your role's leveling guide. Your V2MOM and your KSOs join that sort when you connect them. Your wins stay too, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you have actually done.
+
+Everything stays on this laptop. Something leaves only when Claude reads or sorts it: a sync, Have Claude read, Write my promo case, Suggest now, Re-estimate, a `kso` command, or Send to Google Docs. The full list is in [What goes to Claude](TECHNICAL.md#what-goes-to-claude).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -14,9 +16,9 @@ Your real, permanent notebook lives in `~/Library/Application Support/coffeeshop
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros notebook init   # first time only: makes the notebook folder
-uv run careeros setup level     # first time only: your role and grade (see Leveling guide below)
-uv run careeros serve
+uv run coffeeshop notebook init   # first time only: makes the notebook folder
+uv run coffeeshop setup level     # first time only: your role and grade (see Leveling guide below)
+uv run coffeeshop serve
 ```
 
 Open **http://127.0.0.1:8765** in a browser. Leave the terminal running. Press **Ctrl+C** in it to stop the app. If the page stops loading (for example after a restart), run the same command again. Your entries and wins are still there.
@@ -29,7 +31,7 @@ New here? [SETUP.md](../SETUP.md) has the steps. In Claude Code, open this folde
 
 The fallback is the **Setup** page in the Menu (http://127.0.0.1:8765/setup): pick your role and level, see whether your V2MOM is connected, and press **Check connections**. Untick a connector to skip it. **Settings** in the Menu shows your saved role and level, with **Change** and **Run setup again**. Until a role and level are saved, Home shows a **Finish setup** note.
 
-`uv run careeros setup check` prints the same checks in Terminal as pass, fail, or skipped, each with what to do. It only reads: one small read from Google and one from Slack, and nothing is changed. Add `--skip google`, `--skip slack`, `--skip github`, or `--skip schedule` to leave one out. Signing in to Google or Slack always happens in Claude Code's connector settings.
+`uv run coffeeshop setup check` prints the same checks in Terminal as pass, fail, or skipped, each with what to do. It only reads: one small read from Google and one from Slack, and nothing is changed. Add `--skip google`, `--skip slack`, `--skip github`, or `--skip schedule` to leave one out. Signing in to Google or Slack always happens in Claude Code's connector settings.
 
 ## Let it run on its own (recommended)
 
@@ -37,7 +39,7 @@ One command sets up three scheduled tasks, so you never start the app or press S
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros schedule install
+uv run coffeeshop schedule install
 ```
 
 - **The app** starts when you log in and comes back if it stops. On Windows, Task Scheduler starts it at logon and, if it exits with an error, starts it again one minute later (up to 255 times). A clean exit waits until the next logon. It's at http://127.0.0.1:8765 once it's running. If you'd started it yourself in a Terminal, stop that one (Ctrl+C) first.
@@ -45,16 +47,16 @@ uv run careeros schedule install
 - **If something fails**, for example a connector's sign-in expired, a notification says which sync and what to do (usually: open Claude Code's connector settings and sign in again). On Windows, if the toast is blocked, the same words go in the sync log instead. Nothing is shown when everything works; the status chips show the times.
 - **The daily three** come as the last step of the morning sync, so they're ready by about 8:15 to 8:30 AM and always see the work just pulled in. If the computer was off that morning, the login or 6 PM sync makes them. See **Daily three** below.
 - **The digest** shows a notification on Fridays at 12:00 PM (if the laptop was asleep, as soon as it wakes). See **Weekly digest** below.
-- `uv run careeros schedule status` shows whether each is on and the last sync log line. Logs are in `logs/` in your notebook folder.
-- `uv run careeros sync all --force` runs a sync right now from Terminal.
-- `uv run careeros schedule uninstall` removes the three tasks and nothing else.
+- `uv run coffeeshop schedule status` shows whether each is on and the last sync log line. Logs are in `logs/` in your notebook folder.
+- `uv run coffeeshop sync all --force` runs a sync right now from Terminal.
+- `uv run coffeeshop schedule uninstall` removes the three tasks and nothing else.
 
 ## Start the practice notebook (made-up data)
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros demo seed --data-dir /tmp/cos-demo
-uv run careeros serve --data-dir /tmp/cos-demo
+uv run coffeeshop demo seed --data-dir /tmp/cos-demo
+uv run coffeeshop serve --data-dir /tmp/cos-demo
 ```
 
 It holds a week of made-up meetings, Slack items, tasks, and notes, two wins, and a tiny made-up leveling guide, so every page has something to show. It never syncs with Slack or Google. `/tmp` is cleared when the Mac restarts; on Windows, use a folder such as `$env:TEMP\cos-demo` instead of `/tmp/cos-demo`. Just run `demo seed` again. Never put real notes here.
@@ -83,12 +85,12 @@ The app knows your role's leveling guide, so your work can be lined up against w
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros setup level
+uv run coffeeshop setup level
 ```
 
-It lists the roles, then your role's grades with their job titles, saves your choice in your notebook, and loads that role's guide. To skip the questions: `uv run careeros setup level --role DevOps --grade 5`. A few roles have two job titles at the same grade, such as a manager and an architect. Those are listed as two roles, for example "Quality Engineering" and "Quality Engineering (Test Automation Architect)"; pick the one you're on. On the top grade of your path there's no next level, so Home and the Promo map say that instead of showing bars. On paths other than DevOps, the Promo map lists your next grades' key experiences in one plain list, without the topics and ideas below.
+It lists the roles, then your role's grades with their job titles, saves your choice in your notebook, and loads that role's guide. To skip the questions: `uv run coffeeshop setup level --role DevOps --grade 5`. A few roles have two job titles at the same grade, such as a manager and an architect. Those are listed as two roles, for example "Quality Engineering" and "Quality Engineering (Test Automation Architect)"; pick the one you're on. On the top grade of your path there's no next level, so Home and the Promo map say that instead of showing bars. On paths other than DevOps, the Promo map lists your next grades' key experiences in one plain list, without the topics and ideas below.
 
-**When a new guide comes out.** Download the whole Google Sheet as an `.xlsx` file and run `uv run careeros guide update <file>`. It checks that every role tab reads, says which roles were added, removed, or changed, and only then replaces the copy in the repo. Commit it, then run `setup level` again to load it. Links you've made are kept. Anything the new guide drops leaves the map but stays on the wins that pointed to it.
+**When a new guide comes out.** Download the whole Google Sheet as an `.xlsx` file and run `uv run coffeeshop guide update <file>`. It checks that every role tab reads, says which roles were added, removed, or changed, and only then replaces the copy in the repo. Commit it, then run `setup level` again to load it. Links you've made are kept. Anything the new guide drops leaves the map but stays on the wins that pointed to it.
 
 **Linking your work.** Each time you save a win, the app asks **Which parts of the leveling guide does this show?** It ticks the items that look related based on your words, such as "sandbox", "deploy", "merge", or "demo". Untick what doesn't fit, tick what it missed, and click **Save**, or choose **Skip for now**. Nothing is linked until you save. Notebook entries can be linked too. Entries that look related show dashed **Might show** chips, and linked ones show **Shows** with the items; the target button on the entry links or changes them.
 
@@ -101,7 +103,17 @@ It lists the roles, then your role's grades with their job titles, saves your ch
 
 Colors come from points. A linked entry is worth 1, and a small, medium, or large win is worth 2, 3, or 4. One point makes an item Started, 3 make it Shown, and 6 make it Strong. So one large win shows an experience, and a large win plus a medium one makes it strong. An entry and the win made from it only count once.
 
-**Write my promo case** (on the Promo map, or at http://127.0.0.1:8765/promo/case) has Claude draft the case itself. Pick who it's about (your first name, remembered for next time) and the window (the last 12 months by default), then press the button; it takes a minute or two, with progress per section. The draft has five sections: **Summary, Key accomplishments, Impact, Behaviors & values, Growth areas**, written in the third person. Claude writes them only from your notebook: wins and why they mattered, pieces of work, linked records, the impact numbers, and the Promo map's gaps and next steps, all dated inside the window. Every sentence ends with small [numbers] that jump to its sources, listed at the bottom as they were when the draft was written. The app then checks each sentence itself: one with no source, or with a number that doesn't appear in its evidence, is marked **Check this** with the reason. The check catches invented numbers and missing sources, not every wrong word, so read the draft before you use it. An activity count (like "12 deployments") is only used in a section that also cites work of that kind, so a number never shows up with nothing behind it. If the window has fewer than three linked wins, pieces of work, or records, the page says so and doesn't ask Claude; log more, let a sync link your records, or pick wider dates. Under **Style example (optional)** you can paste a strong promo case, yours or someone else's. Claude copies only its tone and structure, never its facts, and the checks above still apply to every sentence. It's kept on this computer only (in `profile.json`, next to your database), goes to Claude when you write or rewrite a section, and is cleared by emptying the box and writing again. Every draft is kept. From Terminal: `uv run careeros promo write` (with `--start`, `--end`, `--name`).
+**Write my promo case** is on the Promo map, or at http://127.0.0.1:8765/promo/case. Pick who it is about (your first name, remembered next time) and the dates (the last 12 months by default), then press the button. It takes a minute or two, and each section shows its progress.
+
+The draft has five sections: **Summary, Key accomplishments, Impact, Behaviors & values, Growth areas**. They are written in the third person, and only from your notebook: wins and why they mattered, pieces of work, linked records, the impact numbers, and the Promo map's gaps and next steps. Only items inside the dates are used.
+
+Every sentence ends with small [numbers] that jump to its sources. The sources are listed at the bottom as they were when the draft was written. The app then checks each sentence. One with no source, or with a number that is not in its evidence, is marked **Check this** and the reason is shown. The check catches invented numbers and missing sources, not every wrong word, so read the draft before you use it. A count such as "12 deployments" is used only in a section that also cites work of that kind.
+
+If the dates hold fewer than three linked wins, pieces of work, or records, the page says so and does not ask Claude. Log more, let a sync link your records, or pick wider dates.
+
+Under **Style example (optional)** you can paste a strong promo case, yours or someone else's. Claude copies only its tone and structure, never its facts, and the checks above still apply. The example stays on this computer, in `profile.json` next to your database. It is sent to Claude when you write or rewrite a section. Empty the box and write again to clear it. Every draft is kept.
+
+From Terminal: `uv run coffeeshop promo write` (with `--start`, `--end`, `--name`).
 
 **V2MOM alignment.** Once your V2MOM is loaded and records are linked to its methods, the evidence also has one piece per current method with work in the window, like "V2MOM M2 (Build Reusable Pipeline Accelerators, On Track, 50% progress): 3 wins and 12 records between … and …, for example: …", and each win and piece of work says which methods it advances ("Advances V2MOM M2."). These go to the Summary and Impact sections, so the case can say a piece of work was "advancing V2MOM method M2 (its name)", but only when a source it cites says so; the usual check applies. Methods with nothing in the window, and ones dropped from your V2MOM, are left out. When your V2MOM came from the PDF, each check-in with manager comments also becomes a piece, like "V2MOM check-in (Midyear FY27), manager comments: …" (up to about 600 characters), for the Summary, Key accomplishments, and Behaviors & values, so the case can quote your manager's own words. Check-ins without comments are left out. With no V2MOM loaded, the case is written exactly as before.
 
@@ -128,18 +140,18 @@ The **Intake Review Queue** (in the Menu) lists every record (calendar meetings,
 **One piece of work, counted once.** A deployment often shows up three times: a calendar meeting, a Slack thread, and a Google task. Claude groups records like that into one piece of work, and the Promo map counts the piece once, at its strongest evidence (a large win made from one of them beats a plain record). A grouped row shows **Part of: Pine 5.1.2 release · 3 records** (marked AI until you check the row). **Not the same work** takes a row out of its group, and **Group with…** puts it in a nearby group or starts a new one you name. Claude never regroups a row you grouped, split, or marked **Looks right**. A piece of work runs at most 30 days from its first record, and a record joins only work that's had activity in the last 14 days, so groups don't snowball. New records are grouped after every sync. To group everything already in the notebook (it shows what it would do first with `--dry-run`):
 
 ```
-uv run careeros guide group --dry-run
-uv run careeros guide group
+uv run coffeeshop guide group --dry-run
+uv run coffeeshop guide group
 ```
 
-**Impact numbers.** Claude tags each record with the one activity it shows, from a fixed list: deployment, sandbox refresh, release coordinated, PR reviewed or approved, incident or blocker resolved, document written, process change, mentoring or teaching, demo or presentation, access request handled, branch audit, hotfix, and training or certification. Routine meetings and status pings get nothing, and a meeting *about* a deploy isn't a deployment. The Promo map's **By the numbers** table counts each activity for this half (calendar halves), this year, and all time. A piece of work counts once per day it was done: three records of the same deploy on the same day count once, and a release deployed to lab on Monday and to UAT on Thursday counts twice. Open tasks don't count. Click a number to see the records behind it. In the Intake Review Queue, **Counts as** shows each record's activity (marked AI until you set it) and lets you change it; Claude never changes one you set. New records are tagged after every sync. To tag everything already in the notebook: `uv run careeros guide activities`. The promo case download includes the table.
+**Impact numbers.** Claude tags each record with the one activity it shows, from a fixed list: deployment, sandbox refresh, release coordinated, PR reviewed or approved, incident or blocker resolved, document written, process change, mentoring or teaching, demo or presentation, access request handled, branch audit, hotfix, and training or certification. Routine meetings and status pings get nothing, and a meeting *about* a deploy isn't a deployment. The Promo map's **By the numbers** table counts each activity for this half (calendar halves), this year, and all time. A piece of work counts once per day it was done: three records of the same deploy on the same day count once, and a release deployed to lab on Monday and to UAT on Thursday counts twice. Open tasks don't count. Click a number to see the records behind it. In the Intake Review Queue, **Counts as** shows each record's activity (marked AI until you set it) and lets you change it; Claude never changes one you set. New records are tagged after every sync. To tag everything already in the notebook: `uv run coffeeshop guide activities`. The promo case download includes the table.
 
 **Skipping a recurring meeting for good.** To keep a meeting you don't attend out of the notebook, including future ones, add a skip rule. It removes the ones already here and Calendar sync skips any meeting whose title contains the text (any capitalization):
 
 ```
-uv run careeros calendar skip "Team Daily Standup"
-uv run careeros calendar skip                          # list the rules
-uv run careeros calendar unskip "Team Daily Standup"  # stop skipping
+uv run coffeeshop calendar skip "Team Daily Standup"
+uv run coffeeshop calendar skip                          # list the rules
+uv run coffeeshop calendar unskip "Team Daily Standup"  # stop skipping
 ```
 
 Buttons in the queue save without reloading the page: a row you check or remove fades out, and a row you change redraws in place.
@@ -150,7 +162,7 @@ Purple **AI** marks are Claude's picks: guide links, drafted wins, and type chan
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros guide review
+uv run coffeeshop guide review
 ```
 
 It never touches rows you've marked checked or guide links you picked yourself. Because Claude takes a few minutes, it looks at each record again just before saving: a record you removed or checked in the meantime is skipped, and a record you retyped keeps your type. You can keep clicking around the app while it runs. Record text, attached notes, and the leveling guide pass through the AI tool, with Claude's built-in tools (files, shell, web) turned off. Calendar and Tasks syncs never delete a record that has a win, guide links, or your check on it.
@@ -167,10 +179,10 @@ Your Slack Work Activity Tracker canvas (the one Slackbot fills in every day) co
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros slack connect <canvas link>
+uv run coffeeshop slack connect <canvas link>
 ```
 
-**Importing a saved canvas** (for example one of your old Weekly Contributions canvases): save its text to a file, then run `uv run careeros slack import <file>`. The 2025 Weekly Contributions canvases are already imported.
+**Importing a saved canvas** (for example one of your old Weekly Contributions canvases): save its text to a file, then run `uv run coffeeshop slack import <file>`. The 2025 Weekly Contributions canvases are already imported.
 
 ## Daily three
 
@@ -178,9 +190,9 @@ Every morning, as the last step of the 8 AM sync (so it sees yesterday's work), 
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros daily suggest           # today's three (does nothing if they already exist)
-uv run careeros daily suggest --force   # a new three, keeping any you've already done
-uv run careeros daily show              # print today's three
+uv run coffeeshop daily suggest           # today's three (does nothing if they already exist)
+uv run coffeeshop daily suggest --force   # a new three, keeping any you've already done
+uv run coffeeshop daily show              # print today's three
 ```
 
 **On Home**, **Promotion Progress** is the top cell. Its title row has a small green bar for the next grade, and clicking the cell opens it. Under that are **Today's Three**, **New Entry**, and **Sync Status**. Each stays closed until you click it.
@@ -206,7 +218,7 @@ At the top are **nudges**, each with a link to where to act:
 
 When nothing needs you, it says so. The page is worked out when you open it, from the notebook only: no Claude, nothing stored.
 
-On Fridays at 12:00 PM the schedule shows a notification like "This week: 13 wins, 54 records, 3 nudges. Open http://127.0.0.1:8765/digest". The notification doesn't open the link, so open the page from the Menu. To see it now: `uv run careeros digest notify`.
+On Fridays at 12:00 PM the schedule shows a notification like "This week: 13 wins, 54 records, 3 nudges. Open http://127.0.0.1:8765/digest". The notification doesn't open the link, so open the page from the Menu. To see it now: `uv run coffeeshop digest notify`.
 
 ## Kudos: recognition from other people
 
@@ -240,9 +252,9 @@ To keep files out by title (Drive's search doesn't show folders, so skipping is 
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros docs skip "Untitled"
-uv run careeros docs skip               # list the rules
-uv run careeros docs unskip "Untitled"
+uv run coffeeshop docs skip "Untitled"
+uv run coffeeshop docs skip               # list the rules
+uv run coffeeshop docs unskip "Untitled"
 ```
 
 Adding a rule also removes matching records already in the notebook, and **Remove** in the Intake Review Queue keeps a file out for good, including later updates.
@@ -262,20 +274,20 @@ To pull right away instead of waiting for the schedule:
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros github sync
+uv run coffeeshop github sync
 ```
 
 To keep a repo (or any title text) out, for example this app's own PRs:
 
 ```
-uv run careeros github skip example-org/notes-app
-uv run careeros github skip                    # list the rules
-uv run careeros github unskip example-org/notes-app
+uv run coffeeshop github skip example-org/notes-app
+uv run coffeeshop github skip                    # list the rules
+uv run coffeeshop github unskip example-org/notes-app
 ```
 
 Adding a rule also removes the matching records already in the notebook. **Remove** in the Intake Review Queue works too, and a removed week stays removed.
 
-If `gh` isn't signed in, the sync says so; run `gh auth login`.
+If `gh` is not installed or not signed in, that step is skipped and you are not notified. Install it and run `gh auth login` when you want pull requests in the notebook.
 
 ## V2MOM: your Vision, Values, Methods, Obstacles, and Measures
 
@@ -287,15 +299,24 @@ The command still works. Save the PDF (keep the name it gives you, something lik
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros v2mom connect ~/Desktop/"FY27 V2MOM Your Name.pdf"
-uv run careeros v2mom sync
+uv run coffeeshop v2mom connect ~/Desktop/"FY27 V2MOM Your Name.pdf"
+uv run coffeeshop v2mom sync
 ```
 
 The app pulls the text out of the PDF on your laptop (with pypdf), then Claude (with no tools) picks out the fiscal year, the vision, the values, each method in order (M1, M2, …) with its description and its measures (each with its status, its percent, and any comments), the obstacles with the methods they relate to, and the check-ins with your manager's comments. The PDF doesn't print a method's own status or percent, so the app works them out from its measures: the percent is the average of the measures' percents (a Completed measure counts as 100), and the status is Completed when every measure is, On Track when any has progress or says On Track. If it can't find any methods, it says so and nothing changes.
 
-**Or a Google Doc** (still works): open your V2MOM in the V2MOM app, expand each method so its measures show, select the whole page, copy, and paste it into a new Google Doc; the page's extra text is ignored. Then connect the Doc's link instead: `uv run careeros v2mom connect "https://docs.google.com/document/d/…/edit"`. The sync reads it through Claude Code's Google Workspace connector. The Doc has no check-ins or measure comments. Connecting the PDF later keeps your methods and their links.
+**Or a Google Doc** (still works): open your V2MOM in the V2MOM app, expand each method so its measures show, select the whole page, copy, and paste it into a new Google Doc; the page's extra text is ignored. Then connect the Doc's link instead: `uv run coffeeshop v2mom connect "https://docs.google.com/document/d/…/edit"`. The sync reads it through Claude Code's Google Workspace connector. The Doc has no check-ins or measure comments. Connecting the PDF later keeps your methods and their links.
 
-**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again and upload it on the V2MOM page (or, if you connected a folder, save the new PDF there and press **Sync V2MOM** on Home). Each sync reads the newest PDF with "V2MOM" in its name in that folder, so a re-download saved as "… (1).pdf" is picked up without connecting again. The latest fiscal year in the name comes first, so downloading last year's PDF to look back at doesn't replace this year's, and next year's FY28 PDF is picked up by itself. If the file is gone, the sync says where to save it. With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
+**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again and upload it on the V2MOM page. If you connected a folder, save the new PDF there and press **Sync V2MOM** on Home.
+
+Which file is read:
+
+- The name must contain "V2MOM".
+- A re-download saved as "… (1).pdf" is picked up. You do not connect it again.
+- The latest fiscal year in the name wins. Opening last year's PDF does not replace this year's. An FY28 PDF is picked up on its own.
+- If the file is gone, the sync says where to save it.
+
+With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
 
 **The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when your V2MOM was read in the last 31 days, orange when it's older, and grey with a hint when nothing is connected yet. The PDF's path or the Doc's id is kept in `v2mom.json` in the notebook folder, readable only by you (a `v2mom.doc` from before still works). An upload is saved in that folder as `v2mom/V2MOM.pdf`, also only you can read it. A PDF you connected with the command stays where you saved it. The text passes through Claude Code to be read.
 
@@ -304,8 +325,8 @@ The app pulls the text out of the PDF on your laptop (with pypdf), then Claude (
 **Linking what's already in the notebook** (once, after the first V2MOM sync). Records Claude read before the V2MOM existed have no methods yet. This reads them in batches of 40 (about 16 batches for 600 records, a few minutes):
 
 ```
-uv run careeros v2mom tag --all     # every record
-uv run careeros v2mom tag           # just the last 90 days
+uv run coffeeshop v2mom tag --all     # every record
+uv run coffeeshop v2mom tag           # just the last 90 days
 ```
 
 It skips records already read against the V2MOM and ones whose methods you set, so running it again only does what's left (for example after a batch failed). Its picks are marked AI too, including on rows you'd already checked. Record text and the V2MOM's methods pass through the AI tool.
@@ -337,12 +358,12 @@ KSOs (Key Strategic Objectives) are the part of your bonus your manager rates 1 
 **Connect a year** (once a year, or when the material changes):
 
 ```
-uv run careeros kso connect --deck <the KSO framework deck link> --canvas <the KSO guide canvas link> --canvas <the FAQ canvas link>
+uv run coffeeshop kso connect --deck <the KSO framework deck link> --canvas <the KSO guide canvas link> --canvas <the FAQ canvas link>
 ```
 
-It reads the deck through the Google connector and the canvases through the Slack connector. Claude then sorts them into the KSOs, their weights, their components, the five rubric levels for each, a few example daily or weekly tasks, the payout per rating, and the key dates. A bad read changes nothing. `--track` picks your track (Delivery by default), and `--manager` keeps the people-manager parts. Running `uv run careeros kso connect` with no links re-reads the saved ones.
+It reads the deck through the Google connector and the canvases through the Slack connector. Claude then sorts them into the KSOs, their weights, their components, the five rubric levels for each, a few example daily or weekly tasks, the payout per rating, and the key dates. A bad read changes nothing. `--track` picks your track (Delivery by default), and `--manager` keeps the people-manager parts. Running `uv run coffeeshop kso connect` with no links re-reads the saved ones.
 
-**Which V2MOM methods count toward which KSO part.** After connecting, Claude matches each V2MOM method to the one KSO component it gives the most evidence for (marked AI). New methods are matched after each monthly V2MOM sync. `uv run careeros kso show` lists each component and its methods; a component with none says "no V2MOM goal yet", and every component needs one. `uv run careeros kso map --redo` asks Claude again for its own matches; yours never change.
+**Which V2MOM methods count toward which KSO part.** After connecting, Claude matches each V2MOM method to the one KSO component it gives the most evidence for (marked AI). New methods are matched after each monthly V2MOM sync. `uv run coffeeshop kso show` lists each component and its methods; a component with none says "no V2MOM goal yet", and every component needs one. `uv run coffeeshop kso map --redo` asks Claude again for its own matches; yours never change.
 
 **The KSOs page** (Menu > KSOs) shows this year's KSOs, with a year picker once there's more than one.
 
@@ -359,7 +380,7 @@ It reads the deck through the Google connector and the canvases through the Slac
 
 The practice notebook has made-up KSOs, so you can try the page without real material.
 
-**Claude's estimate.** Once a month (once KSOs are read and some V2MOM method counts toward a part), right after the V2MOM step of the sync, Claude reads the rubric against what your V2MOM shows for each part (status, progress, measures, comments), the titles of the work linked to those methods this year, and your kudos count. It then guesses the 1 to 5 your manager would give each KSO. It never sees your target or any dollar amount. Each KSO card shows the guess (marked AI), one line per part on why, and the three next steps that would raise it most. Press **Re-estimate** to run it now, or run `uv run careeros kso estimate`. Until you set your own rating, the pay card uses Claude's guess (marked AI); your rating always wins. A bad answer changes nothing, and the **KSO estimate** chip shows when it last ran. The daily three also offers KSO parts with no V2MOM goal, and the part furthest behind, as goals.
+**Claude's estimate.** Once a month (once KSOs are read and some V2MOM method counts toward a part), right after the V2MOM step of the sync, Claude reads the rubric against what your V2MOM shows for each part (status, progress, measures, comments), the titles of the work linked to those methods this year, and your kudos count. It then guesses the 1 to 5 your manager would give each KSO. It never sees your target or any dollar amount. Each KSO card shows the guess (marked AI), one line per part on why, and the three next steps that would raise it most. Press **Re-estimate** to run it now, or run `uv run coffeeshop kso estimate`. Until you set your own rating, the pay card uses Claude's guess (marked AI); your rating always wins. A bad answer changes nothing, and the **KSO estimate** chip shows when it last ran. The daily three also offers KSO parts with no V2MOM goal, and the part furthest behind, as goals.
 
 ## Year-end exports
 
@@ -413,7 +434,7 @@ Every test should pass: the last line says `passed`, with no `failed`. A failure
 
 Your personal notebook is connected to Google Calendar, Google Tasks, Google Docs, your Slack messages and tracker canvas, Slack kudos, and GitHub, and Claude links what comes in to the leveling guide. Ideas still open:
 
-1. **Fill in older history.** Older Google Calendar history needs a little setup: the Claude connector reaches back 14 days at most (`uv run careeros calendar pull --days 14`), while connecting the calendar's private iCal address (`calendar connect`) lets `calendar sync --days 60` go back two months at a time. Slack messages older than 90 days are not searched.
+1. **Fill in older history.** Older Google Calendar history needs a little setup: the Claude connector reaches back 14 days at most (`uv run coffeeshop calendar pull --days 14`), while connecting the calendar's private iCal address (`calendar connect`) lets `calendar sync --days 60` go back two months at a time. Slack messages older than 90 days are not searched.
 2. **Keep the approvals questions in mind:**
    - Do the owners of the customer-related channels and repos mind a personal tool keeping titles and short notes from them?
    - Is Claude, through Claude Code, approved for this kind of work content?
@@ -431,27 +452,42 @@ Yes. An entry is the thing you did ("Rollout sync with Sam"). Under it you can a
 Use the search box at the top of any page. It looks through your entry headlines, pasted text, and names, and every word you type must appear somewhere in the entry. It is not case-sensitive and the match is highlighted. `%` and `_` are searched as ordinary characters.
 
 **Is my real notebook backed up?**
-Yes, on this laptop. `uv run careeros backup now` copies the notebook into `backups/` in the notebook folder, safely even while the app is running, and the daily automatic sync does it too. It keeps the last 30 days plus the first copy of each of the last 12 months, and deletes older ones. `uv run careeros backup list` shows them. These copies sit next to the notebook, so they protect against mistakes, not against losing the laptop: for that you'd also need Time Machine or a copy somewhere else.
+Yes, on this laptop. `uv run coffeeshop backup now` copies the notebook into `backups/` in the notebook folder, safely even while the app is running, and the daily automatic sync does it too. It keeps the last 30 days plus the first copy of each of the last 12 months, and deletes older ones. `uv run coffeeshop backup list` shows them. These copies sit next to the notebook, so they protect against mistakes, not against losing the laptop: for that you'd also need Time Machine or a copy somewhere else.
 
 **How do I restore from a backup?**
 1. Stop the app (Ctrl+C in its Terminal window).
 2. In the notebook folder (`~/Library/Application Support/coffeeshop` on a Mac, `%LOCALAPPDATA%\coffeeshop` on Windows), move `coffeeshop.db`, `coffeeshop.db-wal`, and `coffeeshop.db-shm` into a spare folder (don't delete them yet).
 3. Copy the backup you want from `backups/` (for example `coffeeshop-2026-10-28.db`) into the notebook folder and rename it `coffeeshop.db`.
-4. Start the app again with `uv run careeros serve` and check your entries. Once you're happy, the moved files can go.
+4. Start the app again with `uv run coffeeshop serve` and check your entries. Once you're happy, the moved files can go.
 
 **How do I pull in my Google Calendar meetings?**
 This uses your calendar's private address, so no Google Cloud setup or admin sign-off is needed, and the data never passes through an AI tool. One-time setup:
 1. In Google Calendar on the web, open Settings, pick your calendar under "Settings for my calendars", and scroll to **Integrate calendar**.
 2. Copy the **Secret address in iCal format**. Treat it like a password: anyone with it can read that calendar.
-3. In Terminal (in `~/Documents/coffeeshop`): `uv run careeros calendar connect`, paste it (nothing shows as you paste), and press Enter.
-4. `uv run careeros calendar sync` pulls the last 14 days (`--days 30` for more, max 60).
+3. In Terminal (in `~/Documents/coffeeshop`): `uv run coffeeshop calendar connect`, paste it (nothing shows as you paste), and press Enter.
+4. `uv run coffeeshop calendar sync` pulls the last 14 days (`--days 30` for more, max 60).
 
-Meetings show on the **Meetings** tab with a small calendar icon (hover it for the source, kind, and date). Only the **title and time** are kept; attendees, descriptions, locations, and video links are dropped before anything is saved. All-day items and cancelled meetings are skipped. Running sync again never duplicates; a renamed or moved meeting is updated, and a meeting that disappeared is removed unless you've attached notes to it. Anything you typed yourself is never touched. The address is stored in `calendar.url` in your notebook folder, readable only by you. If you ever reset the secret address in Google, run `connect` again.
+Meetings show on the **Meetings** tab with a small calendar icon. Hover it for the source, kind, and date. Only the **title and time** are kept. Attendees, descriptions, locations, and video links are dropped before anything is saved. All-day items and cancelled meetings are skipped.
+
+Running it again does not add a second copy. A meeting Sync Google already saved, with the same day and title, is left as it is, and this command does not delete those. A meeting this command saved is updated if you rename or move it, and removed if it disappears, unless you attached notes. Anything you typed yourself is never touched.
+
+The address is stored in `calendar.url` in your notebook folder, readable only by you. If you reset the secret address in Google, run `connect` again.
 
 Before using it on a work calendar, check that titles of meetings (which can name other people or customer-related topics) are okay to keep on this laptop. This iCal route isn't part of the scheduled sync; the scheduled sync uses the Sync Google route below.
 
 **Can I sync my calendar without the secret iCal address?**
-Yes. On Home, press **Sync Google** (or run `uv run careeros calendar pull` for the calendar part only). Sync Google does Calendar, the Google Docs you wrote (see that section), Google Tasks (only ones you've marked complete in Google, from the task lists changed since the last pull; open tasks never come in, and one you finish shows up on the next sync, dated the day you completed it; a task you removed while it was open still comes in once you finish it; a task list that couldn't be read is reported, never treated as deleted; the pull then isn't counted, so the next Sync Google looks back to the same point and picks up what was missed), and meeting-note summaries in one go, then has Claude link the new records to the leveling guide. Only meetings that have ended come in: a meeting later today shows up on the first sync after it's over, by which time its Gemini notes are usually attached (the 8 AM sync then catches notes that arrived overnight). A progress bar under the button ticks through each step and shows any error in plain words; you can keep using the app while it runs. If the calendar connector answers with an error (for example an expired Google sign-in), that step stops with the message instead of reading it as an empty calendar, so no meetings are removed. For the calendar part, it starts Claude Code in the background with permission to use only the calendar tool, fetches yesterday's and today's meetings through the Google Workspace connector, and saves title, time, and Google file links (Gemini notes, recordings). Declined meetings and all-day items are skipped. It then reads the Google Docs attached to each meeting (Gemini notes, shared notes) and saves a short "AI summary" under the meeting, with the notes linked beside it; meetings without notes say so. Expect a few minutes when there are many meetings. Nothing duplicates, and a failed summary is retried the next time you press the button. Recordings and chat files aren't read. Meeting titles, times, and attendee details pass through the AI tool on the way, so it only runs when you press it or when the schedule you installed runs it. It needs Claude Code installed and the Google Workspace connector signed in. `careeros calendar pull --days 7` reaches further back (max 14).
+Yes. On Home, press **Sync Google**. For the calendar part only, run `uv run coffeeshop calendar pull`.
+
+Sync Google does four things, then has Claude link the new records to the leveling guide:
+
+- **Calendar.** Only meetings that have ended come in. One later today shows up on the first sync after it ends, which is usually when its Gemini notes are attached. The 8 AM sync catches notes that arrived overnight. Declined meetings and all-day items are skipped. Title, time, and Google file links (notes, recordings) are saved.
+- **Docs you wrote.** See that section. Only files from the last 7 days are summarized. A failure is tried again on the next sync, while the file is still inside that window.
+- **Tasks.** Only tasks you have marked complete in Google, from lists that changed since the last pull. Open tasks never come in. One you finish shows up on the next sync, dated the day you completed it. A task you removed while it was open still comes in once you finish it. A list that could not be read is reported, never treated as deleted, and the pull is not counted, so the next Sync Google looks back to the same point.
+- **Meeting notes.** The Docs attached to each meeting are read, and a short "AI summary" is saved under the meeting. Meetings without notes say so. Recordings and chat files are not read. A failed summary is tried again next time.
+
+A progress bar under the button ticks through each step and shows any error in plain words. You can keep using the app while it runs. If the calendar connector answers with an error, for example an expired Google sign-in, that step stops with the message. It is not read as an empty calendar, so no meetings are removed.
+
+The calendar part starts Claude Code with permission to use only the calendar tool, and fetches yesterday and today through the Google Workspace connector. Meeting titles, times, and attendee details pass through Claude, so this runs only when you press the button or when the schedule you installed runs it. It needs Claude Code and the Google Workspace connector signed in. `uv run coffeeshop calendar pull --days 7` reaches further back (max 14). Nothing is saved twice.
 
 **Where is my information stored, and is it backed up?**
 Everything (entries, pasted notes, wins) is in one file, `coffeeshop.db`, in the notebook folder (`~/Library/Application Support/coffeeshop` on a Mac, `%LOCALAPPDATA%\coffeeshop` on Windows), on this computer only. It is not in iCloud, OneDrive, or any synced folder, and the app refuses to keep a real notebook in one. Time Machine backs it up on a Mac if Time Machine is on. Daily copies go into `backups/` next to it (see "Is my real notebook backed up?" above).
@@ -460,4 +496,4 @@ Everything (entries, pasted notes, wins) is in one file, `coffeeshop.db`, in the
 Yes. Click **Download everything (CSV)** at the bottom of any page. You get one zip with six spreadsheets: `entries.csv` (every meeting, task, and note), `pasted_notes.csv` (everything pasted under them, with the entry it belongs to), `wins.csv`, `guide_links.csv` (which wins and entries you linked to which leveling guide items), `v2mom_links.csv` (which ones advance which V2MOM method), and `promo_drafts.csv` (every section of every promo case draft). They open in Excel, Numbers, or Google Sheets, so the data stays readable even without this app. It's a snapshot of that moment; download a fresh one whenever you like, for example at year end. The zip holds everything you pasted, so keep it somewhere as safe as this laptop, and remember that removing something in the app doesn't remove it from zips you already downloaded. Text that starts with `=`, `+`, `-`, or `@` gets a leading `'` so a spreadsheet shows it instead of running it as a formula.
 
 **After a restart the app opened with demo data and my entries were missing. Were they lost?**
-No. The app had been started with `--data-dir /tmp/cos-demo`, which opens the practice folder instead of your notebook. Run `uv run careeros serve` with no `--data-dir` and your notebook comes back.
+No. The app had been started with `--data-dir /tmp/cos-demo`, which opens the practice folder instead of your notebook. Run `uv run coffeeshop serve` with no `--data-dir` and your notebook comes back.

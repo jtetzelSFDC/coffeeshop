@@ -6,10 +6,10 @@ from datetime import datetime
 from sqlalchemy import select
 from typer.testing import CliRunner
 
-from careeros.cli import app as cli
-from careeros.guide import ai_review
-from careeros.storage.models import JournalEntry, V2momLink, Win
-from careeros.v2mom import links
+from coffeeshop.cli import app as cli
+from coffeeshop.guide import ai_review
+from coffeeshop.storage.models import JournalEntry, V2momLink, Win
+from coffeeshop.v2mom import links
 
 from helpers import add, form, load_v2mom, open_session
 

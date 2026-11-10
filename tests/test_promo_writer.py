@@ -7,9 +7,9 @@ from datetime import datetime
 import pytest
 from sqlalchemy import select
 
-from careeros.claude_cli import ClaudeError
-from careeros.promo import evidence as pe, write as pw
-from careeros.storage.models import GuideLink, JournalEntry, PromoSection, PromoVersion, V2momLink, WorkItem
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.promo import evidence as pe, write as pw
+from coffeeshop.storage.models import GuideLink, JournalEntry, PromoSection, PromoVersion, V2momLink, WorkItem
 
 from helpers import TWO, by_key, load_v2mom, open_session, promo_seed
 
@@ -44,6 +44,22 @@ def test_bad_citations_and_invented_numbers_are_flagged():
     got = pw.check([dict(text="Jordan ran 2 releases, advancing V2MOM method M2 (Build).", sources=[1]),
                     dict(text="Jordan had 1 win advancing V2MOM method M2.", sources=[1])], ev)
     assert [x["reason"] for x in got] == ["2 isn't in the evidence", ""]
+
+
+def test_writing_a_case_leaves_the_notebook_writable(nb):
+    import sqlite3
+    dd, *_ = nb
+    with open_session(dd) as s:
+        promo_seed(s)
+
+        def reader(name, key, ev):
+            with sqlite3.connect(dd.db, timeout=0.2) as live:
+                live.execute("update journal_entry set text = text")
+                live.commit()
+            return [dict(text="Jordan did the work.", sources=[ev[0]["n"]])]
+
+        v = pw.write_case(s, start="2025-10-29", end="2026-10-29", name="Jordan", reader=reader)
+        assert s.get(PromoVersion, v.id) is not None
 
 
 def test_write_case_saves_a_version_with_its_evidence(nb):

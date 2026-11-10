@@ -11,13 +11,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from typer.testing import CliRunner
 
-from careeros.cli import app as cli
-from careeros.guide import parse
-from careeros.guide.ai_review import prompt_for
-from careeros.guide.parse import GuideFormatError, read_workbook
-from careeros.guide.service import import_guide, level, promo_map, save_level
-from careeros.storage.models import GuideItem, GuideLink, Win
-from careeros.web.app import create_app
+from coffeeshop.cli import app as cli
+from coffeeshop.guide import parse
+from coffeeshop.guide.ai_review import prompt_for
+from coffeeshop.guide.parse import GuideFormatError, read_workbook
+from coffeeshop.guide.service import import_guide, level, promo_map, save_level
+from coffeeshop.storage.models import GuideItem, GuideLink, Win
+from coffeeshop.web.app import create_app
 
 from helpers import BASE, form, open_session, personal
 
@@ -138,7 +138,7 @@ def test_pages_work_before_a_level_is_chosen_and_at_the_top(tmp_path, workbook):
     app = create_app(dd)
     c, tok = TestClient(app, base_url=BASE), app.state.csrf_token
     for page in ("/", "/promo"):
-        assert "careeros setup level" in c.get(page).text
+        assert "coffeeshop setup level" in c.get(page).text
     assert "Choose your role and level" in c.get(f"/guide/link?win={wid}").text
     form(c, "/guide/link", tok, win=wid, next="/wins")  # saving the page without a Promo map keeps the links
     with open_session(dd) as s:

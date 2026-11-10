@@ -34,7 +34,7 @@ wheels = [
 ]
 
 [[package]]
-name = "careeros"
+name = "coffeeshop"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
@@ -43,7 +43,6 @@ dependencies = [
     { name = "icalendar" },
     { name = "jinja2" },
     { name = "openpyxl" },
-    { name = "pydantic" },
     { name = "pypdf" },
     { name = "python-multipart" },
     { name = "recurring-ical-events" },
@@ -64,7 +63,6 @@ requires-dist = [
     { name = "icalendar", specifier = ">=7.3.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "openpyxl", specifier = ">=3.1.5" },
-    { name = "pydantic", specifier = ">=2.14.1" },
     { name = "pypdf", specifier = ">=6.21.4" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "recurring-ical-events", specifier = ">=3.8.2" },
