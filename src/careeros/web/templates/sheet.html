@@ -11,7 +11,7 @@
   {% if personal and guided and counts.unread %}
   <form method="post" action="/sheet/ai" data-sync="review" class="row" style="margin-top:.6rem">{{ hidden() }}
     <button class="primary">Have Claude read the {{ counts.unread }} record{{ '' if counts.unread == 1 else 's' }} it hasn't read</button>
-    <span class="help">Claude reads each one against the Grade 6 and 7 key experiences and skills, picks the guide items it shows, fixes obvious type mix-ups, and drafts wins for the stand-out ones. Everything it picks is marked AI. The record text, attached notes, and the leveling guide pass through the AI tool. This can take several minutes; you can keep using the app while it runs.</span>
+    <span class="help">Claude reads each one against the key experiences of the next grades you're going for, and the skills, picks the guide items it shows, fixes obvious type mix-ups, and drafts wins for the stand-out ones. Everything it picks is marked AI. The record text, attached notes, and the leveling guide pass through the AI tool. This can take several minutes; you can keep using the app while it runs.</span>
   </form>
   <div class="job" data-job="review" hidden></div>
   <script src="/static/sync.js" defer></script>

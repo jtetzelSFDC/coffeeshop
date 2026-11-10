@@ -10,13 +10,14 @@
 {% if not pm %}
 <section class="card">
   <h2>Promo map</h2>
-  <p class="muted">Load your leveling guide first. In Terminal:</p>
+  {% if level and level.top %}<p class="muted">{{ level_note(level) }}</p>
+  {% else %}<p class="muted">Choose your role and level first, and the app loads that role's leveling guide. In Terminal:</p>
   <pre class="paper">cd ~/Documents/coffeeshop
-uv run careeros guide import "guides/Leveling Guides - DevOps.csv"</pre>
+uv run careeros setup level</pre>{% endif %}
 </section>
 {% else %}
 <section class="card">
-  <div class="qhead"><h2>Promo map: Grade {{ pm.current }} to {{ pm.grades[0] }}, aiming at {{ pm.grades[-1] }}</h2>
+  <div class="qhead"><h2>Promo map: Grade {{ pm.current }} to {{ pm.grades[0] }}{% if pm.grades|length > 1 %}, aiming at {{ pm.grades[-1] }}{% endif %}</h2>
     <div class="row" style="margin-left:auto"><a class="btnlike" href="/promo/case">Write my promo case</a>
       <form method="get" action="/promo/export"><button title="Download the evidence as Markdown">Download evidence</button></form></div>
   </div>
