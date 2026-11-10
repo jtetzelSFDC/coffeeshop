@@ -63,8 +63,9 @@ def test_demo_seed_fills_every_page_with_made_up_data(tmp_path):
     c = TestClient(create_app(dd), base_url=BASE)
     home = c.get("/").text
     assert "practice notebook" in home and "Grade 5 to 6, aiming at 7" in home and "Sync Google" not in home
-    assert 'class="level" href="/promo"' in home and home.index('class="level"') < home.index("Today's three")
-    assert "Today's three" in home and 'action="/daily/suggest"' not in home  # the made-up three, no Suggest
+    bar = home.index("<h2>Promotion Progress</h2>")
+    assert 'class="nextbar"' in home[bar:home.index("</summary>", bar)]
+    assert "Today's Three" in home and 'action="/daily/suggest"' not in home  # the made-up three, no Suggest
     with make_session_factory(make_engine(dd.db))() as s:
         assert s.query(DailyTask).count() == 3  # seeding twice the same day adds no second three
     assert "Release readiness review" in c.get("/meetings").text
@@ -185,7 +186,7 @@ def test_personal_notebook_is_journal_only(tmp_path):
     assert (root / ".metadata_never_index").exists() and oct(root.stat().st_mode & 0o777) == "0o700"
     c = TestClient(create_app(dd), base_url=BASE)
     html = c.get("/").text
-    assert "practice notebook" not in html and "Releases" not in html and 'class="level"' not in html
+    assert "practice notebook" not in html and "Releases" not in html and 'class="nextbar"' not in html
     r = CliRunner().invoke(cli, ["demo", "seed", "--data-dir", str(root)])
     assert r.exit_code == 1 and "personal notebook" in r.output
     assert not dd.is_demo
@@ -385,7 +386,6 @@ def test_v2mom_goals_and_chips_show_the_method_name(nb):
         s.commit()
         assert s.query(DailyTask).filter_by(position=1).one().goal == "V2MOM M1"  # the stored id stays
     home = c.get("/").text
-    assert 'title="Share Release Know-How Across Teams"' in home and "V2MOM M1" not in home
-    assert "Grade 6: Leads sandbox strategy" in home
+    assert "V2MOM M1" in home and "Grade 6: Leads sandbox strategy" in home
     row = c.get("/sheet").text
     assert 'title="Share Release Know-How Across Teams"' in row and "V2MOM M1" not in row

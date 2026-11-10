@@ -171,14 +171,14 @@ uv run careeros daily suggest --force   # a new three, keeping any you've alread
 uv run careeros daily show              # print today's three
 ```
 
-**On Home**, a thin bar for the next grade sits above the tiles (for example Grade 6 · 85% · 11 of 13). It links to the Promo map and stays visible. It's hidden until a leveling guide is loaded. Under it, **Today's three**. Each line is a checkbox, the task, and a small hint like `~5 min · Write Down The Runbooks` when the goal is a V2MOM method (hover for the full name; hover the task for why it helps).
+**On Home**, **Promotion Progress** is the top cell. Its title row has a small green bar for the next grade, and clicking the cell opens it. Under that are **Today's Three**, **New Entry**, and **Sync Status**. Each stays closed until you click it.
 
 - **Check one off:** press its box, add what you did if you like (optional), and press **Done**. It's logged as a finished task (from "daily"), so it counts like any other work, and the next sync links it to the leveling guide and your V2MOM.
 - **Changed your mind:** press the checked box. The record it logged goes too, unless you wrote what you did, checked it in the Intake Review Queue, or made a win from it. Then the record stays, and checking the box again reuses it.
 - **Suggest now** (when today's three aren't there yet) or **New three** (replace all three, even ones you checked off) asks Claude right away, with a progress box like the Sync buttons. A checked-off task stays in your notebook.
 - When all three are done, the card says so.
 
-Each task is tied to a goal, like `V2MOM M4` or `Grade 6: …`. Home shows a V2MOM goal as that method's name. If Claude's answer doesn't fit (not exactly three, longer than ten minutes, or tied to a goal that wasn't offered), nothing is saved and the command says why. With no leveling guide and no V2MOM loaded there's nothing to aim at, so it says that instead. When it fails in the morning sync, the sync's usual notification says why and nothing is saved; the next sync that day tries again. The **Daily** chip in the Intake Review Queue turns green once today's three exist, and the sync log in `logs/` shows each run.
+Each task names its goal, like `V2MOM M4` or `Grade 6: …`. If Claude's answer doesn't fit (not exactly three, longer than ten minutes, or tied to a goal that wasn't offered), nothing is saved and the command says why. With no leveling guide and no V2MOM loaded there's nothing to aim at, so it says that instead. When it fails in the morning sync, the sync's usual notification says why and nothing is saved; the next sync that day tries again. The **Daily** chip in the Intake Review Queue turns green once today's three exist, and the sync log in `logs/` shows each run.
 
 ## Weekly digest
 
@@ -313,7 +313,7 @@ Below, one row per method, in your V2MOM's order:
 
 **see the work** opens that method's page: its wins and linked records, newest first. To change which methods a record moves forward, use **edit** on its row in the Intake Review Queue.
 
-On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active this quarter", with a small bar per method labeled with its name (shortened to fit; hover for the full name). The bar is how many wins and records it has this quarter, longest for the busiest; orange for a method that's gone quiet. Click the line for the V2MOM page, or a bar for that method. The strip is hidden until a V2MOM is loaded. Everything here is worked out when the page opens, from the notebook only: no Claude, nothing stored.
+On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active this quarter", with a small bar per method (how many wins and records it has this quarter, longest for the busiest; orange for a method that's gone quiet). Click the line for the V2MOM page, or a bar for that method. The strip is hidden until a V2MOM is loaded. Everything here is worked out when the page opens, from the notebook only: no Claude, nothing stored.
 
 The promo case then shows how your work lines up with your V2MOM (see **V2MOM alignment** under the promo case).
 
@@ -356,15 +356,15 @@ At year end, pick the year on the Wins tab and click **Download as Markdown**. T
 
 The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, V2MOM, KSOs, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
 
-- **Home**: a thin bar for the next grade, then today's three, then the other tiles.
-  - **Next grade:** at the top, always visible once a leveling guide is loaded. It shows the next grade, the percent, and how many key experiences are shown (for example Grade 6 · 85% · 11 of 13) and links to the Promo map.
-  - **Today's three:** see **Daily three** above. The practice notebook shows a made-up three (run `demo seed` again on a new day to see it).
+- **Home**: Promotion Progress, Today's Three, New Entry, then Sync Status. Each cell stays closed until you click it.
+  - **Promotion Progress:** a small green bar for the next grade on the title. Clicking the tile opens it; it does not leave Home.
+  - **Today's Three:** see **Daily three** above. The practice notebook shows a made-up three (run `demo seed` again on a new day to see it).
   - **Promotion readiness:** a bar each for Grade 6 and Grade 7, showing how many key experiences are shown, with a percentage (hover for the detail; click for the Promo map).
-  - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method labeled with its name (see **The V2MOM page**). Hidden until a V2MOM is loaded.
+  - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method (see **The V2MOM page**). Hidden until a V2MOM is loaded.
   - **Four tiles:** leveling-guide skills with evidence, wins this half, kudos this half, and records waiting in the Intake Review Queue.
   - **Momentum:** a small chart of evidence per week (wins plus records linked to the guide) for the last 12 weeks, with the current week in darker green. Hover over a bar for its count.
   - **Next:** one line with the Promo map's top Aim for next.
-  - **Below:** the Sync buttons with their status chips, and one slim line to add something the syncs missed. Pick a kind, type a few words, and click **Add**; you land on that kind's tab with the new entry. **Paste notes, a link, or a transcript** folds out under it.
+  - **Sync Status:** the Sync buttons and the last-pull chips for Calendar, Tasks, Docs, Slack, Kudos, and the V2MOM. Closed until you click it.
   - There's no day-by-day list here any more. The daily review happens in the Intake Review Queue, and the Friday digest covers the week. Every record is still on its tab.
 - **Wins**, **Promo map**, **V2MOM**, **KSOs**, and the **Intake Review Queue**: described in their own sections above.
 - **Meetings / Conversations / Documents / Tasks / Kudos / Other**: one tab per kind of entry, newest first. Each entry is one line: a small icon for where it came from (calendar, Slack, Docs, GitHub, Tasks, kudos, or a pencil for typed), the text, and four icon buttons on the right (hover for their names):

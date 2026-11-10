@@ -2,63 +2,10 @@
 {% block body %}
 {% from "_entry.html" import attach_fields with context %}
 {% from "_sync.html" import sync_chips %}
-{% if dash.grades %}{% set g = dash.grades[0] %}
-<a class="level" href="/promo" title="Grade {{ g.grade }}: {{ g.shown }} of {{ g.total }} key experiences shown">Grade {{ g.grade }} &middot; {{ g.pct }}% &middot; {{ g.shown }} of {{ g.total }}<span class="bar" aria-hidden="true"><span class="b-strong" style="width:{{ g.pct }}%"></span></span></a>
-{% endif %}
-
-{% if personal or daily %}
-<section class="card home-tile daily" aria-label="Today's three">
-  <details>
-  <summary><h2>Today's three</h2></summary>
-  {% set all_done = daily and daily|selectattr("done_at")|list|length == daily|length %}
-  <div class="qhead">{% if personal %}{{ sync_chips(sync, [("daily", "Daily")]) }}{% endif %}
-    {% if personal %}<form method="post" action="/daily/suggest" data-sync="daily" style="margin-left:auto">
-      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="force" value="{{ '1' if daily else '' }}">
-      <button data-label="{{ 'New three' if daily else 'Suggest now' }}" title="{{ 'Replace all three. Ones you already checked off stay in your notebook' if daily else 'Ask Claude now instead of waiting for the morning sync' }}">{{ 'New three' if daily else 'Suggest now' }}</button></form>{% endif %}</div>
-  {% for t in daily %}
-  <div class="dt {{ 'done' if t.done_at }}">
-    {% if t.done_at %}
-    <form method="post" action="/daily/{{ t.id }}/undo"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="tick on" title="Mark not done" aria-label="Mark not done: {{ t.text }}">&check;</button></form>
-    {% else %}
-    <details class="act tick-d"><summary class="tick" title="Mark done" aria-label="Mark done: {{ t.text }}"></summary>
-      <form method="post" action="/daily/{{ t.id }}/done" class="stack act-panel"><input type="hidden" name="csrf" value="{{ csrf }}">
-        <b>{{ t.text }}</b>
-        <textarea name="details" maxlength="20000" style="min-height:4.5rem" placeholder="What did you do? (optional)" aria-label="What did you do? (optional)"></textarea>
-        <div><button class="primary">Done</button></div></form></details>
-    {% endif %}
-    <span class="dt-text" title="{{ t.why }}">{{ t.text }}</span>
-    {% set ns = namespace(goal=t.goal) %}
-    {% if dash.v2mom %}{% for x in dash.v2mom.methods if t.goal == 'V2MOM ' ~ x.m.label %}{% set ns.goal = x.m.name %}{% endfor %}{% endif %}
-    <span class="dt-meta muted" title="{{ ns.goal }}">~{{ t.minutes }} min &middot; {{ ns.goal|truncate(26, True, '…', 0) }}</span>
-  </div>
-  {% else %}<p class="muted">No three yet today. They come with the morning sync, or press <b>Suggest now</b>.</p>{% endfor %}
-  {% if all_done %}<p class="next">All three done. Nice.</p>{% endif %}
-  <div class="job" data-job="daily" hidden></div>
-  </details>
-</section>
-{% endif %}
-
-<section class="card slim home-tile" aria-label="Add to your notebook">
-  <details>
-  <summary><h2>New entry</h2></summary>
-  <form method="post" action="/journal/add">
-    <input type="hidden" name="csrf" value="{{ csrf }}">
-    <div class="quick">
-      <select name="kind" aria-label="What kind of thing">
-        {% for k, label in kinds %}<option value="{{ k }}">{{ label }}</option>{% endfor %}
-      </select>
-      <input name="text" required maxlength="500" placeholder="Something the syncs missed?" aria-label="Something the syncs missed?">
-      <input type="date" name="day" value="{{ today }}" max="{{ today }}" aria-label="Day">
-      <button>Add</button>
-    </div>
-    <details class="howto"><summary>Paste notes, a link, or a transcript</summary><div class="stack">{{ attach_fields() }}</div></details>
-  </form>
-  </details>
-</section>
 
 <section class="card home-tile dash" aria-label="Progress">
   <details>
-  <summary><h2>Promotion Progress</h2></summary>
+  <summary><h2>Promotion Progress</h2>{% if dash.grades %}{% set g = dash.grades[0] %}<span class="nextbar" title="Grade {{ g.grade }}: {{ g.pct }}%"><span class="bar" role="img" aria-label="Grade {{ g.grade }}: {{ g.pct }} percent of key experiences shown"><span class="b-strong" style="width:{{ g.pct }}%"></span></span></span>{% endif %}</summary>
   {% if dash.grades %}
   <h2>Grade {{ dash.current }} to {{ dash.grades[0].grade }}{% if dash.grades|length > 1 %}, aiming at {{ dash.grades[-1].grade }}{% endif %}</h2>
   <div class="ready">
@@ -80,9 +27,9 @@
     <a href="/v2mom">V2MOM: <b>{{ v2.active }} of {{ v2.methods|length }}</b> methods active this quarter</a>
     <div class="ready">
       {% for x in v2.methods %}
-      <a class="ready-row" href="/v2mom#m{{ x.m.id }}" title="{{ x.m.name }}: {{ x.quarter }} this quarter">
-        <span class="ready-label">{{ x.m.name }}</span>
-        <span class="bar" role="img" aria-label="{{ x.m.name }}: {{ x.quarter }} this quarter"><span class="{{ 'b-strong' if x.state == 'active' else 'b-started' }}" style="width:{{ x.pct }}%"></span></span>
+      <a class="ready-row" href="/v2mom#m{{ x.m.id }}" title="{{ x.m.label }} {{ x.m.name }}: {{ x.quarter }} this quarter">
+        <span class="ready-label">{{ x.m.label }}</span>
+        <span class="bar" role="img" aria-label="{{ x.m.label }}: {{ x.quarter }} this quarter"><span class="{{ 'b-strong' if x.state == 'active' else 'b-started' }}" style="width:{{ x.pct }}%"></span></span>
         <span class="ready-num"><b>{{ x.quarter }}</b> <span class="muted">this qtr</span></span>
       </a>
       {% endfor %}
@@ -108,10 +55,58 @@
   </details>
 </section>
 
-{% if personal %}
-<section class="card slim home-tile" aria-label="Sync">
+{% if personal or daily %}
+<section class="card home-tile daily" aria-label="Today's Three">
   <details>
-  <summary><h2>Sync status</h2></summary>
+  <summary><h2>Today's Three</h2></summary>
+  {% set all_done = daily and daily|selectattr("done_at")|list|length == daily|length %}
+  <div class="qhead">{% if personal %}{{ sync_chips(sync, [("daily", "Daily")]) }}{% endif %}
+    {% if personal %}<form method="post" action="/daily/suggest" data-sync="daily" style="margin-left:auto">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="force" value="{{ '1' if daily else '' }}">
+      <button data-label="{{ 'New three' if daily else 'Suggest now' }}" title="{{ 'Replace all three. Ones you already checked off stay in your notebook' if daily else 'Ask Claude now instead of waiting for the morning sync' }}">{{ 'New three' if daily else 'Suggest now' }}</button></form>{% endif %}</div>
+  {% for t in daily %}
+  <div class="dt {{ 'done' if t.done_at }}">
+    {% if t.done_at %}
+    <form method="post" action="/daily/{{ t.id }}/undo"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="tick on" title="Mark not done" aria-label="Mark not done: {{ t.text }}">&check;</button></form>
+    {% else %}
+    <details class="act tick-d"><summary class="tick" title="Mark done" aria-label="Mark done: {{ t.text }}"></summary>
+      <form method="post" action="/daily/{{ t.id }}/done" class="stack act-panel"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <b>{{ t.text }}</b>
+        <textarea name="details" maxlength="20000" style="min-height:4.5rem" placeholder="What did you do? (optional)" aria-label="What did you do? (optional)"></textarea>
+        <div><button class="primary">Done</button></div></form></details>
+    {% endif %}
+    <span class="dt-text" title="{{ t.why }}">{{ t.text }}</span>
+    <span class="dt-meta muted" title="{{ t.goal }}">~{{ t.minutes }} min &middot; {{ t.goal|truncate(26, True, '…', 0) }}</span>
+  </div>
+  {% else %}<p class="muted">No three yet today. They come with the morning sync, or press <b>Suggest now</b>.</p>{% endfor %}
+  {% if all_done %}<p class="next">All three done. Nice.</p>{% endif %}
+  <div class="job" data-job="daily" hidden></div>
+  </details>
+</section>
+{% endif %}
+
+<section class="card slim home-tile" aria-label="Add to your notebook">
+  <details>
+  <summary><h2>New Entry</h2></summary>
+  <form method="post" action="/journal/add">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="quick">
+      <select name="kind" aria-label="What kind of thing">
+        {% for k, label in kinds %}<option value="{{ k }}">{{ label }}</option>{% endfor %}
+      </select>
+      <input name="text" required maxlength="500" placeholder="Something the syncs missed?" aria-label="Something the syncs missed?">
+      <input type="date" name="day" value="{{ today }}" max="{{ today }}" aria-label="Day">
+      <button>Add</button>
+    </div>
+    <details class="howto"><summary>Paste notes, a link, or a transcript</summary><div class="stack">{{ attach_fields() }}</div></details>
+  </form>
+  </details>
+</section>
+
+{% if personal %}
+<section class="card slim home-tile" aria-label="Sync Status">
+  <details>
+  <summary><h2>Sync Status</h2></summary>
   <div class="sync-grid">
     <div class="sync-col">
       <form method="post" action="/sync/google" data-sync="google">
