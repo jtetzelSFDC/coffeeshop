@@ -60,6 +60,10 @@ class Jobs:
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
 
+    def running(self) -> bool:
+        with self._lock:
+            return any(j.state == "running" for j in self._jobs.values())
+
     def start(self, name: str, steps: list[str], fn: Callable[[Job], None]) -> bool:
         """False if that sync is already running."""
         with self._lock:

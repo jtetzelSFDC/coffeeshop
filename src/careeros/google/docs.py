@@ -158,9 +158,15 @@ def summarize(gid: str, kind: str, name: str) -> str:
 
 
 def pending(s: Session) -> list[tuple[int, str, str, str]]:
-    """First records of files (Wrote/Edited) with no AI summary yet: (entry id, file id, kind, name)."""
+    """Files from the last 7 days (Wrote/Edited) with no AI summary yet: (entry id, file id, kind, name).
+
+    Older files that failed once are left alone, so one unreadable file does not fail every later sync.
+    """
+    cutoff = datetime.now() - timedelta(days=7)
     out = []
     for e in s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE)):
+        if e.created_at < cutoff:
+            continue
         verb, _, rest = e.text.partition(" ")
         if verb == "Updated" or not (e.external_id or "").startswith("gdoc:"):
             continue
@@ -189,10 +195,5 @@ def summarize_pending(s: Session, progress=None) -> dict[str, int]:
             results.append(r)
             if progress:
                 progress(len(results), len(todo))
-    done = 0
-    for eid, text in results:
-        if text:
-            s.add(JournalAttachment(entry_id=eid, kind="notes", title=AI_TITLE, body=text, created_at=datetime.now()))
-            done += 1
-    s.commit()
-    return dict(summarized=done, failed=len(results) - done)
+    from .summaries import save_summaries
+    return save_summaries(s, results, AI_TITLE)

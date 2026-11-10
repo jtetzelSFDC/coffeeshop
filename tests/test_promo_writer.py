@@ -46,6 +46,22 @@ def test_bad_citations_and_invented_numbers_are_flagged():
     assert [x["reason"] for x in got] == ["2 isn't in the evidence", ""]
 
 
+def test_writing_a_case_leaves_the_notebook_writable(nb):
+    import sqlite3
+    dd, *_ = nb
+    with open_session(dd) as s:
+        promo_seed(s)
+
+        def reader(name, key, ev):
+            with sqlite3.connect(dd.db, timeout=0.2) as live:
+                live.execute("update journal_entry set text = text")
+                live.commit()
+            return [dict(text="Jordan did the work.", sources=[ev[0]["n"]])]
+
+        v = pw.write_case(s, start="2025-10-29", end="2026-10-29", name="Jordan", reader=reader)
+        assert s.get(PromoVersion, v.id) is not None
+
+
 def test_write_case_saves_a_version_with_its_evidence(nb):
     dd, *_ = nb
     with open_session(dd) as s:

@@ -90,7 +90,6 @@ TOPICS = [
            "Estimate the DevOps effort for an engagement and compare it with what actually happened.",
            "Contribute a reusable asset or delivery standard to the practice framework.")),
 ]
-TOPIC = {t.key: t for t in TOPICS}
 OTHER = Topic("other", "Other experiences", "", "", (), ())
 PLAIN = Topic("all", "Key experiences", "", "", (), ())
 

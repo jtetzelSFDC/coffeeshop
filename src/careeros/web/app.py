@@ -1,4 +1,4 @@
-"""Local review UI. Loopback-only, CSRF + Host/Origin checks, autoescaped rendering."""
+"""The local pages. They only answer on this computer, check each form post, and escape everything they show."""
 from __future__ import annotations
 
 import hashlib
@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, quote, urlencode, urlparse
 from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from jinja2 import Environment, FileSystemLoader
-from sqlalchemy import delete, false, func, select
+from sqlalchemy import delete, false, func, or_, select
 from sqlalchemy.orm import Session
 
 from ..config import DataDir
@@ -43,6 +43,7 @@ CSP = ("default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connec
 SCRIPTS = {n: (Path(__file__).parent / "static" / f"{n}.js").read_text() for n in ("page", "sheet", "sync")}
 IMG_DIR = Path(__file__).parent / "static" / "img"
 IMG_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+IMAGES = {p.name for p in IMG_DIR.iterdir() if p.is_file() and p.suffix.lower() in IMG_TYPES}
 _write_lock = threading.Lock()
 
 KINDS = [("meeting", "Had a meeting"), ("conversation", "Had a conversation"),
@@ -251,11 +252,18 @@ def create_app(dd: DataDir) -> FastAPI:
         hits = []
         if q:
             terms = [w for w in q.split() if w][:6]
+            needle = terms[0].replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            like = f"%{needle}%"
+            ids = set(s.scalars(select(JournalEntry.id).where(JournalEntry.text.ilike(like, escape="\\"))))
+            ids.update(s.scalars(select(JournalAttachment.entry_id).where(or_(
+                JournalAttachment.title.ilike(like, escape="\\"),
+                JournalAttachment.body.ilike(like, escape="\\")))))
             by_entry: dict[int, dict] = {}
-            for e in s.scalars(select(JournalEntry).order_by(JournalEntry.day.desc(), JournalEntry.id.desc())):
-                by_entry[e.id] = dict(e=e, atts=[])
-            for a in s.scalars(select(JournalAttachment)):
-                if a.entry_id in by_entry:
+            if ids:
+                for e in s.scalars(select(JournalEntry).where(JournalEntry.id.in_(ids))
+                                   .order_by(JournalEntry.day.desc(), JournalEntry.id.desc())):
+                    by_entry[e.id] = dict(e=e, atts=[])
+                for a in s.scalars(select(JournalAttachment).where(JournalAttachment.entry_id.in_(ids))):
                     by_entry[a.entry_id]["atts"].append(a)
             for v in by_entry.values():
                 e = v["e"]
@@ -278,7 +286,9 @@ def create_app(dd: DataDir) -> FastAPI:
                                  snippets=snippets[:2]))
                 if len(hits) >= 50:
                     break
-            for w in s.scalars(select(Win).order_by(Win.day.desc(), Win.id.desc())):
+            for w in s.scalars(select(Win).where(or_(
+                    Win.title.ilike(like, escape="\\"), Win.impact.ilike(like, escape="\\"),
+                    Win.theme.ilike(like, escape="\\"))).order_by(Win.day.desc(), Win.id.desc())):
                 if all(t.lower() in f"{w.title}\n{w.impact}\n{w.theme}".lower() for t in terms):
                     hits.append(dict(day=w.day, kind_label="Win", text=w.title, snippets=[]))
             hits.sort(key=lambda h: h["day"], reverse=True)
@@ -327,6 +337,8 @@ def create_app(dd: DataDir) -> FastAPI:
             "slack": (syncs.SLACK_STEPS, lambda j: syncs.run_slack(j, Session_, _write_lock, dd)),
             "v2mom": (syncs.V2MOM_STEPS, lambda j: syncs.run_v2mom(j, Session_, _write_lock, dd)),
         }
+        if name == "review" and jobs.running():
+            return started_reply(request, False, "", "A sync is already running.", to)
         steps, fn = runs[name]
         return started_reply(request, jobs.start(name, steps, fn),
                              "Started. Refresh this page in a minute or two to see the result.",
@@ -402,9 +414,9 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.get("/static/img/{name}")
     def static_img(name: str):
-        path = IMG_DIR / name
-        if "/" in name or name.startswith(".") or path.suffix.lower() not in IMG_TYPES or not path.is_file():
+        if name not in IMAGES:
             return Response(status_code=404)
+        path = IMG_DIR / name
         return Response(path.read_bytes(), media_type=IMG_TYPES[path.suffix.lower()],
                         headers={"Cache-Control": "max-age=86400"})
 

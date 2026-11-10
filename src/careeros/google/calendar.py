@@ -106,16 +106,26 @@ def headline(e: Event) -> str:
     return f"{span}  {e.title}"[:500]
 
 
-def sync(s: Session, events: list[Event], first: date, last: date) -> dict[str, int]:
-    """Add new events, refresh changed ones, drop ones that vanished (unless you attached notes)."""
+def sync(s: Session, events: list[Event], first: date, last: date, *, ical: bool = False) -> dict[str, int]:
+    """Add new events, refresh changed ones, drop ones that vanished (unless you attached notes).
+
+    `ical` is the calendar-file route. It only updates or removes meetings that route saved (their id contains
+    @). It leaves a meeting alone when one with the same day and title is already there from the Google sync.
+    """
     existing = {e.external_id: e for e in s.scalars(select(JournalEntry).where(
         JournalEntry.source == SOURCE, JournalEntry.day >= first.isoformat(), JournalEntry.day <= last.isoformat()))}
+    if ical:
+        existing = {k: v for k, v in existing.items() if "@" in (k or "")}
     from ..storage.removal import removed_ids, skip_patterns
     gone_by_user = removed_ids(s, SOURCE)
     skip = skip_patterns(s, SOURCE)
     added = updated = removed = 0
     for ev in events:
         row = existing.pop(ev.uid, None)
+        if row is None and ical and s.scalars(select(JournalEntry).where(
+                JournalEntry.source == SOURCE, JournalEntry.day == ev.day,
+                JournalEntry.text.endswith(ev.title))).first():
+            continue
         if row is None and (ev.uid in gone_by_user or any(p in ev.title.lower() for p in skip)):
             continue
         if row is None:

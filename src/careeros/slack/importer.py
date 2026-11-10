@@ -31,33 +31,39 @@ def _base(external_id: str) -> str:
     return external_id or ""
 
 
-def linked_entry(s: Session, link: str, day: str | None = None) -> JournalEntry | None:
+def slack_index(s: Session) -> tuple[dict[str, list[JournalEntry]], dict[str, list[JournalEntry]]]:
+    """One lookup of every saved Slack link, so a sync does not re-read the notebook for each message."""
+    rows = list(s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE)))
+    by_id = {e.id: e for e in rows}
+    exact: dict[str, list[JournalEntry]] = {}
+    if by_id:
+        for a in s.scalars(select(JournalAttachment).where(
+                JournalAttachment.entry_id.in_(by_id), JournalAttachment.kind == "link")):
+            if key := link_key(a.body):
+                exact.setdefault(key, []).append(by_id[a.entry_id])
+    shared: dict[str, list[JournalEntry]] = {}
+    for e in rows:
+        if base := _base(e.external_id or ""):
+            shared.setdefault(base, []).append(e)
+    return exact, shared
+
+
+def linked_entry(s: Session, link: str, day: str | None = None, index=None) -> JournalEntry | None:
     """The Slack record whose link is this message, if one is already saved.
 
-    A thread that spans days shares an id prefix. The record with this message's own link wins; a shared prefix
-    matches only when one record has it, or `day` names which one.
+    A thread that spans days shares an id prefix. The record with this message's own link wins. A shared prefix
+    matches only when one record has it, or `day` names which one. Pass `index` from slack_index to reuse one read.
     """
     msg = link_key(link)
     if not msg:
         return None
-    rows = list(s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE)))
-    if not rows:
-        return None
-    bodies: dict[int, list[str]] = {}
-    for a in s.scalars(select(JournalAttachment).where(
-            JournalAttachment.entry_id.in_([e.id for e in rows]), JournalAttachment.kind == "link")):
-        bodies.setdefault(a.entry_id, []).append(a.body)
-    exact, shared = [], []
-    for e in rows:
-        if msg in {link_key(b) for b in bodies.get(e.id, [])}:
-            exact.append(e)
-        elif msg == _base(e.external_id or ""):
-            shared.append(e)
-    if exact:
-        return exact[0]
-    if day and (same := [e for e in shared if e.day == day]):
+    exact, shared = index if index is not None else slack_index(s)
+    if hits := exact.get(msg):
+        return hits[0]
+    pool = shared.get(msg) or []
+    if day and (same := [e for e in pool if e.day == day]):
         return same[0]
-    return shared[0] if len(shared) == 1 else None
+    return pool[0] if len(pool) == 1 else None
 
 
 def link_removed(s: Session, link: str) -> bool:
@@ -88,16 +94,19 @@ def import_items(s: Session, items: list[SlackItem], classify: Callable[[list[Sl
     and no matching message is still saved, marked as from the canvas. Items with no link are saved as before.
     """
     fresh = []
+    index = slack_index(s)
     for it in items:
         if it.link and link_removed(s, it.link):
             continue
-        if it.link and (e := linked_entry(s, it.link, it.day)):
+        if it.link and (e := linked_entry(s, it.link, it.day, index)):
             add_canvas_note(s, e, it)
             continue
         fresh.append(it)
     todo = new_items(s, fresh)
+    if todo:
+        s.commit()  # Claude sorts for minutes; don't hold the database lock while it does
     kinds = classify(todo) if todo else {}
-    todo = new_items(s, todo)  # classify takes minutes; another sync may have saved some of these meanwhile
+    todo = new_items(s, todo)  # another sync may have saved some of these while Claude worked
     counts = {k: 0 for k in ("meeting", "conversation", "document", "task", "note")}
     for it in todo:
         kind = kinds.get(it.key, "note")

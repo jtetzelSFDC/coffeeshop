@@ -87,12 +87,6 @@ def user(dd) -> tuple[str, str]:
     return load_user(dd)
 
 
-def parse(raw: str) -> tuple[list[Message], str]:
-    """(messages, cursor for the next page or "") from one search answer."""
-    hits, nxt = search.parse(raw)
-    return [Message(h.link, h.channel, h.who, h.who_id, h.bot, h.day, h.text) for h in hits], nxt
-
-
 def fetch(uid: str, since: date, today: date | None = None) -> tuple[list[Message], int]:
     """Messages mentioning you, from people (not you, not bots), one week per search, following extra pages.
     Returns (messages, weeks not fully read: a search that didn't come back, or more than one window's pages)."""
@@ -163,6 +157,9 @@ def new(s: Session, msgs: list[Message]) -> list[Message]:
 
 def merge(s: Session, kept: list[tuple[Message, str]]) -> int:
     """Always logged as a pull, even when some weeks weren't fully read, so the next sync doesn't redo the year."""
+    s.commit()  # see kudos a sync that overlapped this one already saved
+    fresh = {m.key for m in new(s, [m for m, _quote in kept])}
+    kept = [(m, quote) for m, quote in kept if m.key in fresh]
     today = date.today()
     for m, quote in kept:
         e = JournalEntry(day=min(m.day, today).isoformat(), kind="recognition", text=f'{m.who}: "{quote}"'[:500],

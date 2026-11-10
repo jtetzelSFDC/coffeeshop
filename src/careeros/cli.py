@@ -676,7 +676,7 @@ def calendar_sync(days: int = typer.Option(14, help="How many past days to pull 
     except gcal.CalendarError as exc:
         typer.echo(str(exc))
         raise typer.Exit(1)
-    r = gcal.sync(s, events, first, last)
+    r = gcal.sync(s, events, first, last, ical=True)
     typer.echo(f"Calendar: {r['added']} added, {r['updated']} changed, {r['removed']} removed "
                f"({len(events)} meetings between {first} and {last}).")
 

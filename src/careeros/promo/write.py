@@ -130,10 +130,6 @@ def write_case(s: Session, *, start: str, end: str, name: str,
     if msg := shortage(pieces, start, end):
         raise ClaudeError(msg)
     by_n = {p["n"]: p for p in pieces}
-    version = PromoVersion(created_at=datetime.now(), window_start=start, window_end=end, name=name, voice="third",
-                           evidence=pieces, slices=slices, note="Written")
-    s.add(version)
-    s.flush()
 
     def one(key: str) -> tuple[str, list[dict] | None, str]:
         ev = [by_n[n] for n in slices[key]]
@@ -150,13 +146,16 @@ def write_case(s: Session, *, start: str, end: str, name: str,
             results[key] = (sentences, error)
             if on_section:
                 on_section(key, error or f"{len(sentences or [])} sentences")
+    if all(results[k][0] is None for k, *_ in SECTIONS):
+        raise ClaudeError("Claude couldn't write any section, so nothing was saved. Try again.")
+    version = PromoVersion(created_at=datetime.now(), window_start=start, window_end=end, name=name, voice="third",
+                           evidence=pieces, slices=slices, note="Written")
+    s.add(version)
+    s.flush()
     for pos, (key, heading, *_rest) in enumerate(SECTIONS):
         sentences, error = results[key]
         s.add(PromoSection(version_id=version.id, key=key, heading=heading, position=pos, sentences=sentences or [],
                            error=error if sentences is None or not sentences else ""))
-    if all(results[k][0] is None for k, *_ in SECTIONS):
-        s.rollback()
-        raise ClaudeError("Claude couldn't write any section, so nothing was saved. Try again.")
     s.commit()
     return version
 

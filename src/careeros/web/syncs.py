@@ -220,7 +220,14 @@ def run_github(job: Job, Session_, lock) -> None:
             with lock:
                 r = gh.merge(s, prs)
         except gh.GitHubError as exc:
-            job.fail(0, str(exc))
+            msg = str(exc)
+            if "isn't installed" in msg or "isn't signed in" in msg:
+                job.skip(0, msg)
+                job.skip(1)
+                job.finish("GitHub isn't connected, so that step was skipped.")
+                job.state = "done"  # an all-skipped job would otherwise count as a failure and notify
+                return
+            job.fail(0, msg)
             job.skip(1)
             job.finish("GitHub sync couldn't read anything.")
             return

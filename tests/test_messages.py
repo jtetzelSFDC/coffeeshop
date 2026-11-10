@@ -216,6 +216,24 @@ def test_canvas_item_with_a_link_and_no_message_is_marked_from_the_canvas(sessio
     assert not plain.body.startswith("From the canvas.") and plain.body.startswith("Action:")
 
 
+def test_sorting_new_messages_leaves_the_notebook_writable(session):
+    import sqlite3
+    g = group_for(date(2026, 10, 26))
+    messages.save(session, [g], [], lambda t: {})
+    other = "https://example.slack.com/archives/C111/p1700000000000200"
+    fresh = group_for(date(2026, 10, 27), link=other)
+    db = session.get_bind().url.database
+
+    def classify(todo):
+        with sqlite3.connect(db, timeout=0.2) as live:
+            live.execute("update journal_entry set text = text")
+            live.commit()
+        return {}
+
+    messages.save(session, [g, fresh], [canvas_item("2026-10-26")], classify)
+    assert session.scalar(select(func.count()).select_from(JournalEntry)) == 2
+
+
 def test_a_removed_message_is_not_added_again(session):
     g = group_for(date(2026, 10, 26))
     messages.save(session, [g], [], lambda t: {g.ext_id: "task"})

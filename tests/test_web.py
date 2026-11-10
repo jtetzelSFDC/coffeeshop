@@ -330,6 +330,8 @@ def test_switching_the_theme_comes_back_to_the_same_page_and_never_leaves_the_ap
         r = c.post("/theme", data={"csrf": app.state.csrf_token, "theme": "light", "next": nxt}, follow_redirects=False)
         assert r.headers["location"] == to
     assert c.get("/static/sync.js").status_code == 200 and c.get("/static/nope.js").status_code == 404
+    assert c.get("/static/img/latte-dark.jpg").status_code == 200
+    assert c.get("/static/img/a%5C..%5C..%5Csecret.jpg").status_code == 404
 
 
 def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
@@ -351,6 +353,31 @@ def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
             break
         time.sleep(0.02)
     assert ran
+
+
+def test_have_claude_read_waits_while_a_sync_runs(tmp_path, monkeypatch):
+    import threading
+    from careeros.web import syncs
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    started, release = threading.Event(), threading.Event()
+
+    def hang(job, *a):
+        started.set()
+        release.wait(2)
+        for i in range(len(job.steps)):
+            job.done(i)
+        job.finish("ok")
+
+    monkeypatch.setattr(syncs, "run_google", hang)
+    assert c.post("/sync/google", data={"csrf": app.state.csrf_token}, headers={"X-Sync": "1"}).json() == {"started": True}
+    assert started.wait(1)
+    try:
+        assert c.post("/sheet/ai", data={"csrf": app.state.csrf_token}, headers={"X-Sync": "1"}).json() == {"started": False}
+    finally:
+        release.set()
 
 
 def test_the_export_includes_v2mom_links_and_promo_drafts(nb):

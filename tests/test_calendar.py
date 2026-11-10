@@ -34,6 +34,17 @@ def pull(s, *events):
     return gcal.sync(s, gcal.parse_events(ics(*events), first, last), first, last)
 
 
+def test_ical_sync_does_not_copy_or_delete_a_google_meeting(s):
+    s.add(JournalEntry(day=D.isoformat(), kind="meeting", text="3:00 PM–3:30 PM  Rollout sync",
+                       created_at=datetime.now(), source="calendar", external_id="ev1_20261019T150000Z"))
+    s.commit()
+    first, last = D - timedelta(days=3), date.today()
+    r = gcal.sync(s, gcal.parse_events(ics(ev("ical1", "Rollout sync")), first, last), first, last, ical=True)
+    rows = list(s.scalars(select(JournalEntry)))
+    assert r["added"] == 0 and r["removed"] == 0 and len(rows) == 1
+    assert rows[0].external_id == "ev1_20261019T150000Z"
+
+
 def test_sync_adds_updates_and_dedupes(s):
     assert pull(s, ev("a1", "Rollout sync"))["added"] == 1
     assert pull(s, ev("a1", "Rollout sync")) == dict(added=0, updated=0, removed=0)

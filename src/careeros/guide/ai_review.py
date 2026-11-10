@@ -82,17 +82,13 @@ def guide_payload(s: Session) -> tuple[list[dict], dict[str, int]]:
     return rows, ids
 
 
-def _parse(reply: str) -> list[dict]:
-    return reply_results(reply)
-
-
 def read_batch(guide: list[dict], themes: list[str], records: list[dict],
                v2mom: list[dict] | None = None, *, base: str = "") -> dict[str, dict]:
     """With `v2mom` (the V2MOM's methods), each result also picks the methods the record advances. `base` is
     prompt_for(the saved level)."""
     data = json.dumps(dict(THEMES=themes, guide=guide, records=records, **({"v2mom": v2mom} if v2mom else {})))
     prompt = base + (v2links.PROMPT_PART if v2mom else "") + REPLY
-    return {str(r.get("id")): r for r in _parse(ask(prompt, data, timeout=480))}
+    return {str(r.get("id")): r for r in reply_results(ask(prompt, data, timeout=480))}
 
 
 def pending(s: Session, redo: bool = False) -> list[JournalEntry]:

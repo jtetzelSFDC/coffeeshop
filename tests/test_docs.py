@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -90,6 +90,27 @@ def test_signed_out_google_stops_the_step(monkeypatch):
         ("t", {"query": gdocs._query(True, date(2026, 10, 27), date(2026, 10, 29))}, "Error: invalid_token")])
     with pytest.raises(ClaudeError, match="sign-in has expired"):
         gdocs.fetch(date(2026, 10, 27), date(2026, 10, 29))
+
+
+def test_a_file_older_than_a_week_is_not_summarized_again(session):
+    gdocs.merge(session, gdocs.parse(OWNED, True))
+    for e in session.scalars(select(JournalEntry)):
+        e.created_at = datetime.now() - timedelta(days=8)
+    session.commit()
+    assert gdocs.pending(session) == []
+
+
+def test_a_summary_for_a_deleted_record_is_skipped(session):
+    from careeros.google.summaries import save_summaries
+    e = JournalEntry(day="2026-10-20", kind="document", text="Wrote doc: Old", created_at=datetime.now(),
+                     source="docs", external_id="gdoc:gone")
+    session.add(e)
+    session.commit()
+    eid = e.id
+    session.delete(e)
+    session.commit()
+    assert save_summaries(session, [(eid, "A doc.\nIt covers things."), (eid, None)], "AI summary") == dict(
+        summarized=0, failed=1)
 
 
 def test_summaries_saved_and_a_failure_keeps_the_record_for_next_time(session, monkeypatch):

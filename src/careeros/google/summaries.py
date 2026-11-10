@@ -84,10 +84,15 @@ def summarize_pending(s: Session, first: date, last: date, progress=None) -> dic
             results.append(r)
             if progress:
                 progress(len(results), len(todo))
+    return save_summaries(s, results, AI_TITLE)
+
+
+def save_summaries(s: Session, results, title: str) -> dict[str, int]:
+    """Save each summary whose record is still there. One removed while Claude worked is skipped, not an error."""
     done = 0
     for eid, text in results:
-        if text:
-            s.add(JournalAttachment(entry_id=eid, kind="notes", title=AI_TITLE, body=text, created_at=datetime.now()))
+        if text and s.get(JournalEntry, eid) is not None:
+            s.add(JournalAttachment(entry_id=eid, kind="notes", title=title, body=text, created_at=datetime.now()))
             done += 1
     s.commit()
-    return dict(summarized=done, failed=len(results) - done)
+    return dict(summarized=done, failed=sum(1 for _eid, text in results if not text))

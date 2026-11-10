@@ -177,11 +177,11 @@ def fetch(uid: str, since_day: date, today: date | None = None, progress=None) -
     return groups, short
 
 
-def _live(s: Session, g: Group):
+def _live(s: Session, g: Group, index=None):
     """The record this group already is, "removed" when you deleted it, or None."""
     from .importer import link_removed, linked_entry
     for link in g.links:
-        if e := linked_entry(s, link, g.day.isoformat()):
+        if e := linked_entry(s, link, g.day.isoformat(), index):
             return e
     same = s.scalars(select(JournalEntry).where(JournalEntry.source == SOURCE,
                                                  JournalEntry.external_id == g.ext_id)).first()
@@ -280,9 +280,10 @@ def save(s: Session, groups: list[Group], items: list[SlackItem], classify) -> t
     """
     from ..storage.models import Win
     from ..storage.sync_log import record
-    from .importer import add_canvas_note, import_items, link_removed, linked_entry, new_items
+    from .importer import add_canvas_note, import_items, link_removed, linked_entry, new_items, slack_index
+    index = slack_index(s)
     for g in groups:
-        hit = _live(s, g)
+        hit = _live(s, g, index)
         if hit in (None, "removed"):
             continue
         if hit.day != g.day.isoformat() and not hit.reviewed:
@@ -291,18 +292,21 @@ def save(s: Session, groups: list[Group], items: list[SlackItem], classify) -> t
             for w in s.scalars(select(Win).where(Win.entry_id == hit.id, Win.by_ai.is_(True), Win.day == old)):
                 w.day = hit.day
         _grow(s, hit, g)
-    new_groups = [g for g in groups if _live(s, g) is None]
+    new_groups = [g for g in groups if _live(s, g, index) is None]
     create = []
     for it in items:
         if it.link and link_removed(s, it.link):
             continue
-        if it.link and (e := linked_entry(s, it.link, it.day)):
+        if it.link and (e := linked_entry(s, it.link, it.day, index)):
             add_canvas_note(s, e, it)
             continue
         create.append(it)
     create = new_items(s, create)
     todo = [g.item() for g in new_groups] + create
+    if todo:
+        s.commit()  # Claude sorts for minutes; don't hold the database lock while it does
     kinds = classify(todo) if todo else {}
+    new_groups = [g for g in new_groups if _live(s, g) is None]  # another sync may have saved these
     before = s.scalar(select(SyncRun.id).order_by(SyncRun.id.desc()).limit(1)) or 0
     n = _insert(s, new_groups, kinds)
     r = import_items(s, create, lambda t: {i.key: kinds.get(i.key, "note") for i in t})

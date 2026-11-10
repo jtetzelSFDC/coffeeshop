@@ -3,14 +3,19 @@ import re
 from datetime import date, datetime
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from careeros.claude_cli import ClaudeError
 from careeros.config import DataDir
-from careeros.slack import kudos
+from careeros.slack import kudos, search
 from careeros.storage.models import JournalAttachment, JournalEntry
 
 ME = "U01ME"
+
+
+def parsed(raw):
+    hits, nxt = search.parse(raw)
+    return [kudos.Message(h.link, h.channel, h.who, h.who_id, h.bot, h.day, h.text) for h in hits], nxt
 
 
 def result(n, who, uid, text, ts="1792789025.320009", day="2026-10-23", bot=False, thread=""):
@@ -53,8 +58,8 @@ def slack(monkeypatch):
 
 
 def test_parse_reads_the_real_format():
-    msgs, nxt = kudos.parse(SEARCH)
-    assert nxt == "" and kudos.parse(PAGED)[1] == "Q1VSUkVOVF9QQUdFOjI=" and [m.who for m in msgs] == ["Pat Lee", "Sam Roe", "Casey Morgan", ""]
+    msgs, nxt = parsed(SEARCH)
+    assert nxt == "" and parsed(PAGED)[1] == "Q1VSUkVOVF9QQUdFOjI=" and [m.who for m in msgs] == ["Pat Lee", "Sam Roe", "Casey Morgan", ""]
     assert msgs[0].who_id == "U02PAT" and msgs[0].day == date(2026, 10, 23) and msgs[0].channel == "#release-team"
     assert msgs[1].key == "kudos:https://example.enterprise.slack.com/archives/C1/p1792789999000001"
     assert msgs[3].bot
@@ -74,8 +79,16 @@ def test_only_real_kudos_kept_with_an_exact_quote_and_reruns_add_nothing(session
     assert [m.who for m in kudos.new(session, again)] == ["Sam Roe"]  # only the one Claude dropped is read again
 
 
+def test_kudos_saved_by_an_overlapping_sync_are_not_added_twice(session):
+    msg = parsed(SEARCH)[0][0]
+    kept = [(msg, "Huge shout-out to @Casey Morgan for getting the 3.4 release out the door")]
+    assert kudos.merge(session, kept) == 1
+    assert kudos.merge(session, kept) == 0
+    assert session.scalar(select(func.count()).select_from(JournalEntry)) == 1
+
+
 def test_a_made_up_quote_falls_back_to_the_message_itself(session, monkeypatch):
-    msg = kudos.parse(SEARCH)[0][0]
+    msg = parsed(SEARCH)[0][0]
     monkeypatch.setattr("careeros.claude_cli.ask", lambda p, d, timeout=0: json.dumps(
         {"results": [dict(id="m0", keep=True, quote="Jordan is the best release manager ever")]}))
     [(_, quote)] = kudos.choose([msg], ME, "Jordan")
@@ -89,7 +102,7 @@ def test_quotes_show_mentions_and_symbols_as_people_read_them():
 def test_unreadable_filter_answer_is_an_error(monkeypatch):
     monkeypatch.setattr("careeros.claude_cli.ask", lambda p, d, timeout=0: "sorry")
     with pytest.raises(ClaudeError):
-        kudos.choose(kudos.parse(SEARCH)[0][:1], ME, "Jordan")
+        kudos.choose(parsed(SEARCH)[0][:1], ME, "Jordan")
 
 
 def test_a_year_is_searched_a_week_at_a_time_in_channels_never_dms(slack, monkeypatch):
