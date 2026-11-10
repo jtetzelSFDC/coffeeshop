@@ -7,9 +7,9 @@ from datetime import datetime
 import pytest
 from sqlalchemy import select
 
-from careeros.claude_cli import ClaudeError
-from careeros.promo import evidence as pe, write as pw
-from careeros.storage.models import GuideLink, JournalEntry, PromoSection, PromoVersion, V2momLink, WorkItem
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.promo import evidence as pe, write as pw
+from coffeeshop.storage.models import GuideLink, JournalEntry, PromoSection, PromoVersion, V2momLink, WorkItem
 
 from helpers import TWO, by_key, load_v2mom, open_session, promo_seed
 

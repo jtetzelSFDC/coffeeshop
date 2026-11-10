@@ -5,12 +5,12 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 
-from careeros.claude_cli import ClaudeError
-from careeros.slack import messages, search
-from careeros.slack.importer import import_items
-from careeros.slack.parse import SlackItem, TRACKER, parse_canvas
-from careeros.storage.models import JournalAttachment, JournalEntry, SyncRun
-from careeros.storage.removal import remove_entry
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.slack import messages, search
+from coffeeshop.slack.importer import import_items
+from coffeeshop.slack.parse import SlackItem, TRACKER, parse_canvas
+from coffeeshop.storage.models import JournalAttachment, JournalEntry, SyncRun
+from coffeeshop.storage.removal import remove_entry
 from test_slack import TRACKER as CANVAS
 
 ME = "U01ME"
@@ -100,7 +100,7 @@ def test_thread_context_is_capped_and_never_reads_a_dm(monkeypatch):
         lines = [dict(re.findall(r"(\w+)='([^']*)'", line)) for line in prompt.splitlines() if line[:1].isdigit()]
         return [("t", {"channel_id": a["channel_id"], "message_ts": a["message_ts"]},
                  json.dumps({"messages": [{"text": "Parent: the release is stuck"}]})) for a in lines]
-    monkeypatch.setattr("careeros.claude_cli.call_tools", read)
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", read)
     groups = []
     for n in range(messages.THREAD_CAP + 5):
         ts = f"170000{n:04d}.000100"
@@ -121,7 +121,7 @@ def test_thread_context_is_capped_and_never_reads_a_dm(monkeypatch):
 def test_a_failed_thread_read_keeps_the_reply(monkeypatch):
     def boom(prompt, tools, timeout, max_turns):
         raise ClaudeError("Slack didn't answer")
-    monkeypatch.setattr("careeros.claude_cli.call_tools", boom)
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", boom)
     g = messages.Group("#release-team", "C1", "1700000000.000000", date(2026, 10, 26),
                        [hit("done, merged the listed fix", "1700000000.000200", thread="1700000000.000000")])
     messages.add_context([g])
@@ -144,7 +144,7 @@ def test_search_never_requests_dms_and_drops_them_if_they_appear(monkeypatch):
         prompts.append((prompt, tools))
         lines = [dict(re.findall(r"(\w+)='([^']*)'", line)) for line in prompt.splitlines() if line[:1].isdigit()]
         return [("t", a, raw) for a in lines]
-    monkeypatch.setattr("careeros.claude_cli.call_tools", search_once)
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", search_once)
     groups, short = messages.fetch(ME, date(2026, 10, 26), date(2026, 10, 26))
     assert short == 0 and [g.channel for g in groups] == ["#release-team"]
     assert search.CHANNEL_TYPES.split(",") == ["public_channel", "private_channel"]
@@ -190,7 +190,7 @@ def test_a_later_reply_joins_the_same_days_record(session):
 
 
 def test_an_older_canvas_record_takes_the_message_date(session):
-    from careeros.storage.models import Win
+    from coffeeshop.storage.models import Win
     import_items(session, [canvas_item("2026-10-27")], lambda t: {canvas_item().key: "note"})
     row = session.scalar(select(JournalEntry))
     session.add(Win(day=row.day, title="Shipped the hotfix", impact="", size="small", entry_id=row.id,
@@ -252,10 +252,10 @@ def test_first_search_looks_back_ninety_days_then_two(session):
 
 def test_sync_step_saves_the_message_and_does_not_duplicate_the_canvas(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
-    from careeros.slack import classify as cls
-    from careeros.slack import connector, kudos
-    from careeros.slack.importer import save_canvas_id
-    from careeros.web.app import create_app
+    from coffeeshop.slack import classify as cls
+    from coffeeshop.slack import connector, kudos
+    from coffeeshop.slack.importer import save_canvas_id
+    from coffeeshop.web.app import create_app
     from helpers import personal, run_sync
     dd, Session = personal(tmp_path)
     save_canvas_id(dd, "F0EXAMPLE01")
@@ -291,9 +291,9 @@ def test_sync_step_saves_the_message_and_does_not_duplicate_the_canvas(tmp_path,
 
 def test_a_reply_with_no_thread_start_is_called_out(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
-    from careeros.slack import classify as cls
-    from careeros.slack import kudos
-    from careeros.web.app import create_app
+    from coffeeshop.slack import classify as cls
+    from coffeeshop.slack import kudos
+    from coffeeshop.web.app import create_app
     from helpers import personal, run_sync
     dd, _Session = personal(tmp_path)
     kudos.save_user(dd, ME, "Jordan")

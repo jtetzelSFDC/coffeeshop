@@ -7,13 +7,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from typer.testing import CliRunner
 
-from careeros import sync_all
-from careeros.claude_cli import ClaudeError
-from careeros.cli import app as cli
-from careeros.storage.models import SyncRun, V2momMethod, V2momVersion
-from careeros.storage.sync_log import status
-from careeros.v2mom import connector, store
-from careeros.web.app import create_app
+from coffeeshop import sync_all
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.cli import app as cli
+from coffeeshop.storage.models import SyncRun, V2momMethod, V2momVersion
+from coffeeshop.storage.sync_log import status
+from coffeeshop.v2mom import connector, store
+from coffeeshop.web.app import create_app
 
 from helpers import BASE, DOC_ID, SRC, TWO, answer, fake_syncs, personal, run_sync
 

@@ -4,11 +4,11 @@ from datetime import date, datetime, timedelta
 
 from typer.testing import CliRunner
 
-from careeros.backup import make_backup, prune
-from careeros.cli import app as cli
-from careeros.config import DataDir
-from careeros.storage.db import init_db, make_engine, make_session_factory
-from careeros.storage.models import JournalEntry
+from coffeeshop.backup import make_backup, prune
+from coffeeshop.cli import app as cli
+from coffeeshop.config import DataDir
+from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+from coffeeshop.storage.models import JournalEntry
 
 
 def notebook(tmp_path, n=3):

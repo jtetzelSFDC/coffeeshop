@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from careeros.storage.models import JournalAttachment
+from coffeeshop.storage.models import JournalAttachment
 
 
 def test_foreign_keys_enforced(session):
@@ -17,8 +17,8 @@ def test_foreign_keys_enforced(session):
 def test_old_notebook_with_prototype_tables_still_opens(tmp_path):
     """Notebooks made before the prototype was retired keep its (empty) tables; they're simply ignored."""
     import sqlite3
-    from careeros.storage.db import init_db, make_engine, make_session_factory
-    from careeros.storage.models import JournalEntry
+    from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+    from coffeeshop.storage.models import JournalEntry
     db = tmp_path / "old.db"
     with sqlite3.connect(db) as c:
         c.execute("CREATE TABLE claim (id INTEGER PRIMARY KEY, subject VARCHAR)")

@@ -12,12 +12,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from typer.testing import CliRunner
 
-from careeros.cli import app as cli
-from careeros.config import DataDir
-from careeros.guide.parse import GuideFormatError, parse_guide
-from careeros.guide.topics import topic_of
-from careeros.storage.models import GuideItem, GuideLink, JournalEntry, Win
-from careeros.web.app import create_app
+from coffeeshop.cli import app as cli
+from coffeeshop.config import DataDir
+from coffeeshop.guide.parse import GuideFormatError, parse_guide
+from coffeeshop.guide.topics import topic_of
+from coffeeshop.storage.models import GuideItem, GuideLink, JournalEntry, Win
+from coffeeshop.web.app import create_app
 
 from helpers import BASE, G6, G7, form, open_session, write_guide
 
@@ -95,7 +95,7 @@ def test_entry_links_count_once_and_entry_cards_show_hints(nb):
         wid = s.scalar(select(Win.id))
     assert f'value="{demo7}" checked' in c.get(r.headers["location"]).text
     form(c, "/guide/link", tok, win=wid, item=[demo7], next="/")
-    from careeros.guide.service import evidence
+    from coffeeshop.guide.service import evidence
     with open_session(dd) as s:
         ev = evidence(s)[demo7]
     assert len(ev["wins"]) == 1 and ev["entries"] == [] and ev["points"] == 2
@@ -141,5 +141,5 @@ def test_promo_page_without_a_guide_explains_how_to_load_it(tmp_path):
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
     c = TestClient(create_app(dd), base_url=BASE)
-    assert "careeros setup level" in c.get("/promo").text
+    assert "coffeeshop setup level" in c.get("/promo").text
     assert "Link to the leveling guide" not in c.get("/").text

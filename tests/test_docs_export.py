@@ -4,9 +4,9 @@ import time
 import pytest
 from sqlalchemy import select
 
-from careeros.claude_cli import ClaudeError
-from careeros.google import docs_export
-from careeros.storage.models import PromoSection, PromoVersion
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.google import docs_export
+from coffeeshop.storage.models import PromoSection, PromoVersion
 
 from helpers import draft, open_session
 

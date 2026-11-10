@@ -6,12 +6,12 @@ from datetime import date, datetime
 import pytest
 from sqlalchemy import select
 
-from careeros.claude_cli import ClaudeError
-from careeros.google import calendar as gcal
-from careeros.guide import ai_review
-from careeros.guide.service import promo_map
-from careeros.storage.db import init_db, make_engine
-from careeros.storage.models import GuideLink, JournalEntry, SyncRun, Win
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.google import calendar as gcal
+from coffeeshop.guide import ai_review
+from coffeeshop.guide.service import promo_map
+from coffeeshop.storage.db import init_db, make_engine
+from coffeeshop.storage.models import GuideLink, JournalEntry, SyncRun, Win
 
 from helpers import add, form, open_session
 
@@ -72,7 +72,7 @@ def test_review_keeps_user_links_and_checked_rows(nb):
     with open_session(dd) as s:
         a = add(s, "Mine")
         b = add(s, "Checked")
-        from careeros.guide.service import experiences
+        from coffeeshop.guide.service import experiences
         item = experiences(s)[0].id
         s.add(GuideLink(item_id=item, entry_id=a, created_at=datetime.now()))
         s.get(JournalEntry, b).reviewed = True
@@ -163,9 +163,9 @@ def test_sheet_script_updates_rows_in_place(nb):
 
 
 def test_remove_keeps_it_out_of_syncs_and_can_restore(nb):
-    from careeros.slack.importer import new_items
-    from careeros.slack.parse import SlackItem
-    from careeros.storage.models import RemovedEntry
+    from coffeeshop.slack.importer import new_items
+    from coffeeshop.slack.parse import SlackItem
+    from coffeeshop.storage.models import RemovedEntry
     dd, c, token, _ = nb
     with open_session(dd) as s:
         e = JournalEntry(day="2026-10-20", kind="meeting", text="9:00 AM Not my meeting", created_at=datetime.now(),
@@ -200,7 +200,7 @@ def test_remove_keeps_it_out_of_syncs_and_can_restore(nb):
 
 def test_calendar_skip_rule(nb):
     from typer.testing import CliRunner
-    from careeros.cli import app as cli
+    from coffeeshop.cli import app as cli
     dd, *_ = nb
     with open_session(dd) as s:
         for i, t in enumerate(["11:45 AM  [EXT] Team Daily Standup — Pine", "12:00 PM  [EXT] team daily standup - Team",
@@ -218,8 +218,8 @@ def test_calendar_skip_rule(nb):
 
 
 def test_last_pulled_status(nb):
-    from careeros.storage.models import SyncRun
-    from careeros.storage.sync_log import status
+    from coffeeshop.storage.models import SyncRun
+    from coffeeshop.storage.sync_log import status
     dd, c, *_ = nb
     with open_session(dd) as s:
         assert status(s)["slack"]["at_text"] == "never" and status(s)["slack"]["ok"] is False
@@ -266,13 +266,13 @@ TASKS_TEXT = """Tasks in list L1 for me@example.com:
 
 
 def test_google_tasks_parse_and_merge(nb):
-    from careeros.google import tasks as gtasks
+    from coffeeshop.google import tasks as gtasks
     dd, *_ = nb
     ts = gtasks.parse_tasks(TASKS_TEXT)
     assert [(t.title, t.done, t.gid) for t in ts] == [("deploy pine to uat", True, "T1"), ("10 questions", False, "T2"),
                                                       ("write (the) plan", False, "T3")]
     assert ts[2].notes == "draft first"
-    from careeros.claude_cli import _result_text
+    from coffeeshop.claude_cli import _result_text
     assert len(gtasks.parse_tasks(_result_text(json.dumps({"result": TASKS_TEXT})))) == 3
     assert gtasks.parse_lists("- Week of 7/14/25 (ID: A1)\n  Updated: 2026-10-22T04:01:38.851Z\n- Old (ID: B2)\n"
                               "  Updated: 2025-07-28T12:39:12.431Z")[0][0] == "A1"
@@ -292,8 +292,8 @@ def test_google_tasks_parse_and_merge(nb):
 
 
 def test_open_google_tasks_saved_before_are_cleared_unless_built_on(nb):  # and kept ones stay out of the queue
-    from careeros.google import tasks as gtasks
-    from careeros.storage.models import JournalAttachment, RemovedEntry, Win
+    from coffeeshop.google import tasks as gtasks
+    from coffeeshop.storage.models import JournalAttachment, RemovedEntry, Win
     dd, c, *_ = nb
     with open_session(dd) as s:
         def task(text, **kw):
@@ -321,8 +321,8 @@ def test_open_google_tasks_saved_before_are_cleared_unless_built_on(nb):  # and 
 
 
 def test_a_task_removed_while_open_comes_in_once_done_and_reopening_takes_it_out(nb):
-    from careeros.google import tasks as gtasks
-    from careeros.storage.removal import remove_entry
+    from coffeeshop.google import tasks as gtasks
+    from coffeeshop.storage.removal import remove_entry
     dd, *_ = nb
     when = datetime(2026, 10, 27, 9, 0)
     with open_session(dd) as s:
@@ -340,7 +340,7 @@ def test_a_task_removed_while_open_comes_in_once_done_and_reopening_takes_it_out
 def test_sync_google_runs_every_step(nb, monkeypatch):
     import json as _json
     import time
-    from careeros.google import connector, summaries, tasks as gtasks
+    from coffeeshop.google import connector, summaries, tasks as gtasks
     dd, c, token, _ = nb
     from datetime import timedelta
     yesterday = (date.today() - timedelta(days=1)).isoformat()  # a meeting that has already happened
@@ -349,7 +349,7 @@ def test_sync_google_runs_every_step(nb, monkeypatch):
          "end": f"{yesterday}T09:30:00-04:00", "links": []}])
     monkeypatch.setattr(gtasks, "fetch", lambda since: (gtasks.parse_tasks(TASKS_TEXT), 1))
     monkeypatch.setattr(summaries, "summarize_pending", lambda s, f, l, progress=None: dict(summarized=0, failed=0))
-    from careeros.google import docs as gdocs
+    from coffeeshop.google import docs as gdocs
     monkeypatch.setattr(gdocs, "fetch", lambda since: (gdocs.parse('Found 1 files for me@x.com matching \'q\':\n- Name: "Runbook" '
                         f'(ID: d1, Type: application/vnd.google-apps.document, Size: 1, Modified: {yesterday}T12:00:00Z, '
                         'Last Edited By: Me <me@x.com>) Link: https://docs.google.com/document/d/d1/edit', True), 0))
@@ -359,10 +359,10 @@ def test_sync_google_runs_every_step(nb, monkeypatch):
         recs = _json.loads(data)["records"]
         return _json.dumps({"results": [dict(id=r["id"], guide=["E0"], kind=r["kind"], win=None) for r in recs]})
     monkeypatch.setattr(ai_review, "ask", fake_ask)
-    from careeros.guide import work as work_mod
+    from coffeeshop.guide import work as work_mod
     monkeypatch.setattr(work_mod, "ask", lambda prompt, data, timeout=0: _json.dumps(
         {"results": [dict(id=r["id"], work=None) for r in _json.loads(data)["records"]]}))
-    from careeros.guide import activities as act_mod
+    from coffeeshop.guide import activities as act_mod
     monkeypatch.setattr(act_mod, "ask", lambda prompt, data, timeout=0: _json.dumps(
         {"results": [dict(id=r["id"], activity="deployment") for r in _json.loads(data)["records"]]}))
     assert c.post("/sync/google", data={"csrf": token}, headers={"X-Sync": "1"}).json() == {"started": True}
@@ -402,7 +402,7 @@ def test_sync_never_deletes_entries_you_built_on(nb):
 
 
 def test_review_skips_records_removed_or_edited_while_claude_reads(nb):
-    from careeros.storage.removal import remove_entry
+    from coffeeshop.storage.removal import remove_entry
     dd, *_ = nb
     with open_session(dd) as s:
         gone, checked, retyped, plain = (add(s, t) for t in ("gone", "checked", "retyped", "plain"))
@@ -423,7 +423,7 @@ def test_review_skips_records_removed_or_edited_while_claude_reads(nb):
 
 
 def test_a_vanished_meeting_claude_linked_is_removed_without_breaking_the_sync(nb):
-    from careeros.storage.models import GuideItem
+    from coffeeshop.storage.models import GuideItem
     dd, *_ = nb
     with open_session(dd) as s:
         e = JournalEntry(day="2026-10-20", kind="meeting", text="9:00 AM Moved meeting", created_at=datetime.now(),

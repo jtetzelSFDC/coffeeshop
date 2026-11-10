@@ -48,7 +48,7 @@ def save_url(dd: DataDir, url: str) -> None:
 def load_url(dd: DataDir) -> str:
     f = url_file(dd)
     if not f.exists():
-        raise CalendarError("No calendar connected yet. Run: uv run careeros calendar connect")
+        raise CalendarError("No calendar connected yet. Run: uv run coffeeshop calendar connect")
     return f.read_text().strip()
 
 
@@ -58,7 +58,7 @@ def fetch_ics(url: str) -> bytes:
         with httpx.stream("GET", url, timeout=30, follow_redirects=False) as r:
             if r.status_code != 200:
                 raise CalendarError(f"Google answered {r.status_code}. The secret address may have been reset; "
-                                    "run `careeros calendar connect` with the new one.")
+                                    "run `coffeeshop calendar connect` with the new one.")
             body = b""
             for chunk in r.iter_bytes():
                 body += chunk

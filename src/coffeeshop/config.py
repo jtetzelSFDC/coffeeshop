@@ -58,7 +58,7 @@ class DataDir:
         os.chmod(self.root, 0o700)
 
     def init_demo(self) -> None:
-        """An empty practice notebook. `careeros demo seed` fills it with made-up records."""
+        """An empty practice notebook. `coffeeshop demo seed` fills it with made-up records."""
         if self.is_personal:
             raise NotDemoData(f"{self.root} is your personal notebook; practice data is never put there")
         self.create()

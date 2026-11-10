@@ -1,4 +1,4 @@
-"""careeros CLI: your personal notebook, its syncs and leveling guide, and a practice notebook of made-up data."""
+"""coffeeshop CLI: your personal notebook, its syncs and leveling guide, and a practice notebook of made-up data."""
 from __future__ import annotations
 
 import os
@@ -36,7 +36,7 @@ def demo_seed(data_dir: Optional[str] = DataOpt) -> None:
     with make_session_factory(engine)() as s:
         n = fx.seed(s)
     typer.echo(f"Practice notebook ready at {dd.root} ({n['records']} records, {n['wins']} wins). "
-               f"Start it with:  uv run careeros serve --data-dir {dd.root}")
+               f"Start it with:  uv run coffeeshop serve --data-dir {dd.root}")
 
 
 sync_app = typer.Typer(no_args_is_help=True, help="Pull in everything (what the schedule runs)")
@@ -134,7 +134,7 @@ def backup_list(data_dir: Optional[str] = DataOpt) -> None:
     dd = resolve(data_dir)
     found = backups(dd)
     if not found:
-        typer.echo("No backups yet. Run: uv run careeros backup now")
+        typer.echo("No backups yet. Run: uv run coffeeshop backup now")
     for d, p in reversed(found):
         typer.echo(f"{p.name}  {p.stat().st_size // 1024} KB")
 
@@ -156,7 +156,7 @@ def notebook_init(data_dir: Optional[str] = typer.Option(None, "--data-dir", hel
     with_db = make_engine(dd.db)
     init_db(with_db)
     typer.echo(f"Your notebook is ready at {dd.root}")
-    typer.echo("Start it with:  uv run careeros serve" + (f" --data-dir {dd.root}" if data_dir else ""))
+    typer.echo("Start it with:  uv run coffeeshop serve" + (f" --data-dir {dd.root}" if data_dir else ""))
 
 
 setup_app = typer.Typer(no_args_is_help=True, help="Set the app up for you")
@@ -265,7 +265,7 @@ def guide_update(file: str = typer.Argument(..., help="The leveling guide workbo
     if Path(file).resolve() != parse.WORKBOOK.resolve():
         parse.WORKBOOK.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(file, parse.WORKBOOK)
-    typer.echo(f"Saved as {parse.WORKBOOK}. Commit it, then run `uv run careeros setup level` to load your role's "
+    typer.echo(f"Saved as {parse.WORKBOOK}. Commit it, then run `uv run coffeeshop setup level` to load your role's "
                "new guide (links you've made are kept).")
 
 
@@ -433,7 +433,7 @@ def slack_connect(canvas: str = typer.Argument(..., help="Link to, or ID of, you
     from .slack.importer import save_canvas_id
     dd, _ = _open_personal(data_dir, "Slack sync")
     try:
-        typer.echo(f"Saved canvas {save_canvas_id(dd, canvas)}. Now run: uv run careeros slack pull")
+        typer.echo(f"Saved canvas {save_canvas_id(dd, canvas)}. Now run: uv run coffeeshop slack pull")
     except ValueError as exc:
         typer.echo(str(exc))
         raise typer.Exit(1)
@@ -460,7 +460,7 @@ def v2mom_connect(doc: str = typer.Argument(..., help="The PDF downloaded from t
     try:
         src = save_source(dd, doc)
         typer.echo(f"Saved {'PDF' if src['kind'] == 'pdf' else 'Doc'} {src['value']}. "
-                   "Now run: uv run careeros v2mom sync")
+                   "Now run: uv run coffeeshop v2mom sync")
     except ValueError as exc:
         typer.echo(str(exc))
         raise typer.Exit(1)
@@ -515,7 +515,7 @@ def kso_connect(deck: list[str] = typer.Option([], "--deck", help="The KSO frame
         typer.echo(str(exc))
         raise typer.Exit(1)
     if not src:
-        typer.echo("Give the KSO deck and guide canvases: uv run careeros kso connect --deck <link> --canvas <link>")
+        typer.echo("Give the KSO deck and guide canvases: uv run coffeeshop kso connect --deck <link> --canvas <link>")
         raise typer.Exit(1)
     typer.echo("Reading the KSO material and having Claude sort it. This takes a few minutes.")
     try:
@@ -542,7 +542,7 @@ def kso_map(redo: bool = typer.Option(False, "--redo", help="Also redo Claude's 
     dd, s = _open_personal(data_dir, "KSOs")
     fw = framework.for_current(s)
     if fw is None:
-        typer.echo("No KSOs yet. Run: uv run careeros kso connect --deck <link> --canvas <link>")
+        typer.echo("No KSOs yet. Run: uv run coffeeshop kso connect --deck <link> --canvas <link>")
         raise typer.Exit(1)
     try:
         r = kmap.suggest(s, fw, redo=redo)
@@ -559,7 +559,7 @@ def kso_show(data_dir: Optional[str] = DataOpt) -> None:
     dd, s = _open_personal(data_dir, "KSOs")
     fw = framework.for_current(s)
     if fw is None:
-        typer.echo("No KSOs yet. Run: uv run careeros kso connect --deck <link> --canvas <link>")
+        typer.echo("No KSOs yet. Run: uv run coffeeshop kso connect --deck <link> --canvas <link>")
         raise typer.Exit(1)
     typer.echo(_kso_summary(fw))
     picks = kmap.by_component(s, fw)
@@ -628,7 +628,7 @@ def _open_personal(data_dir: Optional[str], what: str):
     os.umask(0o077)
     dd = resolve(data_dir)
     if not dd.is_personal:
-        typer.echo(f"{what} only works with your personal notebook (run `careeros notebook init`).")
+        typer.echo(f"{what} only works with your personal notebook (run `coffeeshop notebook init`).")
         raise typer.Exit(1)
     engine = make_engine(dd.db)
     init_db(engine)
@@ -659,7 +659,7 @@ def calendar_connect(data_dir: Optional[str] = DataOpt) -> None:
     except gcal.CalendarError as exc:
         typer.echo(str(exc))
         raise typer.Exit(1)
-    typer.echo("Saved. Now run: uv run careeros calendar sync")
+    typer.echo("Saved. Now run: uv run coffeeshop calendar sync")
 
 
 @calendar_app.command("sync")
@@ -803,7 +803,7 @@ def daily_show(data_dir: Optional[str] = DataOpt) -> None:
     from . import daily
     dd, s = _open_personal(data_dir, "The daily three")
     tasks = daily.today_tasks(s)
-    typer.echo("\n".join(_task_line(t) for t in tasks) or "No tasks yet today. They come with the morning sync, or run: uv run careeros daily suggest")
+    typer.echo("\n".join(_task_line(t) for t in tasks) or "No tasks yet today. They come with the morning sync, or run: uv run coffeeshop daily suggest")
 
 
 def _task_line(t) -> str:

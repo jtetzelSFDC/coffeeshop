@@ -1,4 +1,4 @@
-"""The setup steps, shared by `careeros setup` and the /setup page: choose a role and level, and check what is in
+"""The setup steps, shared by `coffeeshop setup` and the /setup page: choose a role and level, and check what is in
 place. A check only reads (the database is opened read-only, each connector gets one cheap read) and gives up
 after CHECK_TIMEOUT seconds."""
 from __future__ import annotations
@@ -49,7 +49,7 @@ def choose_level(s, guide: dict, grade: int) -> tuple[dict, dict, dict]:
 def _database(dd: DataDir) -> tuple[str, str]:
     if dd.is_personal and dd.db.exists():
         return "pass", ""
-    return "fail", "Create your notebook: uv run careeros notebook init"
+    return "fail", "Create your notebook: uv run coffeeshop notebook init"
 
 
 def _level(dd: DataDir) -> tuple[str, str]:
@@ -73,7 +73,7 @@ def _v2mom(dd: DataDir) -> tuple[str, str]:
     if src and not moved:
         return "pass", ""
     return "fail", f"{'Your V2MOM PDF has moved. Connect it again' if moved else 'Connect your V2MOM PDF'}: " \
-                   "uv run careeros v2mom connect <path to the PDF>"
+                   "uv run coffeeshop v2mom connect <path to the PDF>"
 
 
 def _read(tool: str, prompt: str, service: str) -> tuple[str, str]:
@@ -112,7 +112,7 @@ def _github() -> tuple[str, str]:
 def _schedule() -> tuple[str, str]:
     if all((schedule.AGENTS_DIR / f"{label}.plist").exists() for label in (schedule.APP, schedule.SYNC, schedule.DIGEST)):
         return "pass", ""
-    return "skipped", "Optional. To sync on its own twice a day: uv run careeros schedule install"
+    return "skipped", "Optional. To sync on its own twice a day: uv run coffeeshop schedule install"
 
 
 def run_checks(dd: DataDir, skip: set[str] = frozenset()) -> list[Check]:

@@ -1,5 +1,5 @@
 """KSOs: reading the framework (one fiscal year per row), and matching V2MOM methods to its components.
-All with fake readers and the made-up framework in careeros.fixtures.kso."""
+All with fake readers and the made-up framework in coffeeshop.fixtures.kso."""
 import json
 from datetime import date
 import stat
@@ -8,11 +8,11 @@ import pytest
 from sqlalchemy import select
 from typer.testing import CliRunner
 
-from careeros.claude_cli import ClaudeError
-from careeros.cli import app as cli
-from careeros.fixtures.kso import reply as fw_reply
-from careeros.kso import framework, map as kmap
-from careeros.storage.models import KsoFramework, KsoMap
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.cli import app as cli
+from coffeeshop.fixtures.kso import reply as fw_reply
+from coffeeshop.kso import framework, map as kmap
+from coffeeshop.storage.models import KsoFramework, KsoMap
 
 from helpers import KSO_SRC, TWO, connect, load_v2mom, open_session, picks
 
@@ -73,7 +73,7 @@ def test_sources_come_from_links_and_stay_private(nb):
 
 
 def test_fiscal_years_are_named_one_way(nb):
-    from careeros.v2mom.report import fiscal_year, fy_name
+    from coffeeshop.v2mom.report import fiscal_year, fy_name
     assert [fy_name(x) for x in ("FY2027", "fy 27", "FY27 Q4", "2027", "FY27_V2MOM.pdf", "FY275")] == \
         ["FY27", "FY27", "FY27", "", "FY27", ""]
     assert fiscal_year("FY2027", date(2027, 3, 1))[0] == "FY27"  # not this year's FY28
@@ -155,7 +155,7 @@ def test_connect_and_show_from_the_command_line(nb, monkeypatch):
 
 
 def test_the_v2mom_sync_matches_new_methods_once_ksos_are_connected(nb, monkeypatch):
-    from careeros.web import syncs
+    from coffeeshop.web import syncs
     import threading
     dd, *_ = nb
     with open_session(dd) as s:

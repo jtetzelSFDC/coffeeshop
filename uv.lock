@@ -34,7 +34,7 @@ wheels = [
 ]
 
 [[package]]
-name = "careeros"
+name = "coffeeshop"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

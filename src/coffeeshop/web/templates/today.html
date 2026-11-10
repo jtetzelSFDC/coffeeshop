@@ -2,7 +2,7 @@
 {% block body %}
 {% from "_entry.html" import attach_fields with context %}
 {% from "_sync.html" import sync_chips %}
-{% if personal and not dash.level %}<div class="note"><b><a href="/setup">Finish setup</a></b>: choose your role and level to see how close your next one is. Or in Terminal: <code>uv run careeros setup level</code></div>{% endif %}
+{% if personal and not dash.level %}<div class="note"><b><a href="/setup">Finish setup</a></b>: choose your role and level to see how close your next one is. Or in Terminal: <code>uv run coffeeshop setup level</code></div>{% endif %}
 
 <section class="card home-tile dash" aria-label="Progress">
   <details>
@@ -136,8 +136,8 @@
   </div>
   {% call howto() %}
     <p class="help"><b>Sync Google</b> pulls yesterday's and today's meetings, your recently changed Google Tasks and Docs, and summaries of meeting notes, then has Claude link the new records to the leveling guide. Meeting titles, task titles, and document text pass through the AI tool.</p>
-    <p class="help">{% if slack_canvas %}<b>Sync Slack tracker</b> reads your Slack Work Activity Tracker canvas and looks for kudos, has Claude sort the new items, then links them to the leveling guide. The canvas text passes through the AI tool.{% else %}Not connected yet. In Terminal run <code>uv run careeros slack connect &lt;canvas link&gt;</code>.{% endif %}</p>
-    <p class="help">{% if v2mom_doc %}<b>Sync V2MOM</b> re-reads your V2MOM ({{ 'the newest V2MOM PDF in the folder you connected' if v2mom_doc.kind == 'pdf' else 'the Google Doc it is pasted in' }}) and updates its methods, measures, and check-ins. It runs by itself once a month; after a check-in, upload the new PDF on the V2MOM page, or save it in the same folder and press this. The text passes through the AI tool.{% else %}V2MOM: not connected yet. Download it as a PDF, then upload it on the <a href="/v2mom">V2MOM</a> page, or in Terminal run <code>uv run careeros v2mom connect &lt;path to the PDF&gt;</code>.{% endif %}</p>
+    <p class="help">{% if slack_canvas %}<b>Sync Slack tracker</b> reads your Slack Work Activity Tracker canvas and looks for kudos, has Claude sort the new items, then links them to the leveling guide. The canvas text passes through the AI tool.{% else %}Not connected yet. In Terminal run <code>uv run coffeeshop slack connect &lt;canvas link&gt;</code>.{% endif %}</p>
+    <p class="help">{% if v2mom_doc %}<b>Sync V2MOM</b> re-reads your V2MOM ({{ 'the newest V2MOM PDF in the folder you connected' if v2mom_doc.kind == 'pdf' else 'the Google Doc it is pasted in' }}) and updates its methods, measures, and check-ins. It runs by itself once a month; after a check-in, upload the new PDF on the V2MOM page, or save it in the same folder and press this. The text passes through the AI tool.{% else %}V2MOM: not connected yet. Download it as a PDF, then upload it on the <a href="/v2mom">V2MOM</a> page, or in Terminal run <code>uv run coffeeshop v2mom connect &lt;path to the PDF&gt;</code>.{% endif %}</p>
     <p class="help">Google and Slack also run on their own at 8 AM and 6 PM.</p>
   {% endcall %}
   </details>

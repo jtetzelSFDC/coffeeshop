@@ -8,11 +8,11 @@ from fastapi.testclient import TestClient
 from pypdf import PdfWriter
 from typer.testing import CliRunner
 
-from careeros.claude_cli import ClaudeError
-from careeros.cli import app as cli
-from careeros.promo import evidence as pe
-from careeros.v2mom import connector, store
-from careeros.web.app import create_app
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.cli import app as cli
+from coffeeshop.promo import evidence as pe
+from coffeeshop.v2mom import connector, store
+from coffeeshop.web.app import create_app
 
 from helpers import BASE, DOC_ID, SRC, TWO, answer, personal
 
@@ -134,7 +134,7 @@ def test_someone_elses_v2mom_next_to_yours_is_never_read(tmp_path):
 
 def test_an_existing_notebook_gets_the_check_ins_column(tmp_path):
     from sqlalchemy import text
-    from careeros.storage.db import init_db, make_engine
+    from coffeeshop.storage.db import init_db, make_engine
     engine = make_engine(tmp_path / "old.db")
     with engine.begin() as c:
         c.exec_driver_sql("CREATE TABLE v2mom_version (id INTEGER PRIMARY KEY, doc_id VARCHAR, fiscal_year VARCHAR, "

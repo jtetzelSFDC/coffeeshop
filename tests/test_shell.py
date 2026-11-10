@@ -1,7 +1,7 @@
 import re
 from datetime import date
 
-from careeros.web.app import TABS, short_day
+from coffeeshop.web.app import TABS, short_day
 
 from helpers import open_session
 
@@ -37,7 +37,7 @@ def test_short_day():
 
 def test_promo_map_is_compact(nb):
     from datetime import datetime
-    from careeros.storage.models import JournalEntry
+    from coffeeshop.storage.models import JournalEntry
     dd, c, *_ = nb
     with open_session(dd) as s:
         s.add(JournalEntry(day="2026-10-20", kind="meeting", text="Demo of the pipeline to the customer",

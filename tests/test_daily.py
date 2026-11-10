@@ -5,11 +5,11 @@ from datetime import date, datetime, timedelta
 import pytest
 from typer.testing import CliRunner
 
-from careeros import daily
-from careeros.claude_cli import ClaudeError
-from careeros.cli import app as cli
-from careeros.sync_all import _daily_due as _real_daily_due
-from careeros.storage.models import DailyTask, JournalAttachment, JournalEntry, WorkItem
+from coffeeshop import daily
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.cli import app as cli
+from coffeeshop.sync_all import _daily_due as _real_daily_due
+from coffeeshop.storage.models import DailyTask, JournalAttachment, JournalEntry, WorkItem
 
 from helpers import fake_syncs, link, load_v2mom, open_session
 
@@ -133,8 +133,8 @@ def test_no_v2mom_still_works_from_the_guide_and_no_goals_at_all_is_a_clear_erro
         ids = [g["id"] for g in daily.context(s, TODAY)["goals"]]
         assert ids and not any(i.startswith("V2MOM") for i in ids)
         assert len(daily.suggest(s, TODAY, reader=lambda p, d: reply(ids))) == 3
-    from careeros.config import DataDir
-    from careeros.storage.db import init_db, make_engine, make_session_factory
+    from coffeeshop.config import DataDir
+    from coffeeshop.storage.db import init_db, make_engine, make_session_factory
     empty = DataDir(tmp_path / "empty")
     empty.init_personal()
     engine = make_engine(empty.db)
@@ -178,7 +178,7 @@ def test_quiet_v2mom_methods_come_before_on_track_ones(nb):
     dd, *_ = nb
     setup(dd)
     with open_session(dd) as s:
-        from careeros.v2mom import store
+        from coffeeshop.v2mom import store
         m1, m2 = store.methods(s)
         m2.measures = [dict(text="Ship one template", status="On Track", progress=None, comments="")]
         e = JournalEntry(day=TODAY.isoformat(), kind="task", text="Shared a template", created_at=datetime.now(),
@@ -221,7 +221,7 @@ def test_two_runs_at_once_keep_one_three(nb):
 
 
 def test_a_successful_run_lights_the_daily_chip(nb):
-    from careeros.storage.sync_log import status
+    from coffeeshop.storage.sync_log import status
     dd, *_ = nb
     setup(dd)
     with open_session(dd) as s:
@@ -233,7 +233,7 @@ def test_a_successful_run_lights_the_daily_chip(nb):
 
 
 def test_the_morning_sync_suggests_the_three_last_once_a_day(nb, monkeypatch):
-    from careeros import sync_all
+    from coffeeshop import sync_all
     dd, *_ = nb
     setup(dd)
     calls = fake_syncs(monkeypatch)
@@ -255,7 +255,7 @@ def test_the_morning_sync_suggests_the_three_last_once_a_day(nb, monkeypatch):
 
 
 def test_no_daily_three_before_8_and_a_failure_notifies(nb, monkeypatch):
-    from careeros import sync_all
+    from coffeeshop import sync_all
     dd, *_ = nb
     setup(dd)
     fake_syncs(monkeypatch)
@@ -272,8 +272,8 @@ def test_no_daily_three_before_8_and_a_failure_notifies(nb, monkeypatch):
 
 
 def test_a_notebook_without_goals_never_runs_the_daily_step(tmp_path):
-    from careeros.config import DataDir
-    from careeros.storage.db import init_db, make_engine, make_session_factory
+    from coffeeshop.config import DataDir
+    from coffeeshop.storage.db import init_db, make_engine, make_session_factory
     dd = DataDir(tmp_path / "empty")
     dd.init_personal()
     engine = make_engine(dd.db)
@@ -283,7 +283,7 @@ def test_a_notebook_without_goals_never_runs_the_daily_step(tmp_path):
 
 
 def _web(nb):
-    from careeros.web.app import create_app
+    from coffeeshop.web.app import create_app
     from starlette.testclient import TestClient
     dd, *_ = nb
     app = create_app(dd)
@@ -348,7 +348,7 @@ def test_undo_without_a_note_takes_the_record_back(nb):
 
 
 def test_removing_its_record_unlinks_the_task_so_undo_cant_hit_a_reused_id(nb):
-    from careeros.storage.removal import remove_entry
+    from coffeeshop.storage.removal import remove_entry
     dd, *_ = nb
     setup(dd)
     c, tok = _web(nb)
@@ -389,7 +389,7 @@ def test_all_three_done_and_the_suggest_button_starts_a_job(nb, monkeypatch):
     home = c.get("/").text
     assert "All three done. Nice." in home and 'data-label="New three"' in home
     started = []
-    monkeypatch.setattr("careeros.web.syncs.run_daily",
+    monkeypatch.setattr("coffeeshop.web.syncs.run_daily",
                         lambda job, S, lock, force=False: (started.append(force), job.finish("ok")))
     assert c.post("/daily/suggest", data={"csrf": tok, "force": "1"}, headers={"X-Sync": "1"}).json() == {"started": True}
     import time
@@ -408,7 +408,7 @@ def test_the_prompt_asks_for_shorter_lines_than_validate_allows():
 
 def test_untick_keeps_a_record_you_linked_yourself(nb):
     from sqlalchemy import select
-    from careeros.storage.models import GuideItem, GuideLink
+    from coffeeshop.storage.models import GuideItem, GuideLink
     dd, *_ = nb
     setup(dd)
     tid = _three(dd)[0]

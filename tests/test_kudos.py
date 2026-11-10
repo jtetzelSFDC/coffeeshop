@@ -5,10 +5,10 @@ from datetime import date, datetime
 import pytest
 from sqlalchemy import func, select
 
-from careeros.claude_cli import ClaudeError
-from careeros.config import DataDir
-from careeros.slack import kudos, search
-from careeros.storage.models import JournalAttachment, JournalEntry
+from coffeeshop.claude_cli import ClaudeError
+from coffeeshop.config import DataDir
+from coffeeshop.slack import kudos, search
+from coffeeshop.storage.models import JournalAttachment, JournalEntry
 
 ME = "U01ME"
 
@@ -52,8 +52,8 @@ def slack(monkeypatch):
         lines = [dict(re.findall(r"(\w+)='([^']*)'", line)) for line in prompt.splitlines() if line[:1].isdigit()]
         calls.append(lines)
         return [("t", args, SEARCH if not calls[1:] or "cursor" in args else PAGED) for args in lines]
-    monkeypatch.setattr("careeros.claude_cli.call_tools", search)
-    monkeypatch.setattr("careeros.claude_cli.ask", fake_filter)
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", search)
+    monkeypatch.setattr("coffeeshop.claude_cli.ask", fake_filter)
     return calls
 
 
@@ -89,7 +89,7 @@ def test_kudos_saved_by_an_overlapping_sync_are_not_added_twice(session):
 
 def test_a_made_up_quote_falls_back_to_the_message_itself(session, monkeypatch):
     msg = parsed(SEARCH)[0][0]
-    monkeypatch.setattr("careeros.claude_cli.ask", lambda p, d, timeout=0: json.dumps(
+    monkeypatch.setattr("coffeeshop.claude_cli.ask", lambda p, d, timeout=0: json.dumps(
         {"results": [dict(id="m0", keep=True, quote="Jordan is the best release manager ever")]}))
     [(_, quote)] = kudos.choose([msg], ME, "Jordan")
     assert quote == "Huge shout-out to @Casey Morgan for getting the 3.4 release out the door on a Friday night. Saved us!"
@@ -100,15 +100,15 @@ def test_quotes_show_mentions_and_symbols_as_people_read_them():
 
 
 def test_unreadable_filter_answer_is_an_error(monkeypatch):
-    monkeypatch.setattr("careeros.claude_cli.ask", lambda p, d, timeout=0: "sorry")
+    monkeypatch.setattr("coffeeshop.claude_cli.ask", lambda p, d, timeout=0: "sorry")
     with pytest.raises(ClaudeError):
         kudos.choose(parsed(SEARCH)[0][:1], ME, "Jordan")
 
 
 def test_a_year_is_searched_a_week_at_a_time_in_channels_never_dms(slack, monkeypatch):
     prompts = []
-    real = __import__("careeros.claude_cli", fromlist=["x"]).call_tools
-    monkeypatch.setattr("careeros.claude_cli.call_tools", lambda p, *a, **k: prompts.append(p) or real(p, *a, **k))
+    real = __import__("coffeeshop.claude_cli", fromlist=["x"]).call_tools
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", lambda p, *a, **k: prompts.append(p) or real(p, *a, **k))
     kudos.fetch(ME, date(2025, 10, 29), date(2026, 10, 29))
     assert len(slack[0]) == 53 and slack[0][0] == {"filters": "after:2025-10-28 before:2025-11-05"}
     assert 'channel_types="public_channel,private_channel"' in prompts[0] and "slack_search_public_and_private" in prompts[0]
@@ -121,25 +121,25 @@ def test_extra_pages_are_followed(monkeypatch):
         lines = [dict(re.findall(r"(\w+)='([^']*)'", line)) for line in prompt.splitlines() if line[:1].isdigit()]
         rounds.append(lines)
         return [("t", args, SEARCH if "cursor" in args else PAGED) for args in lines]
-    monkeypatch.setattr("careeros.claude_cli.call_tools", search)
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", search)
     msgs, short = kudos.fetch(ME, date(2026, 10, 24), date(2026, 10, 29))
     assert short == 0 and len(rounds) == 2 and rounds[1] == [dict(filters="after:2026-10-23 before:2026-10-30",
                                                                     cursor="Q1VSUkVOVF9QQUdFOjI=")]
 
 
 def test_a_search_that_never_comes_back_is_counted(monkeypatch):
-    monkeypatch.setattr("careeros.claude_cli.call_tools", lambda *a, **k: [("t", {"filters": "other"}, SEARCH)])
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", lambda *a, **k: [("t", {"filters": "other"}, SEARCH)])
     assert kudos.fetch(ME, date(2026, 10, 24), date(2026, 10, 29)) == ([], 1)
 
 
 def test_dms_and_messages_without_praise_never_reach_claude(monkeypatch):
     dm = SEARCH.replace("Channel: #release-team", "Channel: Pat Lee", 1)
-    monkeypatch.setattr("careeros.claude_cli.call_tools", lambda prompt, *a, **k: [
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tools", lambda prompt, *a, **k: [
         ("t", dict(re.findall(r"(\w+)='([^']*)'", line)), dm) for line in prompt.splitlines() if line[:1].isdigit()])
     msgs, _ = kudos.fetch(ME, date(2026, 10, 20), date(2026, 10, 29))
     assert [m.who for m in msgs] == ["Sam Roe"]  # the DM-looking result is dropped
     seen = []
-    monkeypatch.setattr("careeros.claude_cli.ask", lambda p, d, timeout=0: seen.append(d) or '{"results": []}')
+    monkeypatch.setattr("coffeeshop.claude_cli.ask", lambda p, d, timeout=0: seen.append(d) or '{"results": []}')
     plain = kudos.Message("https://x/p1", "#c", "Kim", "U9", False, date(2026, 10, 1), f"<@{ME}|Jordan> can you look?")
     kudos.choose(msgs + [plain], ME, "Casey Morgan")
     assert len(seen) == 1 and "can you look" not in seen[0] and "Thanks for the invite" in seen[0]
@@ -148,7 +148,7 @@ def test_dms_and_messages_without_praise_never_reach_claude(monkeypatch):
 def test_user_id_is_asked_once_and_kept(tmp_path, monkeypatch):
     dd = DataDir(tmp_path)
     asked = []
-    monkeypatch.setattr("careeros.claude_cli.call_tool", lambda prompt, tool: asked.append(tool) or
+    monkeypatch.setattr("coffeeshop.claude_cli.call_tool", lambda prompt, tool: asked.append(tool) or
                         "User ID: U01ME\nUsername: cmorgan\nDisplay Name: Casey Morgan\n")
     assert kudos.user(dd) == ("U01ME", "Casey Morgan")
     assert kudos.user(dd) == ("U01ME", "Casey Morgan") and len(asked) == 1
@@ -156,8 +156,8 @@ def test_user_id_is_asked_once_and_kept(tmp_path, monkeypatch):
 
 
 def test_recognition_counts_like_a_medium_win(session):
-    from careeros.guide.service import POINTS, evidence
-    from careeros.storage.models import GuideItem, GuideLink
+    from coffeeshop.guide.service import POINTS, evidence
+    from coffeeshop.storage.models import GuideItem, GuideLink
     g = GuideItem(key="E1", kind="experience", grade=6, name="Leads releases", position=1, active=True)
     session.add(g)
     session.flush()
@@ -172,7 +172,7 @@ def test_recognition_counts_like_a_medium_win(session):
 
 
 def test_recognition_goes_to_the_promo_writer_as_its_own_quoted_piece(session):
-    from careeros.promo.evidence import build
+    from coffeeshop.promo.evidence import build
     session.add(JournalEntry(day="2026-10-20", kind="recognition", text='Pat Lee: "Saved us!"', source="kudos",
                              created_at=datetime.now(), external_id="kudos:x"))
     session.commit()

@@ -9,7 +9,7 @@
     <input id="v2mom-pdf" type="file" name="pdf" accept="application/pdf,.pdf" required>
     <button>Upload and read</button>
   </form>
-  <p class="help">Download it as a PDF from the V2MOM app. It stays in this notebook, only you can read it, and it's read right away. The command <code>uv run careeros v2mom connect</code> still works.</p>
+  <p class="help">Download it as a PDF from the V2MOM app. It stays in this notebook, only you can read it, and it's read right away. The command <code>uv run coffeeshop v2mom connect</code> still works.</p>
 {% endif %}{% endmacro %}
 {% if r %}{% set v = r.version %}
 <section class="card">
@@ -59,7 +59,7 @@
 <section class="card">
   <h2>V2MOM</h2>
   {% if connected %}<p class="muted">Your V2MOM is connected but hasn't been read yet. Press <b>Sync V2MOM</b> on <a href="/">Home</a>, or upload a new PDF below.</p>
-  {% else %}<p class="muted">No V2MOM loaded yet. Download it as a PDF from the V2MOM app{% if personal %} and upload it here{% endif %}, or in Terminal run <code>uv run careeros v2mom connect &lt;path to the PDF&gt;</code>.</p>{% endif %}
+  {% else %}<p class="muted">No V2MOM loaded yet. Download it as a PDF from the V2MOM app{% if personal %} and upload it here{% endif %}, or in Terminal run <code>uv run coffeeshop v2mom connect &lt;path to the PDF&gt;</code>.</p>{% endif %}
   {{ upload() }}
 </section>
 {% endif %}

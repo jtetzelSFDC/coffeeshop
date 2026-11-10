@@ -7,12 +7,12 @@ import pytest
 from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
-from careeros import claude_cli, schedule, setup
-from careeros.cli import app as cli
-from careeros.config import DataDir
-from careeros.guide.service import save_profile
-from careeros.v2mom import connector
-from careeros.web.app import create_app
+from coffeeshop import claude_cli, schedule, setup
+from coffeeshop.cli import app as cli
+from coffeeshop.config import DataDir
+from coffeeshop.guide.service import save_profile
+from coffeeshop.v2mom import connector
+from coffeeshop.web.app import create_app
 
 from helpers import BASE, form, personal
 from test_leveling import workbook  # noqa: F401  (fixture: the repo's workbook swapped for a made-up one)

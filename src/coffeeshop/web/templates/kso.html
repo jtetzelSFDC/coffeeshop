@@ -24,7 +24,7 @@
   {% if r.upcoming %}<p class="help">Coming up: {% for x in r.upcoming[:3] %}<b>{{ x.date|short_day }}</b> {{ x.what }}{{ ' · ' if not loop.last }}{% endfor %}</p>{% endif %}
   {% call howto("How the bars work") %}
     <p class="help">A part's bar is the average progress of the V2MOM methods that count toward it, as your V2MOM shows it. A KSO's bar averages its parts, and a part with no V2MOM goal counts as 0, because your manager counts a missing one against you too. It's plain math, not a rating: your manager also weighs how good and how big the work was.</p>
-    <p class="help">Which method counts toward which part was picked by Claude (marked AI) when the KSOs were read; change any of them below. Re-read next year's KSOs with <code>uv run careeros kso connect</code>.</p>
+    <p class="help">Which method counts toward which part was picked by Claude (marked AI) when the KSOs were read; change any of them below. Re-read next year's KSOs with <code>uv run coffeeshop kso connect</code>.</p>
   {% endcall %}
 </section>
 
@@ -86,7 +86,7 @@
 {% else %}
 <section class="card">
   <h2>KSOs</h2>
-  <p class="muted">No KSOs loaded yet. In Terminal run <code>uv run careeros kso connect --deck &lt;the KSO framework deck link&gt; --canvas &lt;the KSO guide canvas link&gt;</code>. It reads them into this notebook only.</p>
+  <p class="muted">No KSOs loaded yet. In Terminal run <code>uv run coffeeshop kso connect --deck &lt;the KSO framework deck link&gt; --canvas &lt;the KSO guide canvas link&gt;</code>. It reads them into this notebook only.</p>
 </section>
 {% endif %}
 <script src="/static/sync.js" defer></script>

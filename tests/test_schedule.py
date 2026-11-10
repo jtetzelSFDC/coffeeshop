@@ -8,11 +8,11 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from careeros import config, schedule, sync_all
-from careeros.cli import app as cli
-from careeros.config import DataDir
-from careeros.storage.db import init_db, make_engine, make_session_factory
-from careeros.storage.models import SyncRun
+from coffeeshop import config, schedule, sync_all
+from coffeeshop.cli import app as cli
+from coffeeshop.config import DataDir
+from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+from coffeeshop.storage.models import SyncRun
 
 from helpers import fake_syncs
 
@@ -94,7 +94,7 @@ def test_notification_text_is_escaped(monkeypatch):
 def test_plists_have_absolute_paths_and_the_right_schedule(dd, tmp_path):
     agents = schedule.plists(dd, uv="/opt/uv", repo=Path("/repo"))
     app, sync = agents[schedule.APP], agents[schedule.SYNC]
-    assert app["ProgramArguments"] == ["/opt/uv", "run", "--project", "/repo", "careeros", "serve"]
+    assert app["ProgramArguments"] == ["/opt/uv", "run", "--project", "/repo", "coffeeshop", "serve"]
     assert app["KeepAlive"] is True and app["RunAtLoad"] is True and app["WorkingDirectory"] == "/repo"
     assert sync["ProgramArguments"][-2:] == ["sync", "all"]
     assert sync["StartCalendarInterval"] == [{"Hour": 8, "Minute": 0}, {"Hour": 18, "Minute": 0}]
@@ -111,22 +111,22 @@ def test_install_and_uninstall_write_and_remove_only_their_files(dd, tmp_path, m
     ran = []
     monkeypatch.setattr(schedule, "launchctl", lambda *args: ran.append(args) or 0)
     schedule.install(dd, agents_dir=agents_dir, uv="/opt/uv", repo=Path("/repo"))
-    files = sorted(p.name for p in agents_dir.glob("com.careeros.*.plist"))
-    assert files == ["com.careeros.app.plist", "com.careeros.digest.plist", "com.careeros.sync.plist"]
-    digest = plistlib.loads((agents_dir / "com.careeros.digest.plist").read_bytes())
+    files = sorted(p.name for p in agents_dir.glob("com.coffeeshop.*.plist"))
+    assert files == ["com.coffeeshop.app.plist", "com.coffeeshop.digest.plist", "com.coffeeshop.sync.plist"]
+    digest = plistlib.loads((agents_dir / "com.coffeeshop.digest.plist").read_bytes())
     assert digest["StartCalendarInterval"] == [{"Weekday": 5, "Hour": 12, "Minute": 0}] and "RunAtLoad" not in digest
     assert digest["ProgramArguments"][-2:] == ["digest", "notify"]
-    assert plistlib.loads((agents_dir / "com.careeros.sync.plist").read_bytes())["Label"] == "com.careeros.sync"
+    assert plistlib.loads((agents_dir / "com.coffeeshop.sync.plist").read_bytes())["Label"] == "com.coffeeshop.sync"
     assert any(a[0] == "bootstrap" for a in ran)
     schedule.uninstall(agents_dir=agents_dir)
-    assert not list(agents_dir.glob("com.careeros.*")) and (agents_dir / "com.other.plist").exists()
+    assert not list(agents_dir.glob("com.coffeeshop.*")) and (agents_dir / "com.other.plist").exists()
     assert any(a[0] == "bootout" for a in ran)
 
 
 def test_a_signed_out_connector_gets_a_plain_message(monkeypatch):
     import json as _json
     from types import SimpleNamespace
-    from careeros import claude_cli
+    from coffeeshop import claude_cli
     init = {"type": "system", "subtype": "init", "mcp_servers": [
         {"name": "plugin:google-workspace:google-workspace", "status": "failed"},
         {"name": "plugin:slack:slack", "status": "connected"}]}
@@ -253,26 +253,26 @@ def test_windows_schedule_builds_schtasks_commands(dd, monkeypatch):
     ran = _schtasks(monkeypatch)
     uv, repo = r"C:\Tools\uv.exe", Path("C:/repo")
     written = schedule.install(dd, uv=uv, repo=repo)
-    assert [p.name for p in written] == ["com.careeros.app.ps1", "com.careeros.sync.ps1", "com.careeros.digest.ps1"]
+    assert [p.name for p in written] == ["com.coffeeshop.app.ps1", "com.coffeeshop.sync.ps1", "com.coffeeshop.digest.ps1"]
     creates = [a for a in ran if a[0] == "/Create"]
     assert [a[2] for a in creates] == [schedule.APP, schedule.SYNC, schedule.DIGEST]
     assert all(a[1] == "/TN" and a[3] == "/XML" and a[-1] == "/F" for a in creates)
     assert [a[2] for a in ran if a[0] == "/Run"] == [schedule.APP, schedule.SYNC]
-    sync = (dd.root / "tasks" / "com.careeros.sync.ps1").read_text(encoding="utf-8-sig")
-    assert f"& '{uv}' run --project '{repo}' careeros sync all" in sync
+    sync = (dd.root / "tasks" / "com.coffeeshop.sync.ps1").read_text(encoding="utf-8-sig")
+    assert f"& '{uv}' run --project '{repo}' coffeeshop sync all" in sync
     assert "$ErrorActionPreference = 'Stop'" in sync
     assert f"$env:COFFEESHOP_DATA_DIR = '{dd.root}'" in sync and "exit $LASTEXITCODE" in sync
-    xml = (dd.root / "tasks" / "com.careeros.sync.xml").read_text(encoding="utf-16")
+    xml = (dd.root / "tasks" / "com.coffeeshop.sync.xml").read_text(encoding="utf-16")
     assert "T08:00:00" in xml and "T18:00:00" in xml and "LogonTrigger" in xml
-    assert "powershell.exe" in xml and "com.careeros.sync.ps1" in xml
-    app = (dd.root / "tasks" / "com.careeros.app.xml").read_text(encoding="utf-16")
+    assert "powershell.exe" in xml and "com.coffeeshop.sync.ps1" in xml
+    app = (dd.root / "tasks" / "com.coffeeshop.app.xml").read_text(encoding="utf-16")
     assert "RestartOnFailure" in app and "<Count>255</Count>" in app and "T08:00:00" not in app
-    digest_xml = (dd.root / "tasks" / "com.careeros.digest.xml").read_text(encoding="utf-16")
-    digest = (dd.root / "tasks" / "com.careeros.digest.ps1").read_text(encoding="utf-8-sig")
+    digest_xml = (dd.root / "tasks" / "com.coffeeshop.digest.xml").read_text(encoding="utf-16")
+    digest = (dd.root / "tasks" / "com.coffeeshop.digest.ps1").read_text(encoding="utf-8-sig")
     assert "Friday" in digest_xml and "T12:00:00" in digest_xml and "LogonTrigger" not in digest_xml
     boundary = digest_xml.split("<StartBoundary>")[1].split("T")[0]
     assert date.fromisoformat(boundary) >= date.today() and date.fromisoformat(boundary).weekday() == 4
-    assert "careeros digest notify" in digest
+    assert "coffeeshop digest notify" in digest
     removed = schedule.uninstall()
     deletes = [a for a in ran if a[0] == "/Delete"]
     assert [a[2] for a in deletes] == [schedule.APP, schedule.SYNC, schedule.DIGEST]

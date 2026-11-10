@@ -32,13 +32,13 @@ Start the app, then open the setup page:
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros notebook init
-uv run careeros serve
+uv run coffeeshop notebook init
+uv run coffeeshop serve
 ```
 
 Open http://127.0.0.1:8765/setup. Pick your role and level, check that your V2MOM is connected, and press **Check connections**. Untick a connector to skip it for now. **Settings** in the Menu shows what you saved and lets you change it.
 
-To check from Terminal instead: `uv run careeros setup check`. It changes nothing.
+To check from Terminal instead: `uv run coffeeshop setup check`. It changes nothing.
 
 ## If something fails
 
@@ -47,9 +47,9 @@ To check from Terminal instead: `uv run careeros setup check`. It changes nothin
 | Google or Slack "isn't signed in" or "has expired" | Open Claude Code's connector settings, sign in to that service, then check again. |
 | "Claude took too long" | The connector or the network is slow. Wait a minute and check again. |
 | "Couldn't find the `claude` command" | Install Claude Code and sign in, then check again. |
-| "Role and level saved" fails | Run `uv run careeros setup level`, or use the setup page. |
-| "V2MOM connected" fails | Download your V2MOM as a PDF from the V2MOM app, then run `uv run careeros v2mom connect <path to the PDF>`. If you moved the file, connect it again. |
-| "Local notebook" fails | Run `uv run careeros notebook init`. |
+| "Role and level saved" fails | Run `uv run coffeeshop setup level`, or use the setup page. |
+| "V2MOM connected" fails | Download your V2MOM as a PDF from the V2MOM app, then run `uv run coffeeshop v2mom connect <path to the PDF>`. If you moved the file, connect it again. |
+| "Local notebook" fails | Run `uv run coffeeshop notebook init`. |
 | The setup page says it only works with your personal notebook | You opened the practice notebook. Start the app without `--data-dir`. |
 | GitHub is skipped | That is fine. It is optional. |
 | `uv: command not found` | Install uv (above), then open a new Terminal window. |

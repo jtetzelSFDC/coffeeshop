@@ -14,7 +14,7 @@ from .parse import parse_guide
 from .topics import grouped, suggest
 
 PROFILE = "profile.json"
-SETUP_HINT = "uv run careeros setup level"
+SETUP_HINT = "uv run coffeeshop setup level"
 POINTS = {"entry": 1, "small": 2, "medium": 3, "large": 4}
 RECOGNITION_SIZE = "medium"  # kudos from someone else count like a medium win
 STATUSES = [(6, "strong", "Strong"), (3, "shown", "Shown"), (1, "started", "Started"), (0, "gap", "Not yet")]
@@ -45,7 +45,7 @@ def save_level(s: Session, role: str, grade: int, title: str = "") -> None:
 
 def level(s: Session) -> dict | None:
     """The saved role and grade, and `targets`: the next one or two grades the loaded guide has, so DevOps Grade 9
-    goes for 11. `top` when the guide has no higher grade. None until `careeros setup level` has run."""
+    goes for 11. `top` when the guide has no higher grade. None until `coffeeshop setup level` has run."""
     p = profile(s)
     if not isinstance(p.get("grade"), int):
         return None

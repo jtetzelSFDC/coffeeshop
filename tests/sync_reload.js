@@ -67,7 +67,7 @@ function memory() {
 }
 
 function load(context) {
-  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/careeros/web/static/sync.js"), "utf8"),
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/coffeeshop/web/static/sync.js"), "utf8"),
     vm.createContext(context));
 }
 

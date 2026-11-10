@@ -3,8 +3,8 @@ from datetime import date
 
 from sqlalchemy import select
 
-from careeros.guide import activities, work
-from careeros.storage.models import JournalEntry
+from coffeeshop.guide import activities, work
+from coffeeshop.storage.models import JournalEntry
 
 from helpers import add, form, open_session
 

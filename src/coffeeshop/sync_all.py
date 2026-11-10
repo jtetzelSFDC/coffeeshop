@@ -1,4 +1,4 @@
-"""`careeros sync all`: back up, then run the same Slack, Google and GitHub syncs as the buttons, with a log.
+"""`coffeeshop sync all`: back up, then run the same Slack, Google and GitHub syncs as the buttons, with a log.
 Once a month it also re-reads the V2MOM and re-estimates the KSOs, and once a day (from 8 AM) it suggests the daily
 three, last, so it sees the fresh work.
 

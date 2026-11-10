@@ -262,7 +262,7 @@ def run_slack(job: Job, Session_, lock, dd: DataDir) -> None:
         cid = load_canvas_id(dd)
         items = []
         if not cid:
-            job.skip(1, "No Slack canvas connected. In Terminal run: uv run careeros slack connect <canvas link>")
+            job.skip(1, "No Slack canvas connected. In Terminal run: uv run coffeeshop slack connect <canvas link>")
         else:
             job.start(1)
             try:
@@ -294,7 +294,7 @@ def run_slack(job: Job, Session_, lock, dd: DataDir) -> None:
 
 V2MOM_STEPS = ["Read your V2MOM", "Save its methods and measures"]
 V2MOM_CONNECT = ("No V2MOM connected yet. On the V2MOM page, upload the PDF, or in Terminal run: "
-                 "uv run careeros v2mom connect <path to the PDF>")
+                 "uv run coffeeshop v2mom connect <path to the PDF>")
 
 
 def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
@@ -350,7 +350,7 @@ def run_kso(job: Job, Session_, lock) -> None:
     with Session_() as s:
         fw = framework.for_current(s)
         if fw is None:
-            job.skip(0, "No KSOs for this year yet. Run: uv run careeros kso connect")
+            job.skip(0, "No KSOs for this year yet. Run: uv run coffeeshop kso connect")
             job.finish("No KSO estimate without KSOs.")
             return
         try:

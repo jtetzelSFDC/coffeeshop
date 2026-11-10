@@ -3,8 +3,8 @@ import time
 
 from sqlalchemy import select
 
-from careeros.promo import write as pw
-from careeros.storage.models import PromoSection, PromoVersion
+from coffeeshop.promo import write as pw
+from coffeeshop.storage.models import PromoSection, PromoVersion
 
 from helpers import draft, form, open_session
 

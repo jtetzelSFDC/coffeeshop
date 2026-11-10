@@ -2,10 +2,10 @@ from datetime import date, datetime, timedelta
 
 from typer.testing import CliRunner
 
-from careeros import digest
-from careeros.cli import app as cli
-from careeros.guide.service import experiences
-from careeros.storage.models import GuideLink, JournalEntry, Win
+from coffeeshop import digest
+from coffeeshop.cli import app as cli
+from coffeeshop.guide.service import experiences
+from coffeeshop.storage.models import GuideLink, JournalEntry, Win
 
 from helpers import open_session
 
@@ -63,7 +63,7 @@ def test_no_nudges_when_nothing_is_wrong(session):
 
 def test_quiet_area_and_full_queue_get_nudges(nb):
     dd, *_ = nb
-    from careeros.guide.topics import topic_of
+    from coffeeshop.guide.topics import topic_of
     with open_session(dd) as s:
         topic = topic_of(experiences(s)[1].name)
         old = rec(s, 90, "Planned the spring sandbox refresh")
@@ -105,7 +105,7 @@ def test_notify_shows_a_line_written_by_code(nb, monkeypatch):
     with open_session(dd) as s:
         week(s)
     shown = []
-    monkeypatch.setattr("careeros.sync_all.mac_notify", lambda title, msg: shown.append((title, msg)))
+    monkeypatch.setattr("coffeeshop.sync_all.mac_notify", lambda title, msg: shown.append((title, msg)))
     r = CliRunner().invoke(cli, ["digest", "notify", "--data-dir", str(dd.root)])
     assert r.exit_code == 0, r.output
     assert shown and shown[0][0] == "Coffee Shop: your week"

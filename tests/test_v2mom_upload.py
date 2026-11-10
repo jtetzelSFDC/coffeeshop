@@ -4,10 +4,10 @@ from urllib.parse import unquote
 
 from fastapi.testclient import TestClient
 
-from careeros.config import DataDir
-from careeros.v2mom import connector, store
-from careeros.web.app import create_app, short_day
-from careeros.web.jobs import Jobs
+from coffeeshop.config import DataDir
+from coffeeshop.v2mom import connector, store
+from coffeeshop.web.app import create_app, short_day
+from coffeeshop.web.jobs import Jobs
 
 from helpers import BASE, connect, load_v2mom, open_session
 

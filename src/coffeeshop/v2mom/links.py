@@ -153,7 +153,7 @@ def tag(s: Session, todo: list[JournalEntry],
     """The one-time backfill: Claude reads `todo` against the V2MOM in batches, saving each batch as it lands."""
     methods, ids = payload(s)
     if not methods:
-        raise ClaudeError("Load your V2MOM first: uv run careeros v2mom sync")
+        raise ClaudeError("Load your V2MOM first: uv run coffeeshop v2mom sync")
     batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
     errors: list[str] = []
 

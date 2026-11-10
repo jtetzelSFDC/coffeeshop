@@ -1,5 +1,5 @@
 """Scheduled tasks. On macOS, three launch agents. On Windows, three Task Scheduler tasks.
-One keeps the app running, one runs `careeros sync all` at 8 AM, 6 PM, and login,
+One keeps the app running, one runs `coffeeshop sync all` at 8 AM, 6 PM, and login,
 and one shows the weekly digest notification on Fridays at noon."""
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from xml.sax.saxutils import escape
 
 from .config import DATA_DIR_ENV, DataDir
 
-APP, SYNC, DIGEST = "com.careeros.app", "com.careeros.sync", "com.careeros.digest"
+APP, SYNC, DIGEST = "com.coffeeshop.app", "com.coffeeshop.sync", "com.coffeeshop.digest"
 DIGEST_AT = {"Weekday": 5, "Hour": 12, "Minute": 0}  # Friday 12:00 PM; a missed one runs on wake
 AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 REPO = Path(__file__).resolve().parents[2]
@@ -41,7 +41,7 @@ def _uv() -> str:
 def plists(dd: DataDir, uv: str, repo: Path = REPO) -> dict[str, dict]:
     """The three launchd agents: the app (kept running), the sync (8 AM, 6 PM, login) and the Friday digest."""
     logs = dd.root / "logs"
-    base = ["run", "--project", str(repo), "careeros"]
+    base = ["run", "--project", str(repo), "coffeeshop"]
     env = {"PATH": PATH, DATA_DIR_ENV: str(dd.root)}
     return {
         APP: dict(Label=APP, ProgramArguments=[uv, *base, "serve"], WorkingDirectory=str(repo), RunAtLoad=True,
@@ -141,7 +141,7 @@ def _task_script(data: Path, uv: str, repo: Path, args: list[str], log: Path) ->
     return "\n".join([
         "$ErrorActionPreference = 'Stop'",  # a missing uv must fail the task, or keep-alive will not restart it
         f"$env:{DATA_DIR_ENV} = {_ps_quote(str(data))}",
-        f"& {_ps_quote(uv)} run --project {_ps_quote(str(repo))} careeros {' '.join(args)} *>> {_ps_quote(str(log))}",
+        f"& {_ps_quote(uv)} run --project {_ps_quote(str(repo))} coffeeshop {' '.join(args)} *>> {_ps_quote(str(log))}",
         "exit $LASTEXITCODE",
         "",
     ])
