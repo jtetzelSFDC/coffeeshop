@@ -2,6 +2,7 @@
 {% block body %}
 {% from "_entry.html" import attach_fields with context %}
 {% from "_sync.html" import sync_chips %}
+{% if personal and not dash.level %}<div class="note"><b><a href="/setup">Finish setup</a></b>: choose your role and level to see how close your next one is. Or in Terminal: <code>uv run careeros setup level</code></div>{% endif %}
 
 <section class="card home-tile dash" aria-label="Progress">
   <details>
@@ -19,7 +20,7 @@
   </div>
   {% else %}
   {% if dash.level and dash.level.top %}<p class="muted">{{ level_note(dash.level) }}</p>
-  {% else %}<p class="muted">Choose your role and level to see how close the next one is: <code>uv run careeros setup level</code>.</p>{% endif %}
+  {% else %}<p class="muted">Choose your role and level to see how close the next one is.</p>{% endif %}
   {% endif %}
 
   {% if dash.v2mom and dash.v2mom.methods %}{% set v2 = dash.v2mom %}

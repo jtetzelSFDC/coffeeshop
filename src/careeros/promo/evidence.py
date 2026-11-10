@@ -82,9 +82,13 @@ def build(s: Session, start: str, end: str) -> tuple[list[dict], dict[str, list[
     pieces: list[dict] = []
     slices: dict[str, list[int]] = {k: [] for k, *_ in SECTIONS}
 
+    shown: dict[int, set[str]] = {}  # piece number -> activities of its own records, for the counts below
+
     def add(kind: str, text: str, day: str, refs: list[dict], into: list[str]) -> None:
         n = len(pieces) + 1
         pieces.append(dict(n=n, kind=kind, text=text, day=day, refs=refs))
+        if kind in ("win", "work", "record"):
+            shown[n] = {entries[r["entry"]].activity for r in refs if r.get("entry") in entries} - {""}
         for key in into:
             if len(slices[key]) < CAPS[key]:
                 slices[key].append(n)
@@ -168,10 +172,12 @@ def build(s: Session, start: str, end: str) -> tuple[list[dict], dict[str, list[
                                       else [])
         add("record", text, e.day, [dict(entry=e.id)], into)
 
-    # activity counts over the window
+    # activity counts over the window, each only in a section that also cites work of that activity, so a number
+    # never shows up in a section with nothing behind it (a count with no such section is left out)
     for c in counts_between(s, start, end):
-        add("count", f"Count: {c['n']} {c['label']} between {start} and {end}.", end, [dict(activity=c["key"])],
-            ["summary", "impact"])
+        into = [k for k in ("summary", "impact") if any(c["key"] in shown.get(n, ()) for n in slices[k])]
+        if into:
+            add("count", f"Count: {c['n']} {c['label']} between {start} and {end}.", end, [dict(activity=c["key"])], into)
 
     # where the Promo map stands today, and what's still missing (no map at the top of the path)
     pm = promo_map(s)

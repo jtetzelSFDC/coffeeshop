@@ -9,7 +9,7 @@ from careeros import daily
 from careeros.claude_cli import ClaudeError
 from careeros.cli import app as cli
 from careeros.sync_all import _daily_due as _real_daily_due
-from careeros.storage.models import DailyTask, JournalAttachment, JournalEntry
+from careeros.storage.models import DailyTask, JournalAttachment, JournalEntry, WorkItem
 
 from helpers import fake_syncs, link, load_v2mom, open_session
 
@@ -43,8 +43,45 @@ def test_context_has_goals_and_recent_titles_but_never_notes(nb):
     ids = [g["id"] for g in data["goals"]]
     assert "V2MOM M1" in ids and "V2MOM M2" in ids
     assert any(i.startswith("Grade 6: ") for i in ids) and any(i.startswith("Skill: ") for i in ids)
-    assert any("Release go/no-go for 4.2" in r for r in data["recent"])
+    assert any("Release go/no-go for 4.2" in r for r in data["week"]["meetings"])
     assert "SECRET NOTES TEXT" not in json.dumps(data) and len(json.dumps(data)) <= daily.MAX_CONTEXT
+
+
+def test_context_has_this_weeks_meetings_open_tasks_and_projects(nb):
+    dd, *_ = nb
+    setup(dd)
+    day = lambda n: (TODAY - timedelta(days=n)).isoformat()
+    with open_session(dd) as s:
+        wi = WorkItem(title="Pine 5.1.2 release", day=day(1), started=day(3), created_at=datetime.now())
+        old = WorkItem(title="Old Elm cutover", day=day(30), started=day(31), created_at=datetime.now())
+        s.add_all([wi, old,
+                   JournalEntry(day=day(1), kind="task", text="Update the Pine runbook", created_at=datetime.now(),
+                                status="open"),
+                   JournalEntry(day=day(10), kind="meeting", text="Old Elm retro", created_at=datetime.now()),
+                   JournalEntry(day=day(3), kind="task", text="Merged the Pine branch", created_at=datetime.now(),
+                                status="done")])
+        s.commit()
+        data = daily.context(s, TODAY)
+    wk = data["week"]
+    assert wk["projects"] == ["Pine 5.1.2 release"] and wk["open_tasks"] == [f"{day(1)}: Update the Pine runbook"]
+    assert wk["meetings"] == [f"{day(2)}: Release go/no-go for 4.2"]  # last week's retro is too old
+    assert any("Old Elm retro" in r for r in data["recent"])  # still inside the two weeks
+    assert not any("Release go/no-go" in r or "runbook" in r for r in data["recent"])  # each title appears once
+    assert any("Merged the Pine branch" in r for r in data["recent"]) and not data["few_records"]
+
+
+def test_a_new_user_with_almost_no_records_still_gets_a_valid_prompt(nb):
+    dd, *_ = nb
+    with open_session(dd) as s:
+        load_v2mom(s)
+        data = daily.context(s, TODAY)
+        assert data["week"] == dict(meetings=[], open_tasks=[], projects=[]) and data["recent"] == []
+        assert data["few_records"] and data["goals"]
+        ids = [g["id"] for g in data["goals"]]
+        seen = []
+        tasks = daily.suggest(s, TODAY, reader=lambda p, d: seen.append(p) or reply(ids))
+    assert len(tasks) == 3 and tasks[0].goal in ids
+    assert "Never invent" in seen[0] and "few_records" in seen[0] and "lean on the goals themselves" in seen[0]
 
 
 def test_a_good_answer_saves_three_once_a_day(nb):
@@ -126,6 +163,10 @@ def test_cli_suggest_and_show(nb, monkeypatch):
 def test_context_keeps_recent_work_even_when_goals_are_many(nb, monkeypatch):
     dd, *_ = nb
     setup(dd)
+    with open_session(dd) as s:
+        s.add(JournalEntry(day=TODAY.isoformat(), kind="task", text="Shared a template", created_at=datetime.now(),
+                           status="done"))
+        s.commit()
     many = [dict(id=f"Skill: {i} " + "x" * 300, what="y" * 300, state="no evidence yet") for i in range(60)]
     monkeypatch.setattr(daily, "goals", lambda s, today: many)
     with open_session(dd) as s:

@@ -24,6 +24,8 @@
 
 ## Begin
 
+First time? Follow [SETUP.md](SETUP.md): open this folder in Claude Code and type `/setup`. The steps below are the same thing by hand.
+
 You need [uv](https://docs.astral.sh/uv/) and Claude Code signed in to the Google Workspace and Slack connectors. The same commands work on a Mac and on Windows.
 
 ```

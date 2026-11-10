@@ -35,6 +35,10 @@ def _root(s: Session) -> Path:
     return Path(s.get_bind().url.database).parent  # profile.json sits next to the notebook's database
 
 
+def profile(s: Session) -> dict:
+    return read_profile(_root(s))
+
+
 def save_level(s: Session, role: str, grade: int, title: str = "") -> None:
     save_profile(_root(s), role=role, grade=grade, title=title)
 
@@ -42,7 +46,7 @@ def save_level(s: Session, role: str, grade: int, title: str = "") -> None:
 def level(s: Session) -> dict | None:
     """The saved role and grade, and `targets`: the next one or two grades the loaded guide has, so DevOps Grade 9
     goes for 11. `top` when the guide has no higher grade. None until `careeros setup level` has run."""
-    p = read_profile(_root(s))
+    p = profile(s)
     if not isinstance(p.get("grade"), int):
         return None
     grades = sorted(s.scalars(select(GuideItem.grade).where(GuideItem.active, GuideItem.grade.is_not(None)).distinct()))
