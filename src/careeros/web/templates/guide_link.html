@@ -12,8 +12,9 @@
   <h2>Which parts of the leveling guide does this show?</h2>
   <p style="margin:.6rem 0 .2rem"><span class="chip">{{ 'Win' if is_win else 'Notebook entry' }}</span> <b>{{ obj.title if is_win else obj.text }}</b></p>
   {% if is_win and obj.impact %}<p class="muted">{{ obj.impact }}</p>{% endif %}
-  {% if suggested %}<p class="note">I ticked the ones that look related, based on the words you used. Untick anything that doesn't fit, and tick anything I missed. Only what you save counts.</p>
-  {% else %}<p class="muted">Tick every guide item this is real evidence for. It's fine to pick a Grade 7 item if the work was at that level.</p>{% endif %}
+  {% if not pm %}<p class="muted">{{ level_note(level) }}</p>
+  {% elif suggested %}<p class="note">I ticked the ones that look related, based on the words you used. Untick anything that doesn't fit, and tick anything I missed. Only what you save counts.</p>
+  {% else %}<p class="muted">Tick every guide item this is real evidence for.{% if pm.grades|length > 1 %} It's fine to pick a Grade {{ pm.grades[-1] }} item if the work was at that level.{% endif %}</p>{% endif %}
   <div class="row"><button class="primary">Save</button><a href="{{ next }}">Skip for now</a></div>
 </section>
 
@@ -25,6 +26,7 @@
 </section>
 {% endif %}
 
+{% if pm %}
 <section class="card">
   <h2>Key experiences</h2>
   {% for row in pm.rows %}
@@ -43,5 +45,6 @@
     {% for x in pm.steady %}{{ pick(x) }}{% endfor %}</details>
   <div class="actions"><button class="primary">Save</button></div>
 </section>
+{% endif %}
 </form>
 {% endblock %}

@@ -141,5 +141,5 @@ def test_promo_page_without_a_guide_explains_how_to_load_it(tmp_path):
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
     c = TestClient(create_app(dd), base_url=BASE)
-    assert "careeros guide import" in c.get("/promo").text
+    assert "careeros setup level" in c.get("/promo").text
     assert "Link to the leveling guide" not in c.get("/").text

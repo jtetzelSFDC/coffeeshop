@@ -92,6 +92,12 @@ TOPICS = [
 ]
 TOPIC = {t.key: t for t in TOPICS}
 OTHER = Topic("other", "Other experiences", "", "", (), ())
+PLAIN = Topic("all", "Key experiences", "", "", (), ())
+
+
+def grouped(role: str) -> bool:
+    """The topics above are written for the DevOps path; other roles get one plain list until they have their own."""
+    return role == "DevOps"
 
 SKILL_WORDS = {
     "Agentforce": r"agentforce",
@@ -114,6 +120,12 @@ _SKILL_RX = {name: _rx(w) for name, w in SKILL_WORDS.items()}
 
 def topic_of(experience: str) -> Topic:
     return next((t for t in TOPICS if re.search(t.match, experience, re.I)), OTHER)
+
+
+def short_name(experience: str, devops: bool) -> str:
+    """An experience on chips and in the case evidence: its topic on the DevOps path, else its own words, cut."""
+    from ..claude_cli import clip
+    return topic_of(experience).name if devops else clip(experience, 60)
 
 
 def suggest(text: str) -> tuple[list[Topic], set[str]]:
