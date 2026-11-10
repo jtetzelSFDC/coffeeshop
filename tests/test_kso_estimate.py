@@ -1,4 +1,4 @@
-"""Claude's monthly KSO estimate: what it reads (never money), strict checks, the page, your rating winning, the
+"""Claude's monthly KSO estimate: what it reads, strict checks, the page, your rating beside it, the
 monthly step in the sync, the Re-estimate button, the chip, and KSO goals in the daily three. Fake readers only."""
 import json
 import threading
@@ -32,17 +32,16 @@ def run(s, reply=None):
     return est.estimate(s, framework.for_current(s), reader=lambda p, d: reply or answer())
 
 
-def test_the_estimate_reads_the_rubric_and_work_but_never_money(nb):
-    dd, c, token, _ = nb
+def test_the_estimate_reads_the_rubric_and_this_years_work(nb):
+    dd, *_ = nb
     kso_setup(dd)
-    form(c, "/kso/target", token, fy="FY27", target="98765")
     seen = []
     with open_session(dd) as s:
         est.estimate(s, framework.for_current(s), reader=lambda p, d: seen.append(d) or answer())
     data = json.loads(seen[0])
     part = data["ksos"][0]["components"]
     assert part[0]["methods"][0]["id"] == "M1" and part[0]["levels"]["5"].startswith("Standout")
-    assert "kudos" in part[1] and "kudos" not in part[0] and "98765" not in seen[0]
+    assert "kudos" in part[1] and "kudos" not in part[0]
 
 
 @pytest.mark.parametrize("bad, why", [
@@ -61,7 +60,7 @@ def test_a_bad_estimate_saves_nothing(nb, bad, why):
         assert s.scalar(select(KsoEstimate)) is None
 
 
-def test_the_page_shows_the_estimate_and_your_rating_wins(nb):
+def test_the_page_shows_the_estimate_and_your_rating(nb):
     dd, c, token, _ = nb
     kso_setup(dd)
     with open_session(dd) as s:
@@ -69,14 +68,11 @@ def test_the_page_shows_the_estimate_and_your_rating_wins(nb):
     page = c.get("/kso").text
     assert "Claude's estimate: 3 &middot; Mostly there" in page and "Add a feedback measure" in page
     assert "M1 is on plan" in page and 'data-sync="kso"' in page
-    form(c, "/kso/target", token, fy="FY27", target="10000")
-    with open_session(dd) as s:
-        rows = progress.build(s)["projection"]["rows"]
-    assert [(x["rating"], x["ai"]) for x in rows] == [(3, True), (4, True)]
     form(c, "/kso/rating", token, fy="FY27", kso="1", rating="5")
+    page = c.get("/kso").text
+    assert "Claude's estimate: 3" in page and 'value="5" selected' in page
     with open_session(dd) as s:
-        p = progress.build(s)["projection"]
-    assert [(x["rating"], x["ai"]) for x in p["rows"]] == [(5, False), (4, True)] and p["total"] == 2400 + 1000
+        assert progress.build(s)["ratings"] == {"1": 5}
 
 
 def test_it_runs_monthly_once_ksos_are_matched(nb):

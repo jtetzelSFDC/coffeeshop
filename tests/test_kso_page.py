@@ -1,5 +1,5 @@
-"""The KSO page: the bars (plain math from the V2MOM), the gap warning, your rating and target, the bonus
-projection, and moving a method to another KSO part. Made-up framework and V2MOM only."""
+"""The KSO page: the bars (plain math from the V2MOM), the gap warning, your rating, and moving a method
+to another KSO part. Made-up framework and V2MOM only."""
 import json
 
 from sqlalchemy import select
@@ -27,41 +27,33 @@ def test_bars_average_the_v2mom_and_count_a_missing_goal_as_zero(nb):
     assert k1["bar"] == round((69 + 0) / 2) and k1["gaps"] == 1
     assert k2["bar"] == round((50 + 0) / 2)
     assert k1["components"][1]["kudos"] == 0 and k1["components"][0]["kudos"] is None  # kudos count for feedback
-    assert r["projection"] is None
 
 
 def test_the_page_shows_parts_examples_and_the_gap_warning(nb):
     dd, c, *_ = nb
     kso_setup(dd)
     page = c.get("/kso").text
-    assert "KSO 1 &middot; Calm Releases" in page and "20% of your bonus" in page
+    assert "KSO 1 &middot; Calm Releases" in page and "What the KSOs pay" not in page and "$" not in page
     assert "1 of its 2 parts has no V2MOM goal yet" in page and "No V2MOM goal yet" in page
     assert "Mark one V2MOM measure&#39;s progress" in page and "Standout plan kept" in page  # examples, rubric 5
     assert 'href="/v2mom/' in page
 
 
-def test_target_rating_and_projection(nb):
+def test_saving_a_rating(nb):
     dd, c, token, _ = nb
     kso_setup(dd)
-    assert c.post("/kso/target", data={"fy": "FY27", "target": "1"}, follow_redirects=False).status_code == 403
-    assert "like%2012000" in form(c, "/kso/target", token, fy="FY27", target="lots").headers["location"]
-    form(c, "/kso/target", token, fy="FY27", target="$10,000")
+    assert c.post("/kso/rating", data={"fy": "FY27", "kso": "1", "rating": "4"}, follow_redirects=False).status_code == 403
     form(c, "/kso/rating", token, fy="FY27", kso="1", rating="4")
     page = c.get("/kso").text
-    assert "If every KSO were rated 3: $2,100" in page and "5: $3,600" in page and "KSO part of your bonus" not in page
+    assert 'id="rate-1"' in page and 'value="4" selected' in page and "$" not in page
     form(c, "/kso/rating", token, fy="FY27", kso="2", rating="5")
-    with open_session(dd) as s:
-        p = progress.build(s)["projection"]
-    assert [(x["share"], x["pays"]) for x in p["rows"]] == [(2000, 2000), (1000, 1200)] and p["total"] == 3200
-    page = c.get("/kso").text
-    assert "KSO part of your bonus: $3,200</b> of $3,000" in page and "The other 70% of your bonus" in page
     assert "rating" in form(c, "/kso/rating", token, fy="FY27", kso="9", rating="4").headers["location"]
     form(c, "/kso/rating", token, fy="FY27", kso="2", rating="")
     with open_session(dd) as s:
         assert progress.build(s)["ratings"] == {"1": 4}
 
 
-def test_moving_a_method_makes_the_pick_yours_and_the_target_never_reaches_claude(nb):
+def test_moving_a_method_makes_the_pick_yours(nb):
     dd, c, token, _ = nb
     m = kso_setup(dd)
     assert c.post("/kso/map", data={"fy": "FY27", "method_id": m["M2"], "component": "2.2"}).status_code == 403
@@ -70,12 +62,11 @@ def test_moving_a_method_makes_the_pick_yours_and_the_target_never_reaches_claud
     with open_session(dd) as s:
         row = s.scalar(select(KsoMap).where(KsoMap.method_id == m["M2"]))
         assert (row.component, row.by_ai) == ("2.2", False)
-    form(c, "/kso/target", token, fy="FY27", target="98765")
     seen = []
     with open_session(dd) as s:
         kmap.suggest(s, progress.framework.get(s), redo=True,
                      reader=lambda p, d: seen.append(p + d) or json.dumps({"map": {"M1": "1.1"}}))
-    assert seen and "98765" not in seen[0]
+    assert seen and "M1" in seen[0]
 
 
 def test_older_years_get_a_picker(nb):
@@ -121,15 +112,6 @@ def test_last_years_ksos_stay_in_view_until_this_years_are_read(nb):
         load_v2mom(s, TWO, fy="FY28")  # next year's V2MOM, before next year's KSOs are connected
     page = c.get("/kso").text
     assert "KSOs FY27" in page and "wins and records in FY27" not in page  # no counts for a year that isn't current
-
-
-def test_a_target_pasted_with_cents_is_kept_in_dollars(nb):
-    dd, c, token, _ = nb
-    kso_setup(dd)
-    form(c, "/kso/target", token, fy="FY27", target="$12,000.50")
-    with open_session(dd) as s:
-        assert progress.build(s)["target"] == 12000
-    assert "like%2012000" in form(c, "/kso/target", token, fy="FY27", target="12.000.5").headers["location"]
 
 
 def test_an_older_practice_notebook_gets_the_made_up_ksos(tmp_path):

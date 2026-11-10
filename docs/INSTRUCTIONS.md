@@ -353,9 +353,9 @@ On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active
 
 The promo case then shows how your work lines up with your V2MOM (see **V2MOM alignment** under the promo case).
 
-## KSOs: how your manager rates you for the bonus
+## KSOs: how your manager rates the year
 
-KSOs (Key Strategic Objectives) are the part of your bonus your manager rates 1 to 5, once a year for Delivery, against the goals in your V2MOM. Each rating pays a percent of that KSO's share of your target incentive. The app reads this year's KSO material (the framework deck and the guide and FAQ canvases) into your notebook only, because it's internal, and keeps one copy per fiscal year.
+KSOs (Key Strategic Objectives) are what your manager rates 1 to 5, once a year for Delivery, against the goals in your V2MOM. The app reads this year's KSO material (the framework deck and the guide and FAQ canvases) into your notebook only, because it's internal, and keeps one copy per fiscal year.
 
 **Connect a year** (once a year, or when the material changes):
 
@@ -363,14 +363,14 @@ KSOs (Key Strategic Objectives) are the part of your bonus your manager rates 1 
 uv run coffeeshop kso connect --deck <the KSO framework deck link> --canvas <the KSO guide canvas link> --canvas <the FAQ canvas link>
 ```
 
-It reads the deck through the Google connector and the canvases through the Slack connector. Claude then sorts them into the KSOs, their weights, their components, the five rubric levels for each, a few example daily or weekly tasks, the payout per rating, and the key dates. A bad read changes nothing. `--track` picks your track (Delivery by default), and `--manager` keeps the people-manager parts. Running `uv run coffeeshop kso connect` with no links re-reads the saved ones.
+It reads the deck through the Google connector and the canvases through the Slack connector. Claude then sorts them into the KSOs, their weights, their components, the five rubric levels for each, a few example daily or weekly tasks, and the key dates. A bad read changes nothing. `--track` picks your track (Delivery by default), and `--manager` keeps the people-manager parts. Running `uv run coffeeshop kso connect` with no links re-reads the saved ones.
 
 **Which V2MOM methods count toward which KSO part.** After connecting, Claude matches each V2MOM method to the one KSO component it gives the most evidence for (marked AI). New methods are matched after each monthly V2MOM sync. `uv run coffeeshop kso show` lists each component and its methods; a component with none says "no V2MOM goal yet", and every component needs one. `uv run coffeeshop kso map --redo` asks Claude again for its own matches; yours never change.
 
 **The KSOs page** (Menu > KSOs) shows this year's KSOs, with a year picker once there's more than one.
 
-- **At the top:** the year in use, like "KSOs: FY27 Delivery", then how you're rated, the payout for each rating, and the next key dates. Older years stay in the year picker.
-- **One card per KSO:** its share of your bonus, what it measures, and a bar. Then one row per part:
+- **At the top:** the year in use, like "KSOs: FY27 Delivery", then how you're rated, and the next key dates. Older years stay in the year picker.
+- **One card per KSO:** what it measures, and a bar. Then one row per part:
   - **The bar:** the average progress of the V2MOM methods that count toward the part, taken from your V2MOM. A part with no V2MOM goal gets a warning and counts as 0 in the KSO's bar, because your manager counts a missing one against you too.
   - **What the manager looks at,** in plain words.
   - **The methods that count,** each with a **Move** list to point it at another part. That makes the pick yours.
@@ -378,11 +378,10 @@ It reads the deck through the Google connector and the canvases through the Slac
   - **Try this week:** a few small things to do.
   - **What a 4 and a 5 look like,** from the rubric.
 - **Your rating:** set a guess per KSO, or the real rating once your manager has entered it.
-- **What the KSOs pay:** enter your yearly target incentive (from your incentive compensation plan; it stays on this laptop and is never sent to Claude). The card shows each KSO's share, what your rating pays, the total once both are set, and what all-3s, all-4s, and all-5s would pay. Utilization (the rest of your bonus) isn't measured here.
 
 The practice notebook has made-up KSOs, so you can try the page without real material.
 
-**Claude's estimate.** Once a month (once KSOs are read and some V2MOM method counts toward a part), right after the V2MOM step of the sync, Claude reads the rubric against what your V2MOM shows for each part (status, progress, measures, comments), the titles of the work linked to those methods this year, and your kudos count. It then guesses the 1 to 5 your manager would give each KSO. It never sees your target or any dollar amount. Each KSO card shows the guess (marked AI), one line per part on why, and the three next steps that would raise it most. Press **Re-estimate** to run it now, or run `uv run coffeeshop kso estimate`. Until you set your own rating, the pay card uses Claude's guess (marked AI); your rating always wins. A bad answer changes nothing, and the **KSO estimate** chip shows when it last ran. The daily three also offers KSO parts with no V2MOM goal, and the part furthest behind, as goals.
+**Claude's estimate.** Once a month (once KSOs are read and some V2MOM method counts toward a part), right after the V2MOM step of the sync, Claude reads the rubric against what your V2MOM shows for each part (status, progress, measures, comments), the titles of the work linked to those methods this year, and your kudos count. It then guesses the 1 to 5 your manager would give each KSO. Each KSO card shows the guess (marked AI), one line per part on why, and the three next steps that would raise it most, next to the rating you set. Press **Re-estimate** to run it now, or run `uv run coffeeshop kso estimate`. A bad answer changes nothing, and the **KSO estimate** chip shows when it last ran. The daily three also offers KSO parts with no V2MOM goal, and the part furthest behind, as goals.
 
 ## Year-end exports
 

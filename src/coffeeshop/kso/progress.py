@@ -1,5 +1,4 @@
-"""How you stand on each KSO, in plain math, and what the KSO part of your bonus would pay. No Claude here: the
-bars come from your V2MOM's own progress, and the money from the payout table and the target you entered."""
+"""How you stand on each KSO, in plain math. No Claude here: the bars come from your V2MOM's own progress."""
 from __future__ import annotations
 
 from datetime import date
@@ -10,9 +9,6 @@ from sqlalchemy.orm import Session
 from ..storage.models import JournalEntry, KsoFramework, KsoYear
 from . import framework, map as kmap
 
-SCENARIOS = ("3", "4", "5")
-MAX_TARGET = 10_000_000
-
 
 def year(s: Session, fy: str, create: bool = False) -> KsoYear | None:
     row = s.scalar(select(KsoYear).where(KsoYear.fiscal_year == fy))
@@ -20,13 +16,6 @@ def year(s: Session, fy: str, create: bool = False) -> KsoYear | None:
         row = KsoYear(fiscal_year=fy, ratings={})
         s.add(row)
     return row
-
-
-def set_target(s: Session, fy: str, dollars: int | None) -> None:
-    if dollars is not None and not 0 < dollars <= MAX_TARGET:
-        raise ValueError("Enter your yearly target incentive in dollars, like 12000.")
-    year(s, fy, create=True).target_incentive = dollars
-    s.commit()
 
 
 def set_rating(s: Session, fw: KsoFramework, kso: str, rating: str) -> None:
@@ -43,27 +32,6 @@ def set_rating(s: Session, fw: KsoFramework, kso: str, rating: str) -> None:
 
 def _avg(xs: list[float]) -> int | None:
     return round(sum(xs) / len(xs)) if xs else None
-
-
-def projection(fw_data: dict, target: int | None, ratings: dict[str, int],
-               mine: set[str] | None = None) -> dict | None:
-    """Per KSO: its share of the target (weight %), and what it pays at its rating (payout %). The total, once every
-    KSO has a rating, and what all-3s, all-4s and all-5s would pay. None without a target."""
-    if not target:
-        return None
-    pay = fw_data["payout"]
-    rows = []
-    for k in fw_data["ksos"]:
-        share = target * k["weight"] / 100
-        r = ratings.get(k["key"])
-        rows.append(dict(key=k["key"], name=k["name"], weight=k["weight"], share=round(share), rating=r,
-                         ai=k["key"] not in mine if mine is not None else False,
-                         payout=pay[str(r)] if r else None, pays=round(share * pay[str(r)] / 100) if r else None))
-    shares = sum(target * k["weight"] / 100 for k in fw_data["ksos"])
-    return dict(rows=rows, share=round(shares),
-                total=sum(x["pays"] for x in rows) if all(x["rating"] for x in rows) else None,
-                scenarios={r: round(shares * pay[r] / 100) for r in SCENARIOS},
-                weight=sum(k["weight"] for k in fw_data["ksos"]))
 
 
 def build(s: Session, fy: str | None = None, today: date | None = None) -> dict | None:
@@ -103,9 +71,7 @@ def build(s: Session, fy: str | None = None, today: date | None = None) -> dict 
         k["estimate"] = guessed.get(k["key"])
     row = year(s, fw.fiscal_year)
     ratings = dict(row.ratings) if row and row.ratings else {}
-    effective = {k: v["rating"] for k, v in guessed.items()} | ratings  # yours win over Claude's
-    return dict(fw=fw, ksos=ksos, loose=loose, ratings=ratings, target=row.target_incentive if row else None,
-                projection=projection(fw.data, row.target_incentive if row else None, effective, set(ratings)),
+    return dict(fw=fw, ksos=ksos, loose=loose, ratings=ratings,
                 estimated_at=est.made_at if est else None, current=current,
                 choices=[(c["key"], c["name"]) for c in framework.components(fw)],
                 years=list(s.scalars(select(KsoFramework.fiscal_year).order_by(KsoFramework.fiscal_year.desc()))),

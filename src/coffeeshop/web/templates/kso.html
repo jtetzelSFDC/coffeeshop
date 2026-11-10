@@ -14,8 +14,7 @@
   {% if r.years|length > 1 %}<form method="get" action="/kso" style="margin-left:auto"><label class="sr" for="kso-fy">Year</label>
     <select id="kso-fy" name="fy">{% for y in r.years %}<option {{ 'selected' if y == fw.fiscal_year }}>{{ y }}</option>{% endfor %}</select> <button>Show</button></form>{% endif %}</div>
   <p class="sub">KSOs: {{ fw.fiscal_year }}{% if fw.track %} {{ fw.track }}{% endif %}</p>
-  <p class="sub">Your manager rates each KSO from 1 to 5, {{ 'once a year' if d.rated == 'yearly' else 'each quarter' }}, against the goals in your V2MOM. Each rating pays a share of that KSO's part of your bonus:
-    {% for k, p in d.payout.items() %}<span class="chip" title="{{ d.level_names[k] }}">{{ k }} = {{ '%g'|format(p) }}%</span>{% endfor %}</p>
+  <p class="sub">Your manager rates each KSO from 1 to 5, {{ 'once a year' if d.rated == 'yearly' else 'each quarter' }}, against the goals in your V2MOM.</p>
   {% if r.current %}<div class="row">{{ sync_chips(sync, [("kso", "KSO estimate")]) }}
     <form method="post" action="/kso/estimate" data-sync="kso"><input type="hidden" name="csrf" value="{{ csrf }}">
       <button data-label="Re-estimate" title="Have Claude read the rubric against your V2MOM and work now">Re-estimate</button></form>
@@ -30,7 +29,7 @@
 
 {% for k in r.ksos %}
 <section class="card" aria-label="KSO {{ k.key }}">
-  <div class="vm-head"><h2>KSO {{ k.key }} &middot; {{ k.name }}</h2><span class="chip">{{ '%g'|format(k.weight) }}% of your bonus</span>{{ pct_bar(k.bar, "KSO " ~ k.key) }}</div>
+  <div class="vm-head"><h2>KSO {{ k.key }} &middot; {{ k.name }}</h2>{{ pct_bar(k.bar, "KSO " ~ k.key) }}</div>
   <p class="sub">{{ k.what }}</p>
   {% if k.gaps %}<p class="warn">{{ k.gaps }} of its {{ k.components|length }} parts {{ 'has' if k.gaps == 1 else 'have' }} no V2MOM goal yet. Every part needs one: add a measure for it at your next check-in.</p>{% endif %}
   {% set e = k.estimate %}
@@ -64,25 +63,6 @@
   <ul class="kso-methods">{% for m in r.loose %}{{ method_li(m, false, "") }}{% endfor %}</ul>
 </section>{% endif %}
 
-<section class="card" aria-label="Bonus projection">
-  <h2>What the KSOs pay</h2>
-  {% set p = r.projection %}
-  <form method="post" action="/kso/target" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="fy" value="{{ fw.fiscal_year }}">
-    <label for="kso-target">Your yearly target incentive ($)</label>
-    <input id="kso-target" name="target" inputmode="numeric" maxlength="20" value="{{ r.target or '' }}" placeholder="e.g. 12000" style="width:8rem">
-    <button>Save</button></form>
-  <p class="help">It's in your incentive compensation plan. It stays on this laptop and is never sent to Claude.</p>
-  {% if p %}
-  <table class="sheet kso-pay"><thead><tr><th>KSO</th><th>Share</th><th>Rating</th><th>Pays</th></tr></thead><tbody>
-    {% for x in p.rows %}<tr><td>KSO {{ x.key }} {{ x.name }}</td><td>{{ '%g'|format(x.weight) }}% = ${{ "{:,}".format(x.share) }}</td>
-      <td>{% if x.rating %}{{ x.rating }} ({{ '%g'|format(x.payout) }}%){% if x.ai %} <span class="chip ai" title="Claude's estimate; set your own above">AI</span>{% endif %}{% else %}<span class="muted">not set</span>{% endif %}</td>
-      <td>{% if x.pays is not none %}<b>${{ "{:,}".format(x.pays) }}</b>{% else %}<span class="muted">&mdash;</span>{% endif %}</td></tr>{% endfor %}
-  </tbody></table>
-  {% if p.total is not none %}<p><b>KSO part of your bonus: ${{ "{:,}".format(p.total) }}</b> of ${{ "{:,}".format(p.share) }}.{% if p.rows|selectattr("ai")|list %} <span class="chip ai" title="Uses Claude's estimate where you haven't set a rating">AI</span>{% endif %}</p>{% endif %}
-  <p class="help">If every KSO were rated 3: ${{ "{:,}".format(p.scenarios["3"]) }} &middot; 4: ${{ "{:,}".format(p.scenarios["4"]) }} &middot; 5: ${{ "{:,}".format(p.scenarios["5"]) }}.</p>
-  <p class="help">The other {{ '%g'|format(100 - p.weight) }}% of your bonus (utilization) isn't measured here. Quarterly draws are squared up in the year-end payout.</p>
-  {% else %}<p class="muted">Enter your target to see what each rating would pay.</p>{% endif %}
-</section>
 {% else %}
 <section class="card">
   <h2>KSOs</h2>

@@ -575,10 +575,9 @@ def kso_estimate(data_dir: Optional[str] = DataOpt) -> None:
     _run_job(data_dir, "KSOs", syncs.KSO_STEPS, lambda j, S, lock, dd: syncs.run_kso(j, S, lock))
 
 def _kso_summary(fw) -> str:
-    pay = ", ".join(f"{r}={p:g}%" for r, p in fw.data["payout"].items())
     ksos = "; ".join(f"KSO {k['key']} {k['name']} ({k['weight']:g}%, {len(k['components'])} parts)"
                      for k in fw.data["ksos"])
-    return f"{fw.fiscal_year} {fw.track}: {ksos}. Payout by rating: {pay}."
+    return f"{fw.fiscal_year} {fw.track}: {ksos}."
 
 
 calendar_app = typer.Typer(no_args_is_help=True, help="Pull Google Calendar meetings into your notebook (read-only)")
