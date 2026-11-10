@@ -61,4 +61,4 @@ def test_home_without_a_guide_says_how_to_load_it(tmp_path):
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
     html = TestClient(create_app(dd), base_url="http://127.0.0.1").get("/").text
-    assert "careeros guide import" in html and html.count("<rect class=") == dashboard.WEEKS
+    assert "careeros setup level" in html and html.count("<rect class=") == dashboard.WEEKS

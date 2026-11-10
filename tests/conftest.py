@@ -7,6 +7,7 @@ from typer.testing import CliRunner
 
 from careeros.cli import app as cli
 from careeros.config import DataDir
+from careeros.guide.service import save_profile
 from careeros.web.app import create_app
 from helpers import BASE, write_guide
 
@@ -54,5 +55,6 @@ def nb(tmp_path):
     guide = write_guide(tmp_path / "guide.csv")
     r = CliRunner().invoke(cli, ["guide", "import", str(guide), "--data-dir", str(dd.root)])
     assert r.exit_code == 0, r.output
+    save_profile(dd.root, role="DevOps", grade=5, title="DevOps Engineer")
     app = create_app(dd)
     return dd, TestClient(app, base_url=BASE), app.state.csrf_token, guide

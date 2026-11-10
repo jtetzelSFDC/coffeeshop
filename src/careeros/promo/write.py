@@ -10,21 +10,21 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
+from functools import partial
 from typing import Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..claude_cli import ClaudeError, ask, reply_results
-from ..guide.service import GRADES
+from ..guide.service import SETUP_HINT, grades_text, level, person, read_profile, save_profile
 from ..storage.models import PromoSection, PromoVersion
-from .evidence import SECTIONS, build
-from ..config import write_private
+from .evidence import SECTIONS, build, section_words
 
 WORKERS = 3
 NUMBER = re.compile(r"(?<![A-Za-z])\d+(?:[.,:]\d+)*")  # not the 2 in "V2MOM M2", which every V2MOM piece has
 
-PROMPT = """You write one section of a promotion case for {name}, a DevOps release manager at """ + GRADES + """. \
+PROMPT = """You write one section of a promotion case for {name}, {who} at {grades}. \
 The section is "{heading}": {what}. Write {length}.
 
 Write in the third person about {name} ("{name} led ..."), in plain professional English: concrete, specific, no \
@@ -44,10 +44,8 @@ Reply with only JSON: {{"sentences": [{{"text": "...", "sources": [3, 7]}}]}}"""
 def load_name(dd) -> str:
     """The name the case is written about: saved from the form, else the first word of the git user name."""
     import subprocess
-    try:
-        return json.loads((dd.root / "profile.json").read_text()).get("name", "")
-    except (OSError, ValueError):
-        pass
+    if (name := read_profile(dd.root).get("name")):
+        return name
     try:
         git = subprocess.run(["git", "config", "user.name"], capture_output=True, text=True, timeout=5).stdout
     except (OSError, subprocess.TimeoutExpired):
@@ -56,7 +54,7 @@ def load_name(dd) -> str:
 
 
 def save_name(dd, name: str) -> None:
-    write_private(dd.root / "profile.json", json.dumps(dict(name=name)))
+    save_profile(dd.root, name=name)
 
 
 def default_window(today: date | None = None) -> tuple[str, str]:
@@ -68,10 +66,23 @@ def _parse(reply: str) -> list[dict]:
     return [x for x in reply_results(reply, "sentences") if str(x.get("text", "")).strip()]
 
 
-def read_section(name: str, key: str, evidence: list[dict]) -> list[dict]:
+def read_section(name: str, key: str, evidence: list[dict], lv: dict) -> list[dict]:
+    """`lv` is the saved level (service.level), which the prompt and the section's description name."""
     heading, what, length = next((h, w, l) for k, h, w, l in SECTIONS if k == key)
     data = json.dumps(dict(evidence=[dict(n=p["n"], text=p["text"]) for p in evidence]))
-    return _parse(ask(PROMPT.format(name=name, heading=heading, what=what, length=length), data, timeout=480))
+    prompt = PROMPT.format(name=name, who=person(lv), grades=grades_text(lv), heading=heading,
+                           what=what.format(**section_words(lv)), length=length)
+    return _parse(ask(prompt, data, timeout=480))
+
+
+def _reader(s: Session, reader):
+    """The section reader with the saved level filled in; raises ClaudeError before one is chosen."""
+    if reader is not None:
+        return reader
+    lv = level(s)
+    if lv is None:
+        raise ClaudeError(f"Choose your role and level first: {SETUP_HINT}")
+    return partial(read_section, lv=lv)
 
 
 def check(sentences: list[dict], evidence: list[dict]) -> list[dict]:
@@ -90,9 +101,10 @@ def check(sentences: list[dict], evidence: list[dict]) -> list[dict]:
 
 
 def write_case(s: Session, *, start: str, end: str, name: str,
-               reader: Callable[[str, str, list[dict]], list[dict]] = read_section,
+               reader: Callable[[str, str, list[dict]], list[dict]] | None = None,
                on_section: Callable[[str, str], None] | None = None) -> PromoVersion:
     """Build the evidence, write every section (three at a time), check them, and save a new version."""
+    reader = _reader(s, reader)
     pieces, slices = build(s, start, end)
     if not any(p["kind"] in ("win", "work", "record") for p in pieces):
         raise ClaudeError(f"There's no linked work between {start} and {end} to write from yet.")
@@ -180,8 +192,9 @@ def edit_section(s: Session, v: PromoVersion, key: str, text: str) -> PromoVersi
 
 
 def rewrite_section(s: Session, v: PromoVersion, key: str,
-                    reader: Callable[[str, str, list[dict]], list[dict]] = read_section) -> PromoVersion:
+                    reader: Callable[[str, str, list[dict]], list[dict]] | None = None) -> PromoVersion:
     """Have Claude redo one section from the evidence it was first written from, as a new draft."""
+    reader = _reader(s, reader)
     heading = _section(s, v, key).heading
     by_n = {p["n"]: p for p in v.evidence}
     ev = [by_n[n] for n in (v.slices or {}).get(key, []) if n in by_n] or v.evidence

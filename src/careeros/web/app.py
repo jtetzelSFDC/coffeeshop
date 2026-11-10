@@ -22,7 +22,7 @@ from ..export.promo import promo_markdown
 from ..export.wins import wins_markdown
 from ..google import summaries
 from ..guide import service as gsvc
-from ..guide.topics import suggest, topic_of
+from ..guide.topics import grouped, short_name, suggest
 from ..slack import importer as slack_imp
 from ..storage.removal import remove_entry, restore_entry
 from ..storage.sync_log import status as sync_status
@@ -92,8 +92,12 @@ def _hostname(value: str) -> str:
     return urlparse(f"//{value}").hostname or ""
 
 
-def guide_label(g: GuideItem) -> str:
-    return f"{topic_of(g.name).name} (Grade {g.grade})" if g.kind == "experience" else g.name
+def guide_label(g: GuideItem, devops: bool) -> str:
+    return f"{short_name(g.name, devops)} (Grade {g.grade})" if g.kind == "experience" else g.name
+
+
+def is_devops(s: Session) -> bool:
+    return grouped((gsvc.level(s) or {}).get("role", ""))
 
 
 def guide_chips(s: Session, *, win_ids=(), entry_ids=()) -> dict[tuple[str, int], list[str]]:
@@ -101,8 +105,9 @@ def guide_chips(s: Session, *, win_ids=(), entry_ids=()) -> dict[tuple[str, int]
     out: dict[tuple[str, int], list[str]] = {}
     q = select(GuideLink, GuideItem).join(GuideItem, GuideItem.id == GuideLink.item_id).where(
         (GuideLink.win_id.in_(list(win_ids))) | (GuideLink.entry_id.in_(list(entry_ids))))
+    devops = is_devops(s)
     for l, g in s.execute(q.order_by(GuideItem.position)):
-        label = guide_label(g)
+        label = guide_label(g, devops)
         k = ("win", l.win_id) if l.win_id else ("entry", l.entry_id)
         if label not in out.setdefault(k, []):
             out[k].append(label)
@@ -119,7 +124,7 @@ def create_app(dd: DataDir) -> FastAPI:
     jobs = Jobs()
     csrf_token = hmac.new(dd.secret(), b"csrf", hashlib.sha256).hexdigest()
     env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=True)
-    env.globals.update(tabs=TABS, sizes=SIZES, themes=THEMES)
+    env.globals.update(tabs=TABS, sizes=SIZES, themes=THEMES, level_note=gsvc.level_note)
     env.filters["short_day"] = short_day
     env.filters["status_class"] = v2mom_report.status_class
     env.globals["howto"] = env.get_template("_ui.html").module.howto
@@ -503,6 +508,7 @@ def create_app(dd: DataDir) -> FastAPI:
         t = link_target(s, win, entry)
         if t is None or not gsvc.has_guide(s):
             return back("That item is gone, or the leveling guide isn't loaded yet.", "/promo")
+        pm = gsvc.promo_map(s)
         obj, ref, text = t
         linked = gsvc.linked_ids(s, **ref)
         linked_methods = v2mom_links.linked_ids(s, **ref)
@@ -510,10 +516,10 @@ def create_app(dd: DataDir) -> FastAPI:
             linked = linked or gsvc.linked_ids(s, entry_id=obj.entry_id)
             linked_methods = linked_methods or v2mom_links.linked_ids(s, entry_id=obj.entry_id)
         suggested = set() if linked else gsvc.suggested_ids(s, text)
-        pm = gsvc.promo_map(s)
         return page_html(request, "guide_link.html", "/promo", obj=obj, is_win=isinstance(obj, Win), ref=ref,
                          checked=linked or suggested, suggested=bool(suggested), methods=v2mom_store.methods(s),
-                         checked_methods=linked_methods, pm=pm, next=next if next in PAGES else "/wins")
+                         checked_methods=linked_methods, pm=pm, level=gsvc.level(s),
+                         next=next if next in PAGES else "/wins")
 
     @app.post("/guide/link", dependencies=[Depends(check_csrf)])
     def guide_link_save(win: int | None = Form(None), entry: int | None = Form(None), item: list[int] = Form([]),
@@ -523,10 +529,13 @@ def create_app(dd: DataDir) -> FastAPI:
             t = link_target(s, win, entry)
             if t is None:
                 return back("That item is gone.", to)
-            gsvc.set_links(s, set(item), **t[1])
+            offered = gsvc.shown_ids(s)
+            gsvc.set_links(s, set(item), offered, **t[1])
             if shown := {m.id for m in v2mom_store.methods(s)}:
                 v2mom_links.set_links(s, set(method), shown, **t[1])
-        n = len(item)
+        n = len(set(item) & offered)
+        if not offered:
+            return back("Saved.", to)
         return back(f"Linked to {n} leveling guide item{'' if n == 1 else 's'}." if n else "Saved, with no guide items.", to)
 
     def sheet_filters(show: str = "todo", source: str = "any", kind: str = "any", page: int = 1) -> dict:
@@ -615,9 +624,11 @@ def create_app(dd: DataDir) -> FastAPI:
     def sheet_rows(s: Session, rows: list) -> list[dict]:
         ids = [e.id for e in rows]
         links: dict[int, list] = {}
+        devops = is_devops(s)
         for l, g in s.execute(select(GuideLink, GuideItem).join(GuideItem, GuideItem.id == GuideLink.item_id)
                               .where(GuideLink.entry_id.in_(ids)).order_by(GuideItem.position)):
-            links.setdefault(l.entry_id, []).append(dict(id=l.id, label=guide_label(g), ai=l.by_ai, name=g.name))
+            links.setdefault(l.entry_id, []).append(dict(id=l.id, label=guide_label(g, devops), ai=l.by_ai,
+                                                         name=g.name))
         wins = {w.entry_id: w for w in s.scalars(select(Win).where(Win.entry_id.in_(ids)).order_by(Win.id))}
         v2mom = v2mom_links.chips(s, ids)
         notes: dict[int, str] = {}
@@ -786,7 +797,7 @@ def create_app(dd: DataDir) -> FastAPI:
             hints = sum(1 for eid, text in s.execute(select(JournalEntry.id, JournalEntry.text).where(
                 JournalEntry.ai_read.is_(False))) if eid not in linked and suggest(text)[0])
         return page_html(request, "promo.html", "/promo", pm=gsvc.promo_map(s) if guided else None, hints=hints,
-                         ai=gsvc.ai_counts(s), msg=msg)
+                         ai=gsvc.ai_counts(s), level=gsvc.level(s), guided=guided, msg=msg)
 
     @app.get("/digest", response_class=HTMLResponse)
     def digest_page(request: Request, week: str = "", s: Session = Depends(db)):
@@ -1000,10 +1011,11 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.get("/promo/export")
     def promo_export(s: Session = Depends(db)):
-        if not gsvc.has_guide(s):
-            return back("Load the leveling guide first.", "/promo")
+        pm = gsvc.promo_map(s) if gsvc.has_guide(s) else None
+        if pm is None:
+            return back("There's no Promo map to download yet; see the Promo map page.", "/promo")
         name = f"promo-case-{date.today().isoformat()}.md"
-        return Response(promo_markdown(gsvc.promo_map(s)), media_type="text/markdown; charset=utf-8",
+        return Response(promo_markdown(pm), media_type="text/markdown; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
     @app.get("/wins/export")

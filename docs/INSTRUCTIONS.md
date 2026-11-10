@@ -4,7 +4,7 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests, has Claude sort each one against the DevOps leveling guide, your V2MOM, and your KSOs, and keeps your wins, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
+Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests, has Claude sort each one against your role's leveling guide, your V2MOM, and your KSOs, and keeps your wins, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -15,6 +15,7 @@ Your real, permanent notebook lives in `~/Library/Application Support/coffeeshop
 ```
 cd ~/Documents/coffeeshop
 uv run careeros notebook init   # first time only: makes the notebook folder
+uv run careeros setup level     # first time only: your role and grade (see Leveling guide below)
 uv run careeros serve
 ```
 
@@ -68,16 +69,18 @@ Tips:
 
 ## Leveling guide and Promo map
 
-The app knows the DevOps leveling guide, so your work can be lined up against what Grade 6 and Grade 7 ask for. It's set up for someone aiming at the next grade, with evidence for the grade after that where the work is already at that level.
+The app knows your role's leveling guide, so your work can be lined up against what the next grades ask for. It's set up for someone aiming at the next grade, with evidence for the grade after that where the work is already at that level. The next grade is the next one your role has, so on DevOps, Grade 9 goes for Grade 11. The examples below are for DevOps Grade 5, which goes for Grade 6 and Grade 7.
 
-**Loading the guide.** The guide lives at `guides/Leveling Guides - DevOps.csv`. That folder is ignored by git, so the guide never goes to GitHub. It's already loaded. When a new version comes out, save it over that file and run:
+**Choosing your role and level.** The whole leveling guide workbook is in the repo, at `data/leveling/leveling-guides.xlsx`, one tab per role. Run this once, and again after a promotion:
 
 ```
 cd ~/Documents/coffeeshop
-uv run careeros guide import "guides/Leveling Guides - DevOps.csv"
+uv run careeros setup level
 ```
 
-Links you've made are kept. Anything the new guide drops leaves the map but stays on the wins that pointed to it.
+It lists the roles, then your role's grades with their job titles, saves your choice in your notebook, and loads that role's guide. To skip the questions: `uv run careeros setup level --role DevOps --grade 5`. A few roles have two job titles at the same grade, such as a manager and an architect. Those are listed as two roles, for example "Quality Engineering" and "Quality Engineering (Test Automation Architect)"; pick the one you're on. On the top grade of your path there's no next level, so Home and the Promo map say that instead of showing bars. On paths other than DevOps, the Promo map lists your next grades' key experiences in one plain list, without the topics and ideas below.
+
+**When a new guide comes out.** Download the whole Google Sheet as an `.xlsx` file and run `uv run careeros guide update <file>`. It checks that every role tab reads, says which roles were added, removed, or changed, and only then replaces the copy in the repo. Commit it, then run `setup level` again to load it. Links you've made are kept. Anything the new guide drops leaves the map but stays on the wins that pointed to it.
 
 **Linking your work.** Each time you save a win, the app asks **Which parts of the leveling guide does this show?** It ticks the items that look related based on your words, such as "sandbox", "deploy", "merge", or "demo". Untick what doesn't fit, tick what it missed, and click **Save**, or choose **Skip for now**. Nothing is linked until you save. Notebook entries can be linked too. Entries that look related show dashed **Might show** chips, and linked ones show **Shows** with the items; the target button on the entry links or changes them.
 
