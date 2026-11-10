@@ -36,7 +36,7 @@ def run_review(job: Job, Session_) -> None:
     from ..guide.ai_review import pending
     n = 0
     with Session_() as s:
-        for _ in range(3):  # entries you add while Claude reads wait for the next pass
+        for _ in range(3):  # shortcut: 3 passes; raise it if you add entries faster than Claude reads them
             got = _link_new(job, 0, s)
             n += got
             if not got or not pending(s):

@@ -102,6 +102,7 @@
       <button>Add</button>
     </div>
     <details class="howto"><summary>Paste notes, a link, or a transcript</summary><div class="stack">{{ attach_fields() }}</div></details>
+    {% if personal %}<p class="help">Claude reads the line you type to sort it. Pasted notes stay on this laptop.</p>{% endif %}
   </form>
   </details>
 </section>

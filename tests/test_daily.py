@@ -308,6 +308,22 @@ def test_home_card_shows_three_ticks_and_the_empty_state(nb):
     assert 'data-label="New three"' in home and home.index('aria-label="Progress"') < home.index("Today's Three")
 
 
+def test_checking_off_a_task_starts_claude_reading_it(nb, monkeypatch):
+    import time
+    from coffeeshop.web import syncs
+    dd, *_ = nb
+    setup(dd)
+    ran = []
+    monkeypatch.setattr(syncs, "run_review", lambda j, S: (ran.append(1), j.finish("ok")))
+    c, tok = _web(nb)
+    c.post(f"/daily/{_three(dd)[0]}/done", data={"csrf": tok})
+    for _ in range(50):
+        if ran:
+            break
+        time.sleep(0.02)
+    assert ran
+
+
 def test_done_logs_a_record_with_details_and_undo_keeps_your_note(nb):
     dd, *_ = nb
     setup(dd)

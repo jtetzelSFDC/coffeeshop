@@ -1,6 +1,7 @@
 {% macro hidden() %}<input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="ret" value="{{ ret }}">{% endmacro %}
 <tr id="r{{ r.id }}" class="{{ 'ok' if r.reviewed }}">
     <td style="white-space:nowrap">{% if r.reviewed %}<form method="post" action="/sheet/{{ r.id }}/undo">{{ hidden() }}<button aria-label="Mark not checked">Checked &check;</button></form>
+      {% elif personal and guided and not r.ai_read %}<span class="help">Claude is reading…</span>
       {% else %}<form method="post" action="/sheet/{{ r.id }}/ok">{{ hidden() }}<input type="hidden" name="after" value="{{ nxt }}"><button class="primary">Looks right</button></form>{% endif %}
       <br><form method="post" action="/sheet/{{ r.id }}/remove">{{ hidden() }}<input type="hidden" name="after" value="{{ nxt }}"><button class="remove" aria-label="Remove this record">Remove</button></form></td>
     <td style="white-space:nowrap" title="{{ r.day }}">{{ r.day|short_day }}</td>

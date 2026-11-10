@@ -125,6 +125,7 @@ def test_a_past_certification_is_saved_on_its_tab(seeded):
     dd, c, token = seeded
     home = c.get("/").text
     assert 'value="certification"' in home and "Gained a certification" in home and "data-cert-date hidden" in home
+    assert "Pasted notes stay on this laptop" not in home
     r = form(c, "/journal/add", token, kind="certification", text="Salesforce Administrator", day="2024-03-15")
     assert r.headers["location"] == "/certifications?msg=Added."
     assert "Salesforce Administrator" in c.get("/certifications").text
@@ -378,11 +379,36 @@ def test_adding_an_entry_starts_claude_reading_it(tmp_path, monkeypatch):
     monkeypatch.setattr(syncs, "run_review", lambda j, S: (ran.append(1), j.finish("ok")))
     r = form(c, "/journal/add", app.state.csrf_token, kind="certification", text="AWS Cloud Practitioner", day="2024-05-01")
     assert "Claude is reading it now" in r.headers["location"].replace("%20", " ").replace("+", " ")
+    assert "Pasted notes stay on this laptop" in c.get("/").text
     for _ in range(50):
         if ran:
             break
         time.sleep(0.02)
     assert ran
+
+
+def test_an_entry_added_during_a_sync_says_it_will_be_read_after(tmp_path, monkeypatch):
+    import threading
+    from coffeeshop.web import syncs
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    started, release = threading.Event(), threading.Event()
+
+    def hang(job, *a):
+        started.set()
+        release.wait(2)
+        job.finish("ok")
+
+    monkeypatch.setattr(syncs, "run_google", hang)
+    assert c.post("/sync/google", data={"csrf": app.state.csrf_token}, headers={"X-Sync": "1"}).json()["started"]
+    assert started.wait(1)
+    try:
+        r = form(c, "/journal/add", app.state.csrf_token, kind="note", text="While a sync runs")
+        assert "sync is running" in r.headers["location"].replace("%20", " ").replace("+", " ")
+    finally:
+        release.set()
 
 
 def test_have_claude_read_waits_while_a_sync_runs(tmp_path, monkeypatch):

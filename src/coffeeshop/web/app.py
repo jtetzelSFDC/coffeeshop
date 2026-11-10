@@ -319,7 +319,12 @@ def create_app(dd: DataDir) -> FastAPI:
                                         title=a_title.strip(), body=a_body.strip(), created_at=datetime.now()))
             s.commit()
             kind = entry.kind
-        msg = "Added. Claude is reading it now; the result will be in the Intake Review Queue." if read_new() else "Added."
+        if read_new():
+            msg = "Added. Claude is reading it now; the result will be in the Intake Review Queue."
+        elif personal and jobs.running():
+            msg = "Added. A sync is running, so Claude reads it when that finishes, or from the Intake Review Queue."
+        else:
+            msg = "Added."
         return back(msg, next(p for p, (k, *_rest) in TABS.items() if k == kind))
 
     def read_new() -> bool:
