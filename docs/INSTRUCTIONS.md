@@ -4,7 +4,7 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack tracker, kudos, and GitHub pull requests, has Claude sort each one against your role's leveling guide, your V2MOM, and your KSOs, and keeps your wins, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
+Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests, has Claude sort each one against your role's leveling guide, your V2MOM, and your KSOs, and keeps your wins, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you've actually done. Everything is stored on this laptop. Things go out only when Claude reads or sorts: the syncs and their buttons, the Claude review, Write my promo case, Suggest now, Re-estimate on the KSOs page and the `kso` commands, and Send to Google Docs (see [What goes to Claude](TECHNICAL.md#what-goes-to-claude)).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -151,7 +151,11 @@ It never touches rows you've marked checked or guide links you picked yourself. 
 
 Your Slack Work Activity Tracker canvas (the one Slackbot fills in every day) comes into the notebook as entries. Claude reads each work item and decides whether it was a meeting, a conversation, a document, or a task. Anything it can't place goes to **Other**. Every entry from Slack has a **from Slack** label, the tracker's notes underneath (marked as written by Slack's AI), and a link back to the Slack thread. Items that are already in the notebook are skipped, so syncing again is safe. Tasks from Slack come in as done. When the tracker says why something mattered, the entry gets a dashed **suggested win** label and the **Count this as a win** form is pre-filled with that reason, so you can edit it into your own words and save.
 
-**The Sync Slack tracker button** on Home reads the canvas through Claude Code's Slack connector, sorts the new items, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again in Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
+**Your own messages.** The same sync searches Slack for messages you sent, in public and private channels only. DMs and group DMs are never searched. The first search looks back 90 days; after that, only the last couple of days. Messages you sent in one thread on one day become one record, with a link to the message, dated from the message's own time. Very short replies, emoji-only messages, and bots are left out before Claude reads anything. When you replied in someone else's thread, the sync reads that thread's first message (up to 20 threads a sync) so a short reply still has what it answers.
+
+**The canvas confirms.** The tracker is still read. When one of its items links to a message already in the notebook, its summary is added to that record's notes and the message's date stays. An item with a date and a link but no matching message is still added, marked as from the canvas. An item with no link is added as before.
+
+**The Sync Slack tracker button** on Home reads your messages and the canvas through Claude Code's Slack connector, sorts the new records, and has Claude link them to the leveling guide, with a progress bar under the button. It only works while Slack is signed in for Claude Code; if the sign-in has expired the progress box says so, and you sign Slack in again in Claude Code's connector settings and retry. The tracker canvas is large (over 250 KB), so the connector hands it over as a saved file, which the app reads back. The canvas is already connected. To connect a different one, run:
 
 ```
 cd ~/Documents/coffeeshop
@@ -399,9 +403,9 @@ Every test should pass: the last line says `passed`, with no `failed`. A failure
 
 ## What comes next
 
-Your personal notebook is connected to Google Calendar, Google Tasks, Google Docs, the Slack tracker canvas, Slack kudos, and GitHub, and Claude links what comes in to the leveling guide. Ideas still open:
+Your personal notebook is connected to Google Calendar, Google Tasks, Google Docs, your Slack messages and tracker canvas, Slack kudos, and GitHub, and Claude links what comes in to the leveling guide. Ideas still open:
 
-1. **Fill in older history.** Older Google Calendar history needs a little setup: the Claude connector reaches back 14 days at most (`uv run careeros calendar pull --days 14`), while connecting the calendar's private iCal address (`calendar connect`) lets `calendar sync --days 60` go back two months at a time. Older Slack work could be found by searching your messages, then read by Claude like everything else.
+1. **Fill in older history.** Older Google Calendar history needs a little setup: the Claude connector reaches back 14 days at most (`uv run careeros calendar pull --days 14`), while connecting the calendar's private iCal address (`calendar connect`) lets `calendar sync --days 60` go back two months at a time. Slack messages older than 90 days are not searched.
 2. **Keep the approvals questions in mind:**
    - Do the owners of the customer-related channels and repos mind a personal tool keeping titles and short notes from them?
    - Is Claude, through Claude Code, approved for this kind of work content?

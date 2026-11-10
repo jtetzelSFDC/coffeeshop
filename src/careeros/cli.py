@@ -433,8 +433,8 @@ def slack_connect(canvas: str = typer.Argument(..., help="Link to, or ID of, you
 
 @slack_app.command("pull")
 def slack_pull(data_dir: Optional[str] = DataOpt) -> None:
-    """Read the connected canvas, import new items, look for kudos, and link them to the guide (the Sync Slack
-    button)."""
+    """Read your Slack messages and the connected canvas, look for kudos, and link them to the guide (the Sync
+    Slack button)."""
     from .web import syncs
     _run_job(data_dir, "Slack sync", syncs.SLACK_STEPS, syncs.run_slack)
 

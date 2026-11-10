@@ -17,16 +17,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..storage.models import JournalAttachment, JournalEntry
+from . import search
 
 SOURCE = "kudos"
-SEARCH_TOOL = "mcp__plugin_slack_slack__slack_search_public_and_private"
-CHANNEL_TYPES = "public_channel,private_channel"  # never im (DMs) or mpim (group DMs)
 PROFILE_TOOL = "mcp__plugin_slack_slack__slack_read_user_profile"
 USER_FILE = "slack_user.json"
 FIRST_LOOKBACK = timedelta(days=365)
-CHUNK = timedelta(days=6)  # a week per search: busy private channels mention you a lot
-LIMIT = 20  # the search tool's maximum per page
-MAX_PAGES = 10  # 200 mentions in a week; busy release weeks go past 100
 BATCH = 40  # messages per Claude read
 WORKERS = 3
 PRAISE = re.compile(r"thank|thx|ty\b|great|awesome|amazing|kudos|shout|props|appreciat|congrat|well done|nice work|"
@@ -34,7 +30,6 @@ PRAISE = re.compile(r"thank|thx|ty\b|great|awesome|amazing|kudos|shout|props|app
                     r"means so much|impress|love", re.I)
 MAX_QUOTE = 240
 USER_ID = re.compile(r"User ID: (\w+)")
-RESULT = re.compile(r"^### Result \d+ of \d+\n(.*?)(?=^---$)", re.M | re.S)
 
 FILTER_PROMPT = """On stdin is JSON with Slack messages from work channels that mention {name} (shown as \
 @{full}). Keep only messages where someone recognizes {name}'s work: praise, a shout-out, kudos, credit \
@@ -92,69 +87,22 @@ def user(dd) -> tuple[str, str]:
     return load_user(dd)
 
 
-def _field(block: str, name: str) -> str:
-    m = re.search(rf"^{name}: (.*)$", block, re.M)
-    return m.group(1).strip() if m else ""
-
-
 def parse(raw: str) -> tuple[list[Message], str]:
     """(messages, cursor for the next page or "") from one search answer."""
-    try:
-        data = json.loads(raw)
-    except ValueError:
-        data = None
-    text = str(data.get("results", "")) if isinstance(data, dict) else raw
-    nxt = re.search(r"cursor `([^`]+)`", str(data.get("pagination_info", ""))) if isinstance(data, dict) else None
-    out = []
-    for block in RESULT.findall(text):
-        frm = _field(block, "From")
-        link = re.search(r"Permalink: \[link\]\((\S+?)\)", block)
-        when = re.match(r"(\d{4}-\d{2}-\d{2})", _field(block, "Time"))
-        body = block.split("\nText: \n", 1)[1].strip() if "\nText: \n" in block else ""
-        if not (link and when and body):
-            continue
-        who = re.match(r"(.*?)\s*(?:<[^>]*>)?\s*\(ID: (\w+)\)", frm)
-        out.append(Message(link.group(1), _field(block, "Channel").split(" (ID")[0], (who.group(1).strip() if who else ""),
-                           who.group(2) if who else "", "[BOT]" in frm, date.fromisoformat(when.group(1)), body))
-    return out, nxt.group(1) if nxt else ""
+    hits, nxt = search.parse(raw)
+    return [Message(h.link, h.channel, h.who, h.who_id, h.bot, h.day, h.text) for h in hits], nxt
 
 
 def fetch(uid: str, since: date, today: date | None = None) -> tuple[list[Message], int]:
-    """Messages mentioning you, from people (not you, not bots), one CHUNK of days per search, following extra pages.
-    Returns (messages, weeks not fully read: a search that didn't come back, or more than MAX_PAGES pages)."""
-    from ..claude_cli import ClaudeError, call_tools, connector_error
+    """Messages mentioning you, from people (not you, not bots), one week per search, following extra pages.
+    Returns (messages, weeks not fully read: a search that didn't come back, or more than one window's pages)."""
     today = today or date.today()
-    todo, start = [], since
-    while start <= today:
-        end = min(start + CHUNK, today)
-        todo.append((f"after:{start - timedelta(days=1)} before:{end + timedelta(days=1)}", ""))
-        start = end + timedelta(days=1)
-    msgs: dict[str, Message] = {}
-    for _ in range(MAX_PAGES):
-        if not todo:
-            break
-        lines = [f"{i + 1}. filters={w!r}" + (f", cursor={c!r}" if c else "") for i, (w, c) in enumerate(todo)]
-        prompt = (f'Call the slack_search_public_and_private tool once for each line below, each with '
-                  f'keywords=["<@{uid}>"], channel_types="{CHANNEL_TYPES}", limit={LIMIT}, sort=timestamp, '
-                  "include_context=false, response_format=detailed, plus the filters "
-                  "(and cursor, when given) on that line, and nothing else. When they have all returned, reply with "
-                  "only DONE.\n" + "\n".join(lines))
-        asked, todo = set(todo), []
-        for _tool, args, raw in call_tools(prompt, [SEARCH_TOOL], timeout=600, max_turns=len(asked) + 6):
-            key = (args.get("filters"), args.get("cursor") or "")
-            if key not in asked:
-                continue
-            if err := connector_error(raw, "Slack"):
-                raise ClaudeError(err)
-            asked.discard(key)
-            got, nxt = parse(raw)
-            if nxt:
-                todo.append((key[0], nxt))
-            for m in got:
-                if m.who_id != uid and not m.bot and m.channel.startswith("#") and m.day >= since:
-                    msgs.setdefault(m.key, m)
-        todo += sorted(asked)  # didn't come back: asked again next round
-    return list(msgs.values()), len({w for w, _ in todo})
+
+    def accept(h: search.Hit) -> bool:
+        return h.who_id != uid and not h.bot and h.channel.startswith("#") and h.day >= since
+
+    hits, short = search.fetch([f"<@{uid}>"], "", since, today, search.CHUNK, accept)
+    return [Message(h.link, h.channel, h.who, h.who_id, h.bot, h.day, h.text) for h in hits], short
 
 
 MENTION = re.compile(r"<@\w+\|([^>]+)>")
