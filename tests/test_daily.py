@@ -423,7 +423,7 @@ def test_untick_keeps_a_record_you_linked_yourself(nb):
 
 
 def test_new_three_reloads_when_done_unless_a_box_has_text():
-    """Runs sync.js against a fake page: done reloads once; text in a box does not."""
+    """Runs sync.js against a fake page: done reloads once and Today's three opens; text in a box does not."""
     import shutil
     import subprocess
     from pathlib import Path

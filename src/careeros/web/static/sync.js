@@ -2,6 +2,7 @@
 const ICON = { pending: "○", running: "◐", done: "✓", error: "✕", skipped: "–" };
 let dailyGen = 0; // bumps when New three is clicked, so a status fetch already in flight can't reload on the old job
 let watchDaily = false; // this page started Today's three, or saw it running, so reload once when that job finishes
+const OPEN_DAILY = "open-daily"; // Home tiles start closed; open Today's three after a New three reload
 
 function draft() {
   // The day box is already filled in, so only a line someone typed counts.
@@ -11,6 +12,17 @@ function draft() {
     if ((el.value || "").trim()) return true;
   }
   return false;
+}
+
+function openTile(box) {
+  // The progress box sits in the tile's own details, not a nested one (a done-task note, a howto).
+  const details = box && box.closest(".home-tile > details");
+  if (details) details.open = true;
+}
+
+function reloadDaily() {
+  sessionStorage.setItem(OPEN_DAILY, "1");
+  location.reload();
 }
 
 function el(tag, cls, text) {
@@ -43,7 +55,9 @@ function render(name, job) {
       button.textContent = button.dataset.label;
     }
   }
+  const wasHidden = box.hidden;
   box.hidden = false;
+  if (wasHidden || job.state === "error" || job.state === "partial") openTile(box);
   box.className = `job ${job.state}`;
   box.replaceChildren();
   const bar = el("div", "jbar");
@@ -67,7 +81,7 @@ function render(name, job) {
     if (name !== "daily" || (watchDaily && draft())) {
       const again = el("button", "", "Show the new items");
       again.type = "button";
-      again.addEventListener("click", () => location.reload());
+      again.addEventListener("click", () => (name === "daily" ? reloadDaily() : location.reload()));
       end.append(" ", again);
     }
     box.append(end);
@@ -97,7 +111,7 @@ async function poll() {
     }
   }
   if (refreshDaily && !draft()) {
-    location.reload();
+    reloadDaily();
     return;
   }
   if (running) setTimeout(poll, 1500);
@@ -130,9 +144,15 @@ document.addEventListener("submit", async (ev) => {
     box.hidden = false;
     box.className = "job error";
     box.replaceChildren(el("p", "jmsg", why));
+    openTile(box);
     return;
   }
   poll();
 });
+
+if (sessionStorage.getItem(OPEN_DAILY)) {
+  openTile(document.querySelector('.job[data-job="daily"]'));
+  sessionStorage.removeItem(OPEN_DAILY);
+}
 
 poll();
