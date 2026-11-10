@@ -272,7 +272,7 @@ def run_slack(job: Job, Session_, lock, dd: DataDir) -> None:
 
 
 V2MOM_STEPS = ["Read your V2MOM", "Save its methods and measures"]
-V2MOM_CONNECT = ("No V2MOM connected yet. Download it as a PDF from the V2MOM app, then in Terminal run: "
+V2MOM_CONNECT = ("No V2MOM connected yet. On the V2MOM page, upload the PDF, or in Terminal run: "
                  "uv run careeros v2mom connect <path to the PDF>")
 
 

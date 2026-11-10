@@ -84,9 +84,9 @@ def resolve(path: str | None, *, demo: bool = False) -> DataDir:
     return DataDir(Path(chosen).expanduser())
 
 
-def write_private(path: Path, text: str) -> None:
+def write_private(path: Path, data: str | bytes) -> None:
     """Write a notebook file only you can read (0600 from the start, and kept that way if it already existed)."""
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(text)
+    with os.fdopen(fd, "wb" if isinstance(data, bytes) else "w") as fh:
+        fh.write(data)
     os.chmod(path, 0o600)

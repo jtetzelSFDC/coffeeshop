@@ -269,8 +269,9 @@ If `gh` isn't signed in, the sync says so; run `gh auth login`.
 
 The V2MOM app won't let the command line sign in, so the app reads your V2MOM from the PDF the V2MOM app exports (recommended: it has every measure's progress and comments, and your check-ins) or from a Google Doc you paste it into.
 
-1. **Download it as a PDF.** In the V2MOM app, use **download as PDF** and save it to your Desktop. Keep the name it gives you (something like "FY27 V2MOM Your Name.pdf").
-2. **Connect it** once, with the file's path:
+**The easy way.** In the V2MOM app, use **download as PDF**. Open **V2MOM** in the Menu and press **Upload and read**. The PDF is saved in your notebook folder, readable only by you, and the app starts reading it. The page says which one is active, like "Active: FY27 V2MOM, read Nov 3". A new fiscal year is kept beside the old one; last year's methods and the work already linked to them stay as they were.
+
+The command still works. Save the PDF (keep the name it gives you, something like "FY27 V2MOM Your Name.pdf") and connect it once:
 
 ```
 cd ~/Documents/coffeeshop
@@ -282,9 +283,9 @@ The app pulls the text out of the PDF on your laptop (with pypdf), then Claude (
 
 **Or a Google Doc** (still works): open your V2MOM in the V2MOM app, expand each method so its measures show, select the whole page, copy, and paste it into a new Google Doc; the page's extra text is ignored. Then connect the Doc's link instead: `uv run careeros v2mom connect "https://docs.google.com/document/d/…/edit"`. The sync reads it through Claude Code's Google Workspace connector. The Doc has no check-ins or measure comments. Connecting the PDF later keeps your methods and their links.
 
-**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again into the same folder and press **Sync V2MOM** on Home. Each sync reads the newest PDF with "V2MOM" in its name in that folder, so a re-download saved as "… (1).pdf" is picked up without connecting again. The latest fiscal year in the name comes first, so downloading last year's PDF to look back at doesn't replace this year's, and next year's FY28 PDF is picked up by itself. If the file is gone, the sync says where to save it. With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
+**Keeping it current.** The scheduled sync re-reads your V2MOM once a month. After each check-in, download the PDF again and upload it on the V2MOM page (or, if you connected a folder, save the new PDF there and press **Sync V2MOM** on Home). Each sync reads the newest PDF with "V2MOM" in its name in that folder, so a re-download saved as "… (1).pdf" is picked up without connecting again. The latest fiscal year in the name comes first, so downloading last year's PDF to look back at doesn't replace this year's, and next year's FY28 PDF is picked up by itself. If the file is gone, the sync says where to save it. With a Doc, paste the updated page over the Doc's text instead. Methods are matched by name, so reordering them is fine, and a method renamed in the same place keeps its row too. A method you drop is kept but marked inactive, so anything linked to it still makes sense. A new fiscal year (FY28) starts a new V2MOM and leaves last year's as it was.
 
-**The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when your V2MOM was read in the last 31 days, orange when it's older, and grey with a hint when nothing is connected yet. The PDF's path or the Doc's id is kept in `v2mom.json` in the notebook folder, readable only by you (a `v2mom.doc` from before still works). The text passes through Claude Code to be read; the PDF itself stays where it is.
+**The V2MOM chip** (on Home and at the top of the Intake Review Queue) is green when your V2MOM was read in the last 31 days, orange when it's older, and grey with a hint when nothing is connected yet. The PDF's path or the Doc's id is kept in `v2mom.json` in the notebook folder, readable only by you (a `v2mom.doc` from before still works). An upload is saved in that folder as `v2mom/V2MOM.pdf`, also only you can read it. A PDF you connected with the command stays where you saved it. The text passes through Claude Code to be read.
 
 **Linking your work to methods.** Once the V2MOM is loaded, Claude's read-through of new records (after every sync, and the queue's **Have Claude read** button) also picks the V2MOM methods each record really moves forward: none for routine meetings and status pings, at most two. It's the same read as the leveling-guide links, so it costs no extra Claude time. In the Intake Review Queue they show as chips with the method's name, shortened if it's long (hover for the full name), purple when Claude picked them. **Looks right** makes them yours, **&times;** on a chip removes it for good (Claude won't put it back), and **edit** opens the linking page, which now has a **Which V2MOM methods does this move forward?** list at the top. Once you've changed a record's methods, Claude leaves them alone. A method that's no longer in your current V2MOM (dropped, or last year's) still shows its name; hover says so. It stays so the history makes sense.
 
@@ -299,7 +300,7 @@ It skips records already read against the V2MOM and ones whose methods you set, 
 
 ### The V2MOM page
 
-**V2MOM** in the Menu shows your current V2MOM. At the top: the fiscal year, how many methods had work this quarter, when it was published, and when the app last read your PDF or Doc. **Vision and values** folds open to its vision and values.
+**V2MOM** in the Menu shows your current V2MOM. At the top it says which one is active, like "Active: FY27 V2MOM, read Nov 3", then how many methods had work this quarter, when it was published, and when the app last read your PDF or Doc. **Upload and read** takes a new PDF. **Vision and values** folds open to its vision and values.
 
 Below, one row per method, in your V2MOM's order:
 
@@ -333,7 +334,7 @@ It reads the deck through the Google connector and the canvases through the Slac
 
 **The KSOs page** (Menu > KSOs) shows this year's KSOs, with a year picker once there's more than one.
 
-- **At the top:** how you're rated, the payout for each rating, and the next key dates.
+- **At the top:** the year in use, like "KSOs: FY27 Delivery", then how you're rated, the payout for each rating, and the next key dates. Older years stay in the year picker.
 - **One card per KSO:** its share of your bonus, what it measures, and a bar. Then one row per part:
   - **The bar:** the average progress of the V2MOM methods that count toward the part, taken from your V2MOM. A part with no V2MOM goal gets a warning and counts as 0 in the KSO's bar, because your manager counts a missing one against you too.
   - **What the manager looks at,** in plain words.
