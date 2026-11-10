@@ -3,7 +3,7 @@
 <p align="center"><em>Do the work. It remembers.</em></p>
 
 <p align="center">
-  <img src="docs/img/home.jpg" width="820" alt="Coffee Shop's Home page in dark mode, on the practice notebook: a latte in the corner, house plants down the side, and three closed tiles. Promotion Progress has a short green bar. Today's Three and New Entry are closed.">
+  <img src="docs/img/home.jpg" width="300" alt="Coffee Shop's Home page on a phone-size screen in dark mode, on the practice notebook. Promotion Progress is open, with Grade 6 and Grade 7 bars and the Promo map link. The other tiles are closed.">
 </p>
 
 ## What it does
