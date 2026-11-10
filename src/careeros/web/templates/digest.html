@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 {% block body %}
 <section class="card">
-  <h2>Your week: {{ d.first|short_day }} to {{ d.last|short_day }}</h2>
-  <p class="muted">{{ d.records }} record{{ '' if d.records == 1 else 's' }}{% if d.sources %}: {% for name, n in d.sources %}{{ n }} {{ name }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}.
-    {% for w in weeks %} <a class="chip" href="/digest?week={{ w.iso }}">{{ w.label }}</a>{% endfor %}</p>
+  <div class="qhead"><h2>Your week: {{ d.first|short_day }} to {{ d.last|short_day }}</h2>
+    <div class="row" style="margin-left:auto">{% for w in weeks %}<a class="chip" href="/digest?week={{ w.iso }}">{{ w.label }}</a>{% endfor %}</div></div>
+  <p class="sub muted">{{ d.records }} record{{ '' if d.records == 1 else 's' }}{% if d.sources %}: {% for name, n in d.sources %}{{ n }} {{ name }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}.</p>
 </section>
 
 <section class="card">
-  <h3>Nudges</h3>
+  <h2>Nudges</h2>
   {% for n in d.nudges %}<div class="exp">{{ n.text }} <a href="{{ n.link }}">{{ n.act }}</a></div>
   {% else %}<p class="muted">Nothing needs you this week. Enjoy the coffee.</p>{% endfor %}
 </section>
 
 <section class="card">
-  <h3>Wins ({{ d.wins|length }})</h3>
+  <h2>Wins ({{ d.wins|length }})</h2>
   {% for w in d.wins %}<div class="exp"><b>{{ w.title }}</b> <span class="muted" title="{{ w.day }}">{{ w.day|short_day }} &middot; {{ size_label.get(w.size, w.size) }}</span>{% if w.impact %}<br>{{ w.impact }}{% endif %}</div>
   {% else %}<p class="muted">No wins this week. Look through the <a href="/sheet?show=todo">Intake Review Queue</a> for one worth keeping.</p>{% endfor %}
   {% if d.kudos %}<h3>Kudos ({{ d.kudos|length }})</h3>
@@ -22,7 +22,7 @@
 
 {% if d.has_guide %}
 <section class="card">
-  <h3>Leveling guide items with new evidence</h3>
+  <h2>Leveling guide items with new evidence</h2>
   {% for g in d.gained %}<div class="exp">{{ g.name }} <span class="muted">{{ g.topic }} &middot; {{ g.n }} new link{{ '' if g.n == 1 else 's' }}</span></div>
   {% else %}<p class="muted">No new guide links this week.</p>{% endfor %}
   <h3>Counts this week</h3>
