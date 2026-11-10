@@ -91,6 +91,8 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 
 Prompts tell Claude the data is data, never instructions, and answers are checked before they're saved. A bad one saves nothing, except promo sentences that fail a check: those are kept and flagged **Check this**.
 
+Every prompt, with its input, size caps, and checks, is listed in [prompts.md](prompts.md); what good output looks like for each AI feature is in [quality.md](quality.md).
+
 ## Schedules
 
 `careeros schedule install` writes three launchd agents:
