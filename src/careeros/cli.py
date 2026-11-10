@@ -11,7 +11,7 @@ from typing import Optional
 
 import typer
 
-from .config import PERSONAL_DIR, DataDir, NotDemoData, resolve
+from .config import PERSONAL_DIR, DataDir, NotDemoData, notebook_default_help, resolve
 from .storage.db import init_db, make_engine, make_session_factory
 
 app = typer.Typer(no_args_is_help=True)
@@ -61,7 +61,7 @@ def sync_all_cmd(force: bool = typer.Option(False, "--force", help="Run even if 
     raise typer.Exit(code)
 
 
-schedule_app = typer.Typer(no_args_is_help=True, help="Keep the app running and sync on a schedule (macOS)")
+schedule_app = typer.Typer(no_args_is_help=True, help="Keep the app running and sync on a schedule")
 app.add_typer(schedule_app, name="schedule")
 
 
@@ -87,7 +87,11 @@ def schedule_install(data_dir: Optional[str] = DataOpt) -> None:
 def schedule_uninstall() -> None:
     """Stop and remove the scheduled tasks. Nothing else is touched."""
     from . import schedule
-    removed = schedule.uninstall()
+    try:
+        removed = schedule.uninstall()
+    except RuntimeError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
     typer.echo("\n".join(f"Removed {p}" for p in removed) or "Nothing was installed.")
 
 
@@ -95,7 +99,12 @@ def schedule_uninstall() -> None:
 def schedule_status(data_dir: Optional[str] = DataOpt) -> None:
     """Whether each scheduled task is on, and the last sync log line."""
     from . import schedule
-    typer.echo("\n".join(schedule.status(resolve(data_dir))))
+    try:
+        lines = schedule.status(resolve(data_dir))
+    except RuntimeError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    typer.echo("\n".join(lines))
 
 
 backup_app = typer.Typer(no_args_is_help=True, help="Daily copies of your notebook")
@@ -135,7 +144,7 @@ app.add_typer(notebook_app, name="notebook")
 
 
 @notebook_app.command("init")
-def notebook_init(data_dir: Optional[str] = typer.Option(None, "--data-dir", help="Default: ~/Library/Application Support/coffeeshop")) -> None:
+def notebook_init(data_dir: Optional[str] = typer.Option(None, "--data-dir", help=notebook_default_help())) -> None:
     """Create your real, permanent notebook, the one every sync fills."""
     os.umask(0o077)
     dd = DataDir(__import__("pathlib").Path(data_dir).expanduser()) if data_dir else DataDir(PERSONAL_DIR)
@@ -752,12 +761,12 @@ app.add_typer(digest_app, name="digest")
 
 @digest_app.command("notify")
 def digest_notify(data_dir: Optional[str] = DataOpt) -> None:
-    """Show this week's digest as a macOS notification (what the Friday noon schedule runs)."""
+    """Show this week's digest as a notification (what the Friday noon schedule runs)."""
     from . import digest
-    from .sync_all import mac_notify
+    from .sync_all import desktop_notify
     dd, s = _open_personal(data_dir, "The digest")
     line = digest.summary(digest.build(s))
-    mac_notify("Coffee Shop: your week", line)
+    desktop_notify("Coffee Shop: your week", line)
     typer.echo(line)
 
 

@@ -32,7 +32,7 @@ Python 3.12, FastAPI, SQLAlchemy on SQLite, Jinja2, Typer, uv. No JavaScript fra
 | `export/` | Markdown and CSV downloads |
 | `storage/` | Tables, removal and skip rules, the sync log behind the status chips |
 | `claude_cli.py` | Runs `claude -p` headless for one narrow job |
-| `sync_all.py`, `schedule.py`, `backup.py` | The scheduled sync, the launchd agents, daily backups |
+| `sync_all.py`, `schedule.py`, `backup.py` | The scheduled sync, launchd on Mac and Task Scheduler on Windows, daily backups |
 | `fixtures/` | The practice notebook (made-up data only) |
 
 ## Data flow
@@ -60,7 +60,7 @@ Every record lands as a `JournalEntry`. Claude's read-through sets its kind, gui
 
 ## Where data lives
 
-Outside the repo, in `~/Library/Application Support/coffeeshop/` (the practice notebook uses `coffeeshop-demo/`). That folder holds the database, backups, logs, and connector settings, and `profile.json` (the promo case name, and the role, grade, and job title from `setup level`). The leveling guide workbook is shared company-wide, so it lives in the repo at `data/leveling/leveling-guides.xlsx`; `setup level` imports one role of it into `guide_item`, keyed so links survive a re-import, and the next grades are derived from the grades that role has. The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`; your target incentive lives only in `kso_year`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Run `git config core.hooksPath .githooks` once per clone so the pre-commit check is on (a spreadsheet is allowed only under `data/leveling/`). Tests and docs use made-up names and data only.
+Outside the repo, in `~/Library/Application Support/coffeeshop/` on a Mac and `%LOCALAPPDATA%\coffeeshop` on Windows (the practice notebook uses `coffeeshop-demo/`). That folder holds the database, backups, logs, and connector settings, and `profile.json` (the promo case name, and the role, grade, and job title from `setup level`). The leveling guide workbook is shared company-wide, so it lives in the repo at `data/leveling/leveling-guides.xlsx`; `setup level` imports one role of it into `guide_item`, keyed so links survive a re-import, and the next grades are derived from the grades that role has. The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`; your target incentive lives only in `kso_year`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Run `git config core.hooksPath .githooks` once per clone so the pre-commit check is on (a spreadsheet is allowed only under `data/leveling/`). Tests and docs use made-up names and data only.
 
 ## Security
 
@@ -95,15 +95,17 @@ Every prompt, with its input, size caps, and checks, is listed in [prompts.md](p
 
 ## Schedules
 
-`careeros schedule install` writes three launchd agents:
+`careeros schedule install` registers three tasks. On a Mac they are launchd agents. On Windows they are Task Scheduler tasks (`schtasks`), and `install`, `uninstall`, and `status` pick the right one.
 
-| Agent | When | Runs |
+| Task | When | Runs |
 |---|---|---|
 | `com.careeros.app` | At login, kept alive | `careeros serve` |
 | `com.careeros.sync` | 8 AM, 6 PM, and at login | `careeros sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly, and new methods get matched to KSO parts), the KSO estimate (monthly, once KSOs are read and matched), then the daily three (once a day, after 8 AM) |
 | `com.careeros.digest` | Friday at noon | `careeros digest notify` |
 
-A missed time runs on wake. A failed step doesn't stop the others; each source that fails sends one macOS notification, and the chips on the pages show each source's last run.
+Each one runs `uv run --project <this repo> careeros …` with `COFFEESHOP_DATA_DIR` set to the notebook. A missed time runs on wake (`StartWhenAvailable` on Windows). A failed step doesn't stop the others; each source that fails sends one notification (a Windows toast, or one log line if that toast is blocked), and the chips on the pages show each source's last run.
+
+On Windows the keep-alive task starts the server at logon and, if the process exits with an error, starts it again after one minute, up to 255 times (Task Scheduler's maximum). A clean exit waits until the next logon. The task's time limit is unlimited, so the scheduler does not stop the server after three days. Tasks run on battery. The scripts it writes live in `tasks/` inside the notebook; `schedule uninstall` removes the tasks and leaves those files, which do nothing once the tasks are gone.
 
 ## Database and migrations
 
