@@ -319,7 +319,14 @@ def create_app(dd: DataDir) -> FastAPI:
                                         title=a_title.strip(), body=a_body.strip(), created_at=datetime.now()))
             s.commit()
             kind = entry.kind
-        return back("Added.", next(p for p, (k, *_rest) in TABS.items() if k == kind))
+        msg = "Added. Claude is reading it now; the result will be in the Intake Review Queue." if read_new() else "Added."
+        return back(msg, next(p for p, (k, *_rest) in TABS.items() if k == kind))
+
+    def read_new() -> bool:
+        """Has Claude sort what you just added (guide, V2MOM, impact), in the background. Not while a sync runs: a
+        sync's last step reads new records too, or the next one will."""
+        return personal and not jobs.running() and jobs.start(
+            "review", syncs.REVIEW_STEPS, lambda j: syncs.run_review(j, Session_))
 
     def started_reply(request: Request, started: bool, ok: str, busy: str, to: str) -> Response:
         """The answer to a button that starts a background job: JSON for the page's script (sync.js), which then
@@ -360,6 +367,7 @@ def create_app(dd: DataDir) -> FastAPI:
             if t is None:
                 return back("That task isn't here any more.", "/")
             daily.check(s, t, details)
+        read_new()
         return back("Done. It's logged as a finished task.", "/")
 
     @app.post("/daily/{tid}/undo", dependencies=[Depends(check_csrf)])

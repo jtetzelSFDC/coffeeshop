@@ -367,6 +367,24 @@ def test_have_claude_read_runs_in_the_background(tmp_path, monkeypatch):
     assert ran
 
 
+def test_adding_an_entry_starts_claude_reading_it(tmp_path, monkeypatch):
+    import time
+    from coffeeshop.web import syncs
+    dd = DataDir(tmp_path / "nb")
+    dd.init_personal()
+    app = create_app(dd)
+    c = TestClient(app, base_url=BASE)
+    ran = []
+    monkeypatch.setattr(syncs, "run_review", lambda j, S: (ran.append(1), j.finish("ok")))
+    r = form(c, "/journal/add", app.state.csrf_token, kind="certification", text="AWS Cloud Practitioner", day="2024-05-01")
+    assert "Claude is reading it now" in r.headers["location"].replace("%20", " ").replace("+", " ")
+    for _ in range(50):
+        if ran:
+            break
+        time.sleep(0.02)
+    assert ran
+
+
 def test_have_claude_read_waits_while_a_sync_runs(tmp_path, monkeypatch):
     import threading
     from coffeeshop.web import syncs
