@@ -49,10 +49,9 @@ def slack_index(s: Session) -> tuple[dict[str, list[JournalEntry]], dict[str, li
 
 
 def linked_entry(s: Session, link: str, day: str | None = None, index=None) -> JournalEntry | None:
-    """The Slack record whose link is this message, if one is already saved.
+    """The saved Slack record for this message link, if there is one.
 
-    A thread that spans days shares an id prefix. The record with this message's own link wins. A shared prefix
-    matches only when one record has it, or `day` names which one. Pass `index` from slack_index to reuse one read.
+    A thread that runs past midnight is one record per day. The record with this exact link wins. Otherwise the record for `day` wins, or the only record if there is just one. Pass `index` from slack_index so a sync reads the notebook once.
     """
     msg = link_key(link)
     if not msg:

@@ -24,7 +24,7 @@ Claude asks for your role and your level, where your V2MOM PDF is, and which of 
 
 ## On Windows
 
-Full Windows support comes with the Windows change. Until then, setup works the same way, but the schedule step is Mac only.
+The same commands work. `uv run coffeeshop schedule install` creates three Task Scheduler tasks: the app when you log on, the sync at 8:00 AM and 6:00 PM, and the Friday digest at noon.
 
 ## If you would rather click
 

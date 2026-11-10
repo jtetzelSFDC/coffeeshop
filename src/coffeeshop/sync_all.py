@@ -1,9 +1,8 @@
-"""`coffeeshop sync all`: back up, then run the same Slack, Google and GitHub syncs as the buttons, with a log.
-Once a month it also re-reads the V2MOM and re-estimates the KSOs, and once a day (from 8 AM) it suggests the daily
-three, last, so it sees the fresh work.
+"""`coffeeshop sync all`: back up, then run the same Slack, Google, and GitHub syncs as the buttons.
 
-Run by the scheduled task at 8 AM and 6 PM and at login. A run that's already covered by an earlier one since
-the latest scheduled time does nothing, so the login catch-up is cheap.
+Once a month it re-reads the V2MOM and re-estimates the KSOs. Once a day, from 8 AM, it suggests the daily three last, so they see the new work.
+
+The schedule runs this at 8 AM, 6 PM, and at login. If a run already happened since the last of those times, this one does nothing.
 """
 from __future__ import annotations
 

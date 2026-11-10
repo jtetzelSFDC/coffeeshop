@@ -120,9 +120,7 @@ def _owner(name: str) -> frozenset[str]:
 
 
 def newest_pdf(stored: str) -> Path | None:
-    """The newest V2MOM PDF next to the stored one with the same owner in its name (so "… (1).pdf" re-downloads and
-    next year's count, but a colleague's V2MOM saved next to yours doesn't), else the stored file. The latest fiscal
-    year in the name wins over the newest file, so last year's PDF opened again isn't read."""
+    """Which V2MOM PDF to read. A re-download named "... (1).pdf" counts, and a later fiscal year in the name wins over a newer file. Someone else's PDF in the same folder is ignored. If none match, the stored file is used."""
     p = Path(stored)
     try:
         found = [x for x in p.parent.iterdir()

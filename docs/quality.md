@@ -3,8 +3,8 @@
 What each AI feature should produce, written before anyone tunes a prompt, so a change can be checked against it. Examples use made-up data only. The prompts themselves are listed in [prompts.md](prompts.md).
 
 - [Today's three](#todays-three)
-- [Slack ingestion](#slack-ingestion)
-- [Google ingestion](#google-ingestion)
+- [What comes in from Slack](#what-comes-in-from-slack)
+- [What comes in from Google](#what-comes-in-from-google)
 - [After every sync: the read-through](#after-every-sync-the-read-through)
 - [Write my promo case](#write-my-promo-case)
 - [Weekly digest](#weekly-digest)
@@ -29,7 +29,7 @@ Good output:
 | Bad | Follow up with Dana on the audit | No Dana and no audit in your titles: invented |
 | Bad | Finish the Maple 2.4 release notes | Your titles already say "Wrote Maple 2.4 release notes" |
 
-## Slack ingestion
+## What comes in from Slack
 
 `slack/`. Two jobs. The tracker canvas becomes one record per work item, sorted into the right kind. Kudos keeps only real recognition from other people in public and private channels (never DMs), as an exact quote with who said it.
 
@@ -52,7 +52,7 @@ Good output, kudos:
 | Bad kudos | Sam Sample: "thanks!" | kept (no reason given; should be dropped) |
 | Bad kudos | "@Avery can you review this PR?" | kept (a request, not recognition) |
 
-## Google ingestion
+## What comes in from Google
 
 `google/`. Calendar meetings, finished tasks, and the Docs, Sheets, and Slides you wrote come in through the connector, parsed by code; Claude only runs the connector tool there, and its own words are thrown away. Claude writes two things: a summary of a meeting's notes, and a two-line summary of each file you wrote.
 
