@@ -29,12 +29,13 @@ You need [uv](https://docs.astral.sh/uv/) and Claude Code signed in to the Googl
 ```
 cd ~/Documents/coffeeshop
 uv run careeros notebook init
+uv run careeros setup level
 uv run careeros schedule install
 ```
 
-Then open http://127.0.0.1:8765 in a browser. On a Mac you can run `open http://127.0.0.1:8765`.
+`setup level` asks for your role and your grade now, and loads that role's leveling guide. Then open http://127.0.0.1:8765 in a browser. On a Mac you can run `open http://127.0.0.1:8765`.
 
-Then load your leveling guide and connect your V2MOM ([INSTRUCTIONS.md](docs/INSTRUCTIONS.md)); without them there is nothing to sort against.
+Then connect your V2MOM ([INSTRUCTIONS.md](docs/INSTRUCTIONS.md)); without them there is nothing to sort against.
 
 To try it with made-up data: `uv run careeros demo seed --data-dir /tmp/cos-demo && uv run careeros serve --data-dir /tmp/cos-demo`. The screenshot above is that practice notebook.
 

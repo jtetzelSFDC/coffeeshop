@@ -44,9 +44,12 @@ def _link_new(job: Job, i: int, s) -> int:
     groups new records with earlier work and tags their impact activity. Returns how many records it read."""
     from ..guide import activities, work
     from ..guide.ai_review import pending, review
-    from ..guide.service import has_guide
+    from ..guide.service import SETUP_HINT, has_guide, level
     if not has_guide(s):
         job.skip(i, "The leveling guide isn't loaded.")
+        return 0
+    if level(s) is None:
+        job.skip(i, f"Choose your role and level first: {SETUP_HINT}")
         return 0
     if not pending(s) and not work.pending(s) and not activities.pending(s):
         job.done(i, "Nothing new to link.")

@@ -55,7 +55,7 @@
   <details>
   <summary><h2>Promotion Progress</h2></summary>
   {% if dash.grades %}
-  <h2>Grade {{ dash.current }} to {{ dash.grades[0].grade }}, aiming at {{ dash.grades[-1].grade }}</h2>
+  <h2>Grade {{ dash.current }} to {{ dash.grades[0].grade }}{% if dash.grades|length > 1 %}, aiming at {{ dash.grades[-1].grade }}{% endif %}</h2>
   <div class="ready">
     {% for g in dash.grades %}
     <a class="ready-row" href="/promo" title="Grade {{ g.grade }}: {{ g.shown }} of {{ g.total }} key experiences shown, {{ g.strong }} strong, {{ g.started }} started">
@@ -66,7 +66,8 @@
     {% endfor %}
   </div>
   {% else %}
-  <p class="muted">Load your leveling guide to see how close the promotion is: <code>uv run careeros guide import &lt;file&gt;</code>.</p>
+  {% if dash.level and dash.level.top %}<p class="muted">{{ level_note(dash.level) }}</p>
+  {% else %}<p class="muted">Choose your role and level to see how close the next one is: <code>uv run careeros setup level</code>.</p>{% endif %}
   {% endif %}
 
   {% if dash.v2mom and dash.v2mom.methods %}{% set v2 = dash.v2mom %}

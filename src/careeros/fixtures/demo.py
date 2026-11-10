@@ -85,7 +85,10 @@ def _seed_ksos(s: Session) -> None:
 def seed(s: Session, today: date | None = None) -> dict[str, int]:
     """Fill an empty practice notebook. Does nothing if it already has records (but adds the made-up KSOs to an
     older practice notebook that has none)."""
+    from ..guide.service import level, save_level
     _seed_ksos(s)
+    if level(s) is None:
+        save_level(s, "DevOps", 5, "DevOps Engineer")  # the made-up guide is DevOps-like, so it gets the topics
     _seed_daily(s, today or date.today())
     if s.query(JournalEntry).first() is not None:
         return dict(records=0, wins=0, guide=0)
