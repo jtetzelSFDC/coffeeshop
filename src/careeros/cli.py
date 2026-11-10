@@ -161,7 +161,7 @@ def setup_level(role: Optional[str] = typer.Option(None, help="Your career path,
     """Choose your role and current level, and load that role's leveling guide from the repo. Links you've already
     made are kept. Run it again after a promotion."""
     from .guide.parse import GuideFormatError, read_workbook
-    from .guide.service import import_guide, level, save_level
+    from .setup import choose_level, find_role
     os.umask(0o077)
     dd = resolve(data_dir)
     try:
@@ -173,29 +173,37 @@ def setup_level(role: Optional[str] = typer.Option(None, help="Your career path,
     if role is None:
         typer.echo("\n".join(f"{n:>3}. {g['name']}" for n, g in enumerate(guides, 1)))
         role = typer.prompt("Your role (number or name)")
-    a = role.strip()
-    g = guides[int(a) - 1] if a.isdigit() and 1 <= int(a) <= len(guides) else \
-        next((g for g in guides if g["name"].lower() == a.lower()), None)
+    g = find_role(guides, role)
     if g is None:
-        typer.echo(f"There's no role called \"{a}\" in the leveling guide. Run without --role to see the list.")
+        typer.echo(f"There's no role called \"{role.strip()}\" in the leveling guide. Run without --role to see the list.")
         raise typer.Exit(1)
     if grade is None:
         typer.echo("\n".join(f"  Grade {l['grade']}" + (f", {l['title']}" if l["title"] else "") for l in g["levels"]))
         grade = typer.prompt("Your grade now", type=int)
-    pick = next((l for l in g["levels"] if l["grade"] == grade), None)
-    if pick is None:
-        typer.echo(f"{g['name']} has no Grade {grade}. Its grades: {', '.join(str(l['grade']) for l in g['levels'])}.")
-        raise typer.Exit(1)
     engine = make_engine(dd.db)
     init_db(engine)
     with make_session_factory(engine)() as s:
-        r = import_guide(s, g["items"])
-        save_level(s, g["name"], grade, pick["title"])
-        lv = level(s)
+        try:
+            pick, r, lv = choose_level(s, g, grade)
+        except ValueError as exc:
+            typer.echo(str(exc))
+            raise typer.Exit(1)
     typer.echo(f"Saved: {g['name']}, Grade {grade}" + (f" ({pick['title']})" if pick["title"] else "") + ". "
                + (f"Next level: Grade {lv['next']}." if lv["next"] else
                   "That's the top of this path, so there's no next level to map."))
     typer.echo(f"Guide loaded: {r['added']} new, {r['updated']} changed, {r['retired']} no longer in the guide.")
+
+
+@setup_app.command("check")
+def setup_check(skip: list[str] = typer.Option([], "--skip", help="Leave a step out: google, slack, github, schedule"),
+                data_dir: Optional[str] = DataOpt) -> None:
+    """Show each setup step as pass, fail, or skipped, and what to do about it. Reads only; changes nothing."""
+    from .setup import run_checks
+    checks = run_checks(resolve(data_dir), set(skip))
+    for c in checks:
+        typer.echo(f"{c.state:<8}{c.label}" + (f"\n        What to do: {c.todo}" if c.todo else ""))
+    if any(c.state == "fail" for c in checks):
+        raise typer.Exit(1)
 
 
 guide_app = typer.Typer(no_args_is_help=True, help="Your leveling guide")

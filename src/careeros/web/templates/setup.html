@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="card">
+  <h2>Setup</h2>
+  <p class="sub">The same steps as <code>/setup</code> in Claude Code, by hand. Do them in any order and come back any time.</p>
+</section>
+
+<section class="card" id="level">
+  <h2>Your role and level</h2>
+  {% if lv %}<p class="sub">Saved now: {{ lv.role }}, Grade {{ lv.grade }}{% if lv.title %} ({{ lv.title }}){% endif %}</p>{% endif %}
+  <form method="get" action="/setup" class="row">
+    <select name="role" aria-label="Your role">
+      <option value="">Choose your role</option>
+      {% for x in guides %}<option value="{{ x.name }}" {{ 'selected' if g and g.name == x.name }}>{{ x.name }}</option>{% endfor %}
+    </select>
+    <button>Show levels</button>
+  </form>
+  {% if g %}
+  <form method="post" action="/setup/level" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="role" value="{{ g.name }}">
+    <div>{% for l in g.levels %}
+      <label class="pick"><input type="radio" name="grade" value="{{ l.grade }}" required {{ 'checked' if lv and lv.role == g.name and lv.grade == l.grade }}>
+        <span>Grade {{ l.grade }}{% if l.title %}, {{ l.title }}{% endif %}</span></label>{% endfor %}</div>
+    <div><button class="primary">Save my level</button></div>
+  </form>
+  <p class="help">This also loads {{ g.name }}'s leveling guide. Links you have already made are kept.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Your V2MOM</h2>
+  {% if v2mom %}<p class="sub">Connected: your {{ 'PDF' if v2mom.kind == 'pdf' else 'Google Doc' }}. See it on the <a href="/v2mom">V2MOM page</a>.</p>
+  {% else %}<p class="sub">Not connected yet. Add your V2MOM PDF on the <a href="/v2mom">V2MOM page</a>.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Check connections</h2>
+  <p class="sub">Reads one small thing from each to see that it answers. Nothing is changed. Untick one to skip it for now. It takes up to a minute.</p>
+  <form method="post" action="/setup/check" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="row">{% for key, label in [("google", "Google"), ("slack", "Slack"), ("github", "GitHub")] %}
+      <label class="pick"><input type="checkbox" name="on" value="{{ key }}" {{ 'checked' if key not in skip }}> {{ label }}</label>{% endfor %}</div>
+    <div><button class="primary">Check connections</button></div>
+  </form>
+  {% if checks %}
+  <ul class="jsteps" aria-label="Results">
+    {% for c in checks %}<li><span class="chip {{ 'done' if c.state == 'pass' else 'late' if c.state == 'fail' }}">{{ c.state }}</span> {{ c.label }}
+      {% if c.todo %}<span class="jdetail">{{ c.todo }}</span>{% endif %}</li>{% endfor %}
+  </ul>
+  <p class="help">Signing in to Google or Slack happens in Claude Code's connector settings, not here. Sign in there, then check again.</p>
+  {% endif %}
+</section>
+{% endblock %}
