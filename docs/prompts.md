@@ -39,7 +39,7 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 
 `guide/ai_review.py` `PROMPT` + `REPLY` (with 3 added when a V2MOM is loaded). For each record: guide items it shows, its kind, and whether it's a win.
 - **Gets:** `BATCH` 20 records (full text, plus attached Slack, AI summary, and task notes, 900 characters each and 1,500 in all), the whole guide (experiences with descriptions up to 400, skills up to 300), the win themes, and the V2MOM methods (description up to 300, 6 measures up to 150). 3 batches at a time.
-- **Checked by:** `_apply()`: only offered guide ids, at most `MAX_LINKS` 3; kind only from the five, and never for calendar, tasks, GitHub, docs, or kudos records; a bad win size becomes small and an unknown theme is dropped. Links you made, checked rows, and a kind you changed meanwhile are never overwritten. Everything is marked AI. If no batch reads, nothing changes.
+- **Checked by:** `_apply()`: only offered guide ids, at most `MAX_LINKS` 3; kind only from meeting, conversation, document, task, certification, or note, and never for calendar, tasks, GitHub, docs, or kudos records, or a certification you chose; a bad win size becomes small and an unknown theme is dropped. Links you made, checked rows, and a kind you changed meanwhile are never overwritten. Everything is marked AI. If no batch reads, nothing changes.
 - **New user:** refuses without a guide. A few records make one small batch, which is fine. Win impact "no invented numbers" is only asked, not checked.
 - **Decision: change.** Replace "DevOps release manager", `GRADES`, and "Grades 6 and 7" / "Grade 7 ... Grade 6" with the saved role and levels; the rules stay.
 

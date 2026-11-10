@@ -48,7 +48,7 @@ _write_lock = threading.Lock()
 
 KINDS = [("meeting", "Had a meeting"), ("conversation", "Had a conversation"),
          ("document", "Worked on a document"), ("task", "Finished a task"), ("recognition", "Got recognition"),
-         ("note", "Something else")]
+         ("certification", "Gained a certification"), ("note", "Something else")]
 KIND_LABEL = dict(KINDS)
 ATTACH_KINDS = [("notes", "Meeting notes"), ("transcript", "Transcript"), ("link", "Link"),
                 ("canvas", "Slack canvas"), ("prompt", "A prompt I wrote"), ("other", "Other text")]
@@ -60,13 +60,14 @@ TABS = {  # path -> (kind, tab name, heading, what's on it)
     "/documents": ("document", "Documents", "Documents", "Documents you've worked on, newest first."),
     "/tasks": ("task", "Tasks", "Tasks", "Google Tasks you've finished, grouped by the day you completed them, plus any you've noted yourself (open ones you typed stay at the top)."),
     "/recognition": ("recognition", "Kudos", "Kudos", "Recognition from other people: shout-outs and thanks found in public and private Slack channels (never DMs), and anything you marked as recognition. Each counts like a medium win on the Promo map."),
+    "/certifications": ("certification", "Certifications", "Certifications", "Credentials you've earned, including ones from before this notebook. Each counts as a training or certification."),
     "/other": ("note", "Other", "Something else", "Anything that didn't fit the other tabs."),
 }
 PAGES = {"/", "/search", "/wins", "/promo", "/v2mom", "/kso", "/sheet", "/digest", *TABS}
 SOURCE_LABEL = {"calendar": "Calendar", "tasks": "Google Tasks", "slack": "Slack", "docs": "Google Docs", "github": "GitHub",
                 "kudos": "Slack kudos", "daily": "Daily three", "": "Typed"}
 SHEET_KIND = [("meeting", "Meeting"), ("conversation", "Convo"), ("document", "Doc"), ("task", "Task"), ("recognition", "Kudos"),
-              ("note", "Other")]
+              ("certification", "Cert"), ("note", "Other")]
 SHEET_SHOW = {"all": "Everything", "todo": "Not checked yet", "ai": "Changed by Claude", "linked": "Linked to the guide",
               "unlinked": "Not linked", "wins": "Wins", "checked": "Checked", "removed": "Removed"}
 SHEET_PAGE = 100
@@ -309,6 +310,8 @@ def create_app(dd: DataDir) -> FastAPI:
         with _write_lock:
             entry = JournalEntry(day=d.isoformat(), kind=kind if kind in KIND_LABEL else "note",
                                  text=text, created_at=datetime.now())
+            if entry.kind == "certification":  # the user said what it counts as; Claude's activity pass leaves it
+                entry.activity, entry.activity_fixed = "training", True
             s.add(entry)
             s.flush()
             if a_body.strip():

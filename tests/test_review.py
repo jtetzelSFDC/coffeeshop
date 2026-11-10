@@ -67,6 +67,18 @@ def test_review_links_fixes_kinds_and_drafts_wins(nb):
         assert ai_review.review(s, reader=fake({})) == dict(read=0, links=0, wins=0, kinds=0, v2mom=0, failed=0)
 
 
+def test_a_certification_keeps_its_kind_and_gains_its_guide_link(nb):
+    dd, *_ = nb
+    with open_session(dd) as s:
+        eid = add(s, "Earned the Salesforce Administrator certification", kind="certification", source="")
+        r = ai_review.review(s, reader=fake({
+            "Earned the Salesforce Administrator certification": dict(guide=["S0"], kind="note")}))
+        e = s.get(JournalEntry, eid)
+        assert e.kind == "certification" and e.kind_was == ""
+        assert r["links"] == 1 and r["kinds"] == 0
+        assert s.scalar(select(GuideLink.id).where(GuideLink.entry_id == eid))
+
+
 def test_review_keeps_user_links_and_checked_rows(nb):
     dd, *_ = nb
     with open_session(dd) as s:

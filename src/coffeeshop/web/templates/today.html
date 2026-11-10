@@ -92,11 +92,13 @@
   <form method="post" action="/journal/add">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="quick">
-      <select name="kind" aria-label="What kind of thing">
+      <select name="kind" aria-label="What kind of thing" data-entry-kind>
         {% for k, label in kinds %}<option value="{{ k }}">{{ label }}</option>{% endfor %}
       </select>
       <input name="text" required maxlength="500" placeholder="Something the syncs missed?" aria-label="Something the syncs missed?">
-      <input type="date" name="day" value="{{ today }}" max="{{ today }}" aria-label="Day">
+      <input type="date" name="day" value="{{ today }}" max="{{ today }}" aria-label="Day" data-entry-day>
+      <span data-cert-date hidden><label for="cert-day">Date earned</label>
+        <input id="cert-day" type="date" value="{{ today }}" max="{{ today }}" data-cert-day disabled></span>
       <button>Add</button>
     </div>
     <details class="howto"><summary>Paste notes, a link, or a transcript</summary><div class="stack">{{ attach_fields() }}</div></details>

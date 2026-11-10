@@ -121,6 +121,18 @@ def test_journal_add_show_and_remove(seeded):
     assert "Met with Sam" not in c.get("/meetings").text
 
 
+def test_a_past_certification_is_saved_on_its_tab(seeded):
+    dd, c, token = seeded
+    home = c.get("/").text
+    assert 'value="certification"' in home and "Gained a certification" in home and "data-cert-date hidden" in home
+    r = form(c, "/journal/add", token, kind="certification", text="Salesforce Administrator", day="2024-03-15")
+    assert r.headers["location"] == "/certifications?msg=Added."
+    assert "Salesforce Administrator" in c.get("/certifications").text
+    with make_session_factory(make_engine(dd.db))() as s:
+        e = s.scalar(select(JournalEntry).where(JournalEntry.text == "Salesforce Administrator"))
+        assert (e.day, e.kind, e.activity, e.activity_fixed) == ("2024-03-15", "certification", "training", True)
+
+
 def test_journal_ignores_future_or_bad_dates(seeded):
     dd, c, token = seeded
     form(c, "/journal/add", token, kind="bogus", text="Back-dated", day="2999-01-01")

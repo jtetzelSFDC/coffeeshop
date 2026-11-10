@@ -18,7 +18,7 @@ from ..storage.models import GuideLink, JournalAttachment, JournalEntry, Win
 from ..v2mom import links as v2links
 from .service import SETUP_HINT, experiences, grades_text, level, person, skills
 
-KINDS = ("meeting", "conversation", "document", "task", "note")
+KINDS = ("meeting", "conversation", "document", "task", "certification", "note")
 FIXED_KIND = {"calendar": "meeting", "tasks": "task", "github": "task", "docs": "document", "kudos": "recognition"}  # these sources are what they say they are
 SIZES = ("small", "medium", "large")
 BATCH = 20
@@ -36,8 +36,10 @@ pings, scheduling, reminders, standups, 1:1s and bare meeting titles usually get
 list is better than a weak link.
 2. "kind": meeting (a scheduled call), conversation (a Slack or chat discussion, coordinating, answering), \
 document (writing or updating a doc, runbook, SOP, canvas, template, release notes), task (hands-on work done: a \
-deployment, refresh, merge, fix, access change, PR review), or note (anything else). Keep the current kind unless \
-it is clearly wrong.
+deployment, refresh, merge, fix, access change, PR review), certification (they earned a credential), or note \
+(anything else). Keep the current kind unless it is clearly wrong. Keep certification when the record says they \
+earned one, link the skill or guide item it shows, and link a V2MOM method only when that method is really about \
+that learning.
 3. "win": null, or an accomplishment worth keeping for the promotion case or a resume. Be selective; most \
 records are not wins. Give {{"title": what they did, past tense, under 15 words, no "I"; "impact": one sentence \
 on why it mattered, using only facts in the record, no invented numbers; "size": small (a useful one-off: a quick \
@@ -104,7 +106,8 @@ def _apply(s: Session, e: JournalEntry, r: dict, ids: dict[str, int], themes: li
     if v2ids:
         did["v2mom"] = v2links.apply_ai(s, e, r.get("v2mom"), v2ids)
     kind = r.get("kind")
-    if kind in KINDS and kind != e.kind and e.source not in FIXED_KIND:
+    # a certification you typed stays one; Claude can still mark a different record as one
+    if kind in KINDS and kind != e.kind and e.source not in FIXED_KIND and e.kind != "certification":
         e.kind_was = e.kind_was or e.kind
         e.kind = kind
         e.status = "done" if kind == "task" else ""
