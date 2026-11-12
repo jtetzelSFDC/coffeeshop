@@ -6,7 +6,7 @@ from coffeeshop.web.app import TABS, short_day
 from helpers import open_session
 
 
-PAGES = ["/", "/wins", "/promo", "/sheet", "/digest", "/search?q=refresh", "/promo/case", "/impact/deployment", *TABS]
+PAGES = ["/", "/wins", "/performance", "/sheet", "/digest", "/search?q=refresh", "/performance/case", "/impact/deployment", *TABS]
 
 
 def test_every_page_has_the_app_name_and_no_greeting(nb):
@@ -21,12 +21,20 @@ def test_every_page_has_the_app_name_and_no_greeting(nb):
 
 def test_explanations_are_folded(nb):
     _, c, *_ = nb
-    folded = {"/promo": "Each key experience from the leveling guide", "/wins": "starting with a verb works well",
-              "/promo/case": "Claude writes each section", "/impact/deployment": "counts once per day it was done"}
+    folded = {"/performance": "Each key experience from the leveling guide", "/wins": "starting with a verb works well",
+              "/performance/case": "Claude writes each section", "/impact/deployment": "counts once per day it was done"}
     for path, text in folded.items():
         html = c.get(path).text
         before, sep, _ = html.partition(text)
         assert sep and before.rfind('<details class="howto">') > before.rfind("</details>"), path
+
+
+def test_get_promo_redirects_to_performance(nb):
+    _, c, *_ = nb
+    r = c.get("/promo", follow_redirects=False)
+    assert r.status_code == 308 and r.headers["location"] == "/performance"
+    r = c.get("/promo/compare?a=1&b=2", follow_redirects=False)
+    assert r.status_code == 308 and r.headers["location"] == "/performance/compare?a=1&b=2"
 
 
 def test_short_day():
@@ -43,7 +51,7 @@ def test_promo_map_is_compact(nb):
         s.add(JournalEntry(day="2026-10-20", kind="meeting", text="Demo of the pipeline to the customer",
                            created_at=datetime.now()))
         s.commit()
-    html = c.get("/promo").text
+    html = c.get("/performance").text
     assert 'href="/sheet?show=unlinked"' in html and "records might show guide items" in html
     assert "Start with what you've already done" not in html
     assert 'class="ready-row"' in html and html.count('<span class="st" title=') >= 6

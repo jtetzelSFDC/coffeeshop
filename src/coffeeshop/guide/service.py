@@ -60,7 +60,7 @@ def level_note(lv: dict | None) -> str:
     if lv and lv["top"]:
         return (f"Grade {lv['grade']} is the top of the {lv['role'] or 'career'} path in the leveling guide, "
                 "so there's no next level to map.")
-    return f"Choose your role and level to see the Promo map. In Terminal: {SETUP_HINT}"
+    return f"Choose your role and level to see the Performance map. In Terminal: {SETUP_HINT}"
 
 
 def person(lv: dict | None) -> str:

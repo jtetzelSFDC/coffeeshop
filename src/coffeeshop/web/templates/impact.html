@@ -2,7 +2,7 @@
 {% block body %}
 <section class="card">
   <h2>{{ groups|sum(attribute='count') }} {{ label }}{% if window == 'half' %} this half{% elif window == 'year' %} this year{% endif %}</h2>
-  <p class="muted"><a href="/promo">Back to the Promo map</a>
+  <p class="muted"><a href="/performance">Back to the Performance map</a>
     {% for w, name in [('half', 'This half'), ('year', 'This year'), ('all', 'All time')] %}{% if w != window %} <a class="chip" href="/impact/{{ key }}?window={{ w }}">{{ name }}</a>{% endif %}{% endfor %}</p>
   {% call howto() %}<p class="help">A piece of work counts once per day it was done, so several records about the same deploy on the same day count once. The records behind each are underneath.</p><p class="help">If a record is counted under the wrong activity, change it in the <a href="/sheet?show=all">Intake Review Queue</a> under <b>Counts as</b>.</p>{% endcall %}
 </section>

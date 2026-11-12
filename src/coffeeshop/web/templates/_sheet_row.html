@@ -7,7 +7,7 @@
     <td style="white-space:nowrap" title="{{ r.day }}">{{ r.day|short_day }}</td>
     <td>{{ r.source }}</td>
     <td>{% if r.text|length > 160 %}<details class="clip"><summary><span class="what">{{ r.text }}</span> <span class="when-closed">More</span><span class="when-open">Less</span></summary></details>{% else %}{{ r.text }}{% endif %}
-      {% if r.work %}<br><span class="chip {{ 'ai' if r.work.ai else 'guide' }}" title="Records in the same piece of work count once on the Promo map">{% if r.work.ai %}AI: {% endif %}Part of: {{ r.work.title }}{% if r.work.size > 1 %} &middot; {{ r.work.size }} records{% endif %}</span>
+      {% if r.work %}<br><span class="chip {{ 'ai' if r.work.ai else 'guide' }}" title="Records in the same piece of work count once on the Performance map">{% if r.work.ai %}AI: {% endif %}Part of: {{ r.work.title }}{% if r.work.size > 1 %} &middot; {{ r.work.size }} records{% endif %}</span>
         <form method="post" action="/sheet/{{ r.id }}/split">{{ hidden() }}<button aria-label="Not the same work as {{ r.work.title }}">Not the same work</button></form>{% endif %}
       <div class="rtools"><form method="post" action="/sheet/{{ r.id }}/activity" class="mini">{{ hidden() }}
         <label class="help" for="act{{ r.id }}">Counts as{% if r.activity_ai %} <span class="chip ai">AI</span>{% endif %}</label>

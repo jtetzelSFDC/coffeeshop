@@ -40,10 +40,18 @@ def status_class(status: str) -> str:
     return "done" if st == "completed" else "late" if st in LATE_STATUS else ""
 
 
-def build(s: Session, today: date | None = None) -> dict | None:
+def prior_year(names: list[str], current: str) -> str | None:
+    """The newest stored fiscal year before `current`, or None. FY names are two digits, so text order is year
+    order. An empty `current` is not a year, and a name that was never stored is not invented."""
+    earlier = [n for n in names if n and current and n < current]
+    return max(earlier) if earlier else None
+
+
+def build(s: Session, today: date | None = None, version=None) -> dict | None:
     """None when no V2MOM is loaded. Each method's state is "active" (work in the last 30 days), "quiet" (work, but
-    none in 30 days) or "none" (nothing linked yet). Work dated after `today` and open tasks are left out."""
-    v = store.current(s)
+    none in 30 days) or "none" (nothing linked yet). Work dated after `today` and open tasks are left out.
+    `version` builds that saved year instead of the current one."""
+    v = store.current(s) if version is None else version
     if v is None:
         return None
     today = today or date.today()

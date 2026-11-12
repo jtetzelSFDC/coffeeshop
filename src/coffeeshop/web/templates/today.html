@@ -6,23 +6,7 @@
 
 <section class="card home-tile dash" aria-label="Progress">
   <details>
-  <summary><h2>Promotion Progress</h2>{% if dash.grades %}{% set g = dash.grades[0] %}<span class="nextbar" title="Grade {{ g.grade }}: {{ g.pct }}%"><span class="bar" role="img" aria-label="Grade {{ g.grade }}: {{ g.pct }} percent of key experiences shown"><span class="b-strong" style="width:{{ g.pct }}%"></span></span></span>{% endif %}</summary>
-  {% if dash.grades %}
-  <h2>Grade {{ dash.current }} to {{ dash.grades[0].grade }}{% if dash.grades|length > 1 %}, aiming at {{ dash.grades[-1].grade }}{% endif %}</h2>
-  <div class="ready">
-    {% for g in dash.grades %}
-    <a class="ready-row" href="/promo" title="Grade {{ g.grade }}: {{ g.shown }} of {{ g.total }} key experiences shown, {{ g.strong }} strong, {{ g.started }} started">
-      <span class="ready-label">Grade {{ g.grade }}</span>
-      <span class="bar" role="img" aria-label="Grade {{ g.grade }}: {{ g.pct }} percent of key experiences shown"><span class="b-strong" style="width:{{ 100 * g.strong / g.total if g.total else 0 }}%"></span><span class="b-shown" style="width:{{ 100 * (g.shown - g.strong) / g.total if g.total else 0 }}%"></span><span class="b-started" style="width:{{ 100 * g.started / g.total if g.total else 0 }}%"></span></span>
-      <span class="ready-num"><b>{{ g.pct }}%</b> <span class="muted">{{ g.shown }}/{{ g.total }}</span></span>
-    </a>
-    {% endfor %}
-  </div>
-  {% else %}
-  {% if dash.level and dash.level.top %}<p class="muted">{{ level_note(dash.level) }}</p>
-  {% else %}<p class="muted">Choose your role and level to see how close the next one is.</p>{% endif %}
-  {% endif %}
-
+  <summary><h2>Performance Progress</h2>{% if dash.grades %}{% set g = dash.grades[0] %}<span class="nextbar" title="Grade {{ g.grade }}: {{ g.pct }}%"><span class="bar" role="img" aria-label="Grade {{ g.grade }}: {{ g.pct }} percent of key experiences shown"><span class="b-strong" style="width:{{ g.pct }}%"></span></span></span>{% endif %}</summary>
   {% if dash.v2mom and dash.v2mom.methods %}{% set v2 = dash.v2mom %}
   <div class="v2">
     <a href="/v2mom">V2MOM: <b>{{ v2.active }} of {{ v2.methods|length }}</b> methods active this quarter</a>
@@ -38,8 +22,39 @@
   </div>
   {% endif %}
 
+  {% if dash.kso and dash.kso.ksos %}{% set ks = dash.kso %}
+  <div class="v2">
+    <a href="/kso">KSOs <b>{{ ks.fw.fiscal_year }}</b></a>
+    <div class="ready">
+      {% for k in ks.ksos %}
+      <a class="ready-row" href="/kso" title="KSO {{ k.key }} {{ k.name }}{% if k.bar is not none %}: {{ k.bar }} percent{% endif %}">
+        <span class="ready-label">{{ k.key }}</span>
+        <span class="bar" role="img" aria-label="KSO {{ k.key }}: {{ k.bar if k.bar is not none else 0 }} percent"><span class="b-strong" style="width:{{ k.bar or 0 }}%"></span></span>
+        <span class="ready-num">{% if k.bar is not none %}<b>{{ k.bar }}%</b>{% else %}<span class="muted">no percent yet</span>{% endif %}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if dash.grades %}
+  <h2>Grade {{ dash.current }} to {{ dash.grades[0].grade }}{% if dash.grades|length > 1 %}, aiming at {{ dash.grades[-1].grade }}{% endif %}</h2>
+  <div class="ready">
+    {% for g in dash.grades %}
+    <a class="ready-row" href="/performance" title="Grade {{ g.grade }}: {{ g.shown }} of {{ g.total }} key experiences shown, {{ g.strong }} strong, {{ g.started }} started">
+      <span class="ready-label">Grade {{ g.grade }}</span>
+      <span class="bar" role="img" aria-label="Grade {{ g.grade }}: {{ g.pct }} percent of key experiences shown"><span class="b-strong" style="width:{{ 100 * g.strong / g.total if g.total else 0 }}%"></span><span class="b-shown" style="width:{{ 100 * (g.shown - g.strong) / g.total if g.total else 0 }}%"></span><span class="b-started" style="width:{{ 100 * g.started / g.total if g.total else 0 }}%"></span></span>
+      <span class="ready-num"><b>{{ g.pct }}%</b> <span class="muted">{{ g.shown }}/{{ g.total }}</span></span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  {% if dash.level and dash.level.top %}<p class="muted">{{ level_note(dash.level) }}</p>
+  {% else %}<p class="muted">Choose your role and level to see how close the next one is.</p>{% endif %}
+  {% endif %}
+
   <div class="tiles">
-    {% if dash.skills %}<a class="tile" href="/promo" title="Leveling-guide skills with evidence"><b>{{ dash.skills.shown }}<span class="of">/{{ dash.skills.total }}</span></b><span>skills shown</span></a>{% endif %}
+    {% if dash.skills %}<a class="tile" href="/performance" title="Leveling-guide skills with evidence"><b>{{ dash.skills.shown }}<span class="of">/{{ dash.skills.total }}</span></b><span>skills shown</span></a>{% endif %}
     <a class="tile" href="/wins" title="Wins dated {{ dash.half }}"><b>{{ dash.wins }}</b><span>wins this half</span></a>
     <a class="tile" href="/recognition" title="Kudos dated {{ dash.half }}"><b>{{ dash.kudos }}</b><span>kudos this half</span></a>
     <a class="tile {{ 'warn-tile' if dash.queue }}" href="/sheet?show=todo" title="Records in the Intake Review Queue not checked yet"><b>{{ dash.queue }}</b><span>to check</span></a>
@@ -52,7 +67,7 @@
     <span class="muted">Evidence per week, last {{ dash.weeks|length }} weeks</span>
   </div>
 
-  {% if dash.next %}<p class="next">Next: {{ dash.next.idea }} <a href="/promo">Promo map</a></p>{% endif %}
+  {% if dash.next %}<p class="next">Next: {{ dash.next.idea }} <a href="/performance">Performance map</a></p>{% endif %}
   </details>
 </section>
 

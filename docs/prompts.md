@@ -14,7 +14,7 @@ Every prompt runs through `claude_cli.ask()`: tools off, one turn, data on stdin
 | 4 | `v2mom/links.py` `TAG_PROMPT` | V2MOM links for already-read records | Keep |
 | 5 | `guide/work.py` `PROMPT` | Group records into pieces of work | Change |
 | 6 | `guide/activities.py` `PROMPT` | One impact activity per record | Change |
-| 7 | `promo/write.py` `PROMPT` | One section of the promo case | Change |
+| 7 | `promo/write.py` `PROMPT` | One section of the performance case | Change |
 | 8 | `slack/classify.py` `PROMPT` | Kind of each tracker canvas item | Keep, then change |
 | 9 | `slack/kudos.py` `FILTER_PROMPT` | Keep real recognition, pick a quote | Keep |
 | 10 | `google/summaries.py` `PROMPT` | Summary of a meeting's notes | Keep |
@@ -30,7 +30,7 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 ## 1. Today's three
 
 `daily.py` `PROMPT`. Three tasks of ten minutes or less, each tied to one offered goal.
-- **Gets:** up to `MAX_GOALS` 15 goals (V2MOM methods, KSO parts, Promo map items, skills; each clipped to 50 to 160 characters, at most 3 open measures and 2 KSO ideas) and up to `MAX_RECENT` 40 titles from the last `RECENT_DAYS` 14 days, each clipped to 100. All of it fits `MAX_CONTEXT` 8,000 characters: old titles go first, then the least useful goals, but `MIN_RECENT` 10 titles stay.
+- **Gets:** up to `MAX_GOALS` 15 goals (V2MOM methods, KSO parts, Performance map items, skills; each clipped to 50 to 160 characters, at most 3 open measures and 2 KSO ideas) and up to `MAX_RECENT` 40 titles from the last `RECENT_DAYS` 14 days, each clipped to 100. All of it fits `MAX_CONTEXT` 8,000 characters: old titles go first, then the least useful goals, but `MIN_RECENT` 10 titles stay.
 - **Checked by:** `validate()`: exactly 3 tasks, text up to 110 characters (prompt asks 90), why up to 90 (prompt asks 75), minutes a whole number from 1 to 10, goal one of the ids offered. A bad answer saves nothing.
 - **New user:** no guide and no V2MOM means no goals, and it refuses with a plain message before asking. With a few records, `recent` is short and the prompt still asks for work-specific tasks, so Claude may invent detail.
 - **Decision: keep.** It uses this week's records and the saved level, and it says so when there are few records.
@@ -69,13 +69,13 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 
 ## 6. Impact activity
 
-`guide/activities.py` `PROMPT`. Tags each record with the one activity it shows, for the Promo map counts.
+`guide/activities.py` `PROMPT`. Tags each record with the one activity it shows, for the Performance map counts.
 - **Gets:** the 13 `ACTIVITIES` (key and meaning) and `BATCH` 40 records, text clipped to 500 and notes to 600. 3 batches at a time.
 - **Checked by:** `tag()`: an unknown key becomes no activity; one you set is never changed.
 - **New user:** fine with few records.
 - **Decision: keep.** The prompt uses the saved role. The activity list is still DevOps work (deployments, sandbox refreshes, branch audits). Other roles need their own list later.
 
-## 7. Promo case section
+## 7. Performance case section
 
 `promo/write.py` `PROMPT`. Writes one of five sections from that section's numbered evidence, in the third person, every sentence citing its sources.
 - **Gets:** the section's slice of `promo/evidence.py`'s pieces, capped by `CAPS` (40, or 50 for accomplishments), from a window of 365 days by default. Piece text is clipped: check-in comments 600, kudos 400, single records 200, 4 records per piece of work at 120, 3 V2MOM examples at 80; at most 15 wins in the summary, 20 kudos, 60 single records. 3 sections at a time.

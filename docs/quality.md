@@ -6,12 +6,12 @@ What each AI feature should produce, written before anyone tunes a prompt, so a 
 - [What comes in from Slack](#what-comes-in-from-slack)
 - [What comes in from Google](#what-comes-in-from-google)
 - [After every sync: the read-through](#after-every-sync-the-read-through)
-- [Write my promo case](#write-my-promo-case)
+- [Write my performance case](#write-my-performance-case)
 - [Weekly digest](#weekly-digest)
 
 ## Today's three
 
-`daily.py`. Three small tasks each morning, each ten minutes or less, each moving one of your goals (a V2MOM method, a KSO part, or a next-level Promo map item) a small step.
+`daily.py`. Three small tasks each morning, each ten minutes or less, each moving one of your goals (a V2MOM method, a KSO part, or a next-level Performance map item) a small step.
 
 Good output:
 - Exactly three tasks, each tied to a goal that was offered, three different goals when there are three.
@@ -89,7 +89,7 @@ Good output:
 | Bad | "Weekly release sync" | activity: release; guide link to "Leads release planning" (a routine meeting) |
 | Bad win | "Fixed a typo in the runbook" | win, large, "saved the team 40 hours" (inflated, number invented) |
 
-## Write my promo case
+## Write my performance case
 
 `promo/`. A third-person draft in five sections (Summary, Key accomplishments, Impact, Behaviors & values, Growth areas), written only from the numbered evidence built from your notebook, every sentence citing its sources.
 
@@ -121,6 +121,6 @@ Good output:
 
 | | Nudge |
 |---|---|
-| Good | 2 big wins without "why it mattered". A sentence each makes them count in the promo case. → Open Wins |
+| Good | 2 big wins without "why it mattered". A sentence each makes them count in the performance case. → Open Wins |
 | Good | Nothing new for V2MOM M3 (Grow the pipeline toolkit) in 30 days (last: 2026-02-02). → Open the V2MOM |
 | Bad | You should do more this week. (No action, no link.) |

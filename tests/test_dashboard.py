@@ -49,8 +49,8 @@ def test_home_is_the_dashboard_not_a_day_list(nb):
         s.commit()
     html = c.get("/").text
     assert "Grade 5 to 6, aiming at 7" in html and html.count("<rect class=") == dashboard.WEEKS
-    bar = html.index("<h2>Promotion Progress</h2>")
-    assert 'class="nextbar"' in html[bar:html.index("</summary>", bar)] and 'href="/promo"' not in html[bar:html.index("</summary>", bar)]
+    bar = html.index("<h2>Performance Progress</h2>")
+    assert 'class="nextbar"' in html[bar:html.index("</summary>", bar)] and 'href="/performance"' not in html[bar:html.index("</summary>", bar)]
     assert 'aria-label="Grade 6: 0 percent of key experiences shown"' in html
     assert "wins this half" in html and "kudos this half" in html and 'href="/sheet?show=todo"' in html
     assert "Something done today" not in html and "<h2>Today</h2>" not in html

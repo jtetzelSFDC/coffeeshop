@@ -46,19 +46,19 @@ def build(s: Session, week_end: date | None = None) -> dict:
     if pm:
         for n in pm["next"][:2]:
             nudges.append(dict(text=f"Aim for next in {n['topic'].name} (Grade {n['grade']}): {n['idea']}",
-                               link="/promo", act="Open the Promo map"))
+                               link="/performance", act="Open the Performance map"))
     unexplained = s.scalar(select(func.count()).select_from(Win).where(Win.size.in_(("large", "medium")),
                                                                       Win.impact == "")) or 0
     if unexplained:
         nudges.append(dict(text=f"{unexplained} big win{'s' if unexplained != 1 else ''} without \"why it mattered\". "
-                                "A sentence each makes them count in the promo case.", link="/wins", act="Open Wins"))
+                                "A sentence each makes them count in the performance case.", link="/wins", act="Open Wins"))
     if pm:
         quiet_since = (last - timedelta(days=QUIET_DAYS)).isoformat()
         for row in pm["rows"]:
             days = [x.day for gr in pm["grades"] for c in row["cells"][gr] for x in c["wins"] + c["entries"]]
             if days and max(days) < quiet_since and row["topic"].name not in aimed:
                 nudges.append(dict(text=f"Nothing new for {row['topic'].name} in {QUIET_DAYS} days (last: {max(days)}).",
-                                   link="/promo", act="Open the Promo map"))
+                                   link="/performance", act="Open the Performance map"))
     v2 = v2mom_report.build(s, last)
     for x in v2["methods"] if v2 and last >= v2["fy_lo"] else []:
         m = x["m"]

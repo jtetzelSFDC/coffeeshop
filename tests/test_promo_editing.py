@@ -57,20 +57,20 @@ def test_pages_edit_rewrite_confirm_and_compare(nb, monkeypatch):
     dd, c, token, _ = nb
     with open_session(dd) as s:
         vid = draft(s).id
-    page = c.get("/promo/case").text
+    page = c.get("/performance/case").text
     assert 'data-label="Rewrite"' in page and "Save as a new draft" in page and "[" in page
-    r = form(c, f"/promo/case/{vid}/edit/summary", token, text="Jordan is ready for Grade 6.")
+    r = form(c, f"/performance/case/{vid}/edit/summary", token, text="Jordan is ready for Grade 6.")
     assert r.status_code == 303 and r.headers["location"].endswith("#sec-summary")
     with open_session(dd) as s:
         edited_id = s.scalar(select(PromoVersion.id).order_by(PromoVersion.id.desc()))
-    new_page = c.get(f"/promo/case/{edited_id}").text
+    new_page = c.get(f"/performance/case/{edited_id}").text
     assert "edited by you" in new_page and "Replace my edits" in new_page
-    assert "The newest is draft" in c.get(f"/promo/case/{vid}").text
+    assert "The newest is draft" in c.get(f"/performance/case/{vid}").text
     # an edited section needs a confirm before Claude rewrites it
-    r = c.post(f"/promo/case/{edited_id}/rewrite/summary", data={"csrf": token}, headers={"X-Sync": "1"})
+    r = c.post(f"/performance/case/{edited_id}/rewrite/summary", data={"csrf": token}, headers={"X-Sync": "1"})
     assert r.status_code == 409 and "Replace my edits" in r.json()["message"]
     monkeypatch.setattr(pw, "ask", lambda prompt, data, timeout=0: '{"sentences": [{"text": "Fresh summary.", "sources": []}]}')
-    r = c.post(f"/promo/case/{edited_id}/rewrite/summary", data={"csrf": token, "confirm": "yes"}, headers={"X-Sync": "1"})
+    r = c.post(f"/performance/case/{edited_id}/rewrite/summary", data={"csrf": token, "confirm": "yes"}, headers={"X-Sync": "1"})
     assert r.json() == {"started": True}
     for _ in range(200):
         job = c.get("/sync/status").json().get("promo")
@@ -78,7 +78,7 @@ def test_pages_edit_rewrite_confirm_and_compare(nb, monkeypatch):
             break
         time.sleep(0.05)
     assert job["state"] == "done", job
-    cmp = c.get(f"/promo/compare?a={vid}&b={edited_id}").text
+    cmp = c.get(f"/performance/compare?a={vid}&b={edited_id}").text
     assert "Jordan is ready for Grade 6." in cmp and "diff-added" in cmp and "diff-removed" in cmp
-    assert c.get("/promo/compare?a=1&b=999", follow_redirects=False).status_code == 303
-    assert form(c, f"/promo/case/{vid}/edit/nope", token, text="x").status_code == 303
+    assert c.get("/performance/compare?a=1&b=999", follow_redirects=False).status_code == 303
+    assert form(c, f"/performance/case/{vid}/edit/nope", token, text="x").status_code == 303
