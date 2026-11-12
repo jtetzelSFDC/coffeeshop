@@ -13,7 +13,7 @@ from coffeeshop.guide.service import promo_map
 from coffeeshop.storage.db import init_db, make_engine
 from coffeeshop.storage.models import GuideLink, JournalEntry, SyncRun, Win
 
-from helpers import add, form, open_session
+from helpers import add, form, link, load_v2mom, open_session
 
 
 
@@ -90,6 +90,45 @@ def test_an_unread_row_waits_instead_of_offering_looks_right(nb):
         s.commit()
     html = c.get("/sheet?show=all").text
     assert "Looks right" in html and "Claude is reading" not in html
+
+
+def test_bulk_looks_right_skips_unread_and_counts_the_rest(nb):
+    dd, c, token, _ = nb
+    with open_session(dd) as s:
+        unread = add(s, "Bulk unread")
+        read = add(s, "Bulk read", ai_read=True)
+        other = add(s, "Bulk other", ai_read=True)
+    assert c.post("/sheet/ok", data={"id": [str(read), str(other)]}).status_code == 403
+    with open_session(dd) as s:
+        assert not s.get(JournalEntry, read).reviewed
+    r = c.post("/sheet/ok", data={"csrf": token, "id": [str(unread), str(read), str(other)], "ret": "show=todo"},
+               headers={"X-Sheet": "1"})
+    body = r.json()
+    assert r.status_code == 200 and body["count"] == 2
+    assert set(body["confirmed"]) == {read, other} and set(body["gone"]) == {read, other}
+    with open_session(dd) as s:
+        assert not s.get(JournalEntry, unread).reviewed
+        assert s.get(JournalEntry, read).reviewed and s.get(JournalEntry, other).reviewed
+    stay = c.post("/sheet/ok", data={"csrf": token, "id": [str(read)], "ret": "show=all"}, headers={"X-Sheet": "1"})
+    kept = stay.json()
+    assert kept["count"] == 1 and kept["gone"] == [] and f'id="r{read}"' in kept["rows"][str(read)]
+
+
+def test_no_v2mom_filter_lists_read_records_with_no_method(nb):
+    dd, c, *_ = nb
+    with open_session(dd) as s:
+        gap = add(s, "Gap record alpha", v2mom_read=True)
+        linked = add(s, "Linked record beta", v2mom_read=True)
+        add(s, "Unread record gamma")
+        m = load_v2mom(s)
+        link(s, m["M1"], entry_id=linked)
+        s.commit()
+    page = c.get("/sheet?show=all&v2mom=none").text
+    assert "Gap record alpha" in page and "Linked record beta" not in page and "Unread record gamma" not in page
+    assert 'scope="col"' in page and "Looks right for selected" in page
+    assert "Counts as: the activity this record adds to on the performance map" in page
+    assert "Part of: one piece of work, counted once" in page and "No V2MOM method" in page
+    assert f'id="pick{gap}"' in page
 
 
 def test_an_entry_added_while_claude_reads_gets_its_own_pass(nb, monkeypatch):

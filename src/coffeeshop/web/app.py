@@ -593,13 +593,15 @@ def create_app(dd: DataDir) -> FastAPI:
             return back("Saved.", to)
         return back(f"Linked to {n} leveling guide item{'' if n == 1 else 's'}." if n else "Saved, with no guide items.", to)
 
-    def sheet_filters(show: str = "todo", source: str = "any", kind: str = "any", page: int = 1) -> dict:
+    def sheet_filters(show: str = "todo", source: str = "any", kind: str = "any", page: int = 1,
+                      v2mom: str = "") -> dict:
         return dict(show=show if show in SHEET_SHOW else "todo",
                     source=source if source in SOURCE_LABEL or source == "any" else "any",
-                    kind=kind if kind in KIND_LABEL or kind == "any" else "any", page=max(1, min(page, 1000)))
+                    kind=kind if kind in KIND_LABEL or kind == "any" else "any", page=max(1, min(page, 1000)),
+                    v2mom="none" if v2mom == "none" else "")
 
     def parse_ret(ret: str) -> dict:
-        q = {k: v[0] for k, v in parse_qs(ret).items() if k in ("show", "source", "kind", "page")}
+        q = {k: v[0] for k, v in parse_qs(ret).items() if k in ("show", "source", "kind", "page", "v2mom")}
         try:
             return sheet_filters(**{**q, "page": int(q.get("page", 1))})
         except ValueError:
@@ -614,14 +616,19 @@ def create_app(dd: DataDir) -> FastAPI:
             q = q.where(JournalEntry.source == f["source"])
         if f["kind"] != "any":
             q = q.where(JournalEntry.kind == f["kind"])
-        return {"todo": q.where(JournalEntry.reviewed.is_(False)), "checked": q.where(JournalEntry.reviewed.is_(True)),
-                "ai": q.where(JournalEntry.reviewed.is_(False), (JournalEntry.kind_was != "") | JournalEntry.id.in_(
-                    select(GuideLink.entry_id).where(GuideLink.by_ai)) | JournalEntry.id.in_(
-                    select(Win.entry_id).where(Win.by_ai)) | JournalEntry.id.in_(
-                    select(V2momLink.entry_id).where(V2momLink.by_ai))),
-                "linked": q.where(JournalEntry.id.in_(linked)), "unlinked": q.where(JournalEntry.id.not_in(linked)),
-                "wins": q.where(JournalEntry.id.in_(select(Win.entry_id).where(Win.entry_id.is_not(None)))),
-                "removed": q.where(false()), "all": q}[f["show"]]
+        q = {"todo": q.where(JournalEntry.reviewed.is_(False)), "checked": q.where(JournalEntry.reviewed.is_(True)),
+             "ai": q.where(JournalEntry.reviewed.is_(False), (JournalEntry.kind_was != "") | JournalEntry.id.in_(
+                 select(GuideLink.entry_id).where(GuideLink.by_ai)) | JournalEntry.id.in_(
+                 select(Win.entry_id).where(Win.by_ai)) | JournalEntry.id.in_(
+                 select(V2momLink.entry_id).where(V2momLink.by_ai))),
+             "linked": q.where(JournalEntry.id.in_(linked)), "unlinked": q.where(JournalEntry.id.not_in(linked)),
+             "wins": q.where(JournalEntry.id.in_(select(Win.entry_id).where(Win.entry_id.is_not(None)))),
+             "removed": q.where(false()), "all": q}[f["show"]]
+        # shortcut: Removed is another table and has no V2MOM links, so this filter does not apply there
+        if f.get("v2mom") == "none" and f["show"] != "removed":
+            has_method = select(V2momLink.entry_id).where(V2momLink.entry_id.is_not(None))
+            q = q.where(JournalEntry.v2mom_read.is_(True), JournalEntry.id.not_in(has_method))
+        return q
 
     def sheet_ctx(s: Session, f: dict) -> dict:
         return dict(ret=urlencode(f), csrf=csrf_token, kind_opts=SHEET_KIND, size_label=SIZE_LABEL,
@@ -647,8 +654,8 @@ def create_app(dd: DataDir) -> FastAPI:
 
     @app.get("/sheet", response_class=HTMLResponse)
     def sheet_page(request: Request, show: str = "todo", source: str = "any", kind: str = "any", page: int = 1,
-                   msg: str | None = None, s: Session = Depends(db)):
-        f = sheet_filters(show, source, kind, page)
+                   v2mom: str = "", msg: str | None = None, s: Session = Depends(db)):
+        f = sheet_filters(show, source, kind, page, v2mom)
         if f["show"] == "removed":
             q = select(RemovedEntry)
             if f["source"] != "any":
@@ -808,6 +815,33 @@ def create_app(dd: DataDir) -> FastAPI:
         with _write_lock:
             eid = v2mom_links.unlink(s, lid)
         return sheet_back(request, s, ret, eid)
+
+    @app.post("/sheet/ok", dependencies=[Depends(check_csrf)])
+    def sheet_ok_bulk(request: Request, id: list[int] = Form([]), ret: str = Form(""), s: Session = Depends(db)):
+        """Check the ticked rows. A row Claude has not read yet is skipped, same as one with no Looks right button."""
+        confirmed: list[int] = []
+        with _write_lock:
+            waiting = personal and gsvc.has_guide(s)
+            # shortcut: a list longer than one page is cut, the queue only posts the rows on the page
+            for eid in list(dict.fromkeys(id))[:SHEET_PAGE]:
+                e = s.get(JournalEntry, eid)
+                if e is None or (waiting and not e.ai_read):
+                    continue
+                gsvc.confirm(s, eid)
+                confirmed.append(eid)
+        if request.headers.get("x-sheet") == "1":
+            f = parse_ret(ret)
+            s.expire_all()
+            gone, rows = [], {}
+            for eid in confirmed:
+                e = s.scalar(sheet_query(f).where(JournalEntry.id == eid))
+                if e is None:
+                    gone.append(eid)
+                else:
+                    rows[str(eid)] = env.get_template("_sheet_row.html").render(
+                        r=sheet_rows(s, [e])[0], nxt="", **sheet_ctx(s, f))
+            return JSONResponse({"count": len(confirmed), "confirmed": confirmed, "gone": gone, "rows": rows})
+        return sheet_back(request, s, ret)
 
     @app.post("/sheet/{eid}/ok", dependencies=[Depends(check_csrf)])
     def sheet_ok(request: Request, eid: int, ret: str = Form(""), after: str = Form(""), s: Session = Depends(db)):

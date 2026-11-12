@@ -187,8 +187,10 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid v
 .att-d[open]{display:block;flex-basis:100%}.att-body{margin:.3rem 0 .4rem;padding-left:.8rem;border-left:2px solid var(--line)}
 body.wide{max-width:1400px}
 table.sheet{width:100%;border-collapse:collapse;font-size:.86rem;table-layout:fixed}
-.sheet th{text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);padding:.35rem .4rem;position:sticky;top:0;background:var(--card)}
-.sheet td{border-bottom:1px dashed var(--line);padding:.35rem .4rem;vertical-align:top;overflow-wrap:anywhere}
+.sheet caption{caption-side:top;text-align:left;color:var(--muted);font-size:.75rem;font-weight:400;line-height:1.45;padding:0 0 .45rem}
+.sheet th,.sheet td{border:1px solid var(--line)}
+.sheet th{text-align:left;color:var(--muted);font-weight:600;padding:.35rem .4rem;position:sticky;top:0;background:var(--card)}
+.sheet td{padding:.35rem .4rem;vertical-align:top;overflow-wrap:anywhere}
 /* One copy of the text lives in the summary, so opening it drops the clamp. */
 details.clip>summary{list-style:none;cursor:pointer}details.clip>summary::-webkit-details-marker{display:none}
 details.clip .what{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}

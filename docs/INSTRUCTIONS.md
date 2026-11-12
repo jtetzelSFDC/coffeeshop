@@ -127,13 +127,15 @@ From Terminal: `uv run coffeeshop performance write` (with `--start`, `--end`, `
 
 ## Intake Review Queue: sorting everything that comes in
 
-The **Intake Review Queue** (in the Menu) lists every record (calendar meetings, Google Tasks, Slack items, and what you typed) as rows, newest first, 100 to a page. Each row has one-click buttons:
+The **Intake Review Queue** (in the Menu) is a grid of every record (calendar meetings, Google Tasks, Slack items, and what you typed), newest first, 100 to a page. The columns are **Select**, **Record** (date, where it came from, and the text), **Type**, **Counts as**, **Part of**, **Leveling guide**, **V2MOM**, **Win**, and **Actions**. Each heading has a one-line hint: hover the heading, or read the legend above the grid.
 
-- **Type**: Meeting, Convo, Doc, Task, or Other. The lit one is the current type.
-- **Leveling guide**: the guide items the record shows, and the V2MOM methods it moves forward (the method's name, shortened if it's long; hover for the full name). Click &times; to remove one, or **edit**/**link** to pick them yourself.
+- **Select**: tick rows, or the heading checkbox for every row on this page, then **Looks right for selected (N)**. A row Claude has not read yet is skipped. **Looks right** on one row still works.
+- **Type**: Meeting, Convo, Doc, Task, Kudos, Cert, or Other. The lit one is the current type.
+- **Counts as**: the activity this record adds to on the Performance map. **Part of**: the piece of work it belongs to, counted once.
+- **Leveling guide**: the guide items the record shows. **V2MOM**: the methods it moves forward (the method's name, shortened if it's long; hover for the full name). Click &times; to remove one, or **edit**/**link** in that column to pick them yourself.
 - **Win**: **S**, **M**, or **L** makes the record a small, medium, or large win (or resizes it), and &times; removes the win. Click the win's title to see why it mattered, then **Edit on Wins** to reword it.
-- **Looks right** marks the row checked. Whatever Claude picked for it becomes yours, and the row leaves the **Not checked yet** list, so you can work down the list until it's empty.
-- **Remove** (under Looks right) takes a record out for good, for example a meeting you didn't attend. Its pasted notes, guide links, and any win Claude drafted from it go too; wins you made or edited stay. Calendar, Tasks, and Slack syncs skip removed records so they don't come back. Choose **Removed** in the Show menu to see them and **Restore** one if you change your mind.
+- **Looks right** marks the row checked. Whatever Claude picked for it becomes yours, and the row leaves the **Not checked yet** list, so you can work down the list until it's empty. **Looks right for selected** does that for every ticked row. A row Claude has not read yet is skipped, the same as a row that shows no Looks right button.
+- **Remove** (under Looks right) takes a record out for good, for example a meeting you didn't attend. Its pasted notes, guide links, and any win Claude drafted from it go too; wins you made or edited stay. Calendar, Tasks, and Slack syncs skip removed records so they don't come back. Choose **Removed** in the Show menu to see them and **Restore** one if you change your mind. **No V2MOM method**, beside the other filters, lists records Claude has read that aren't linked to a V2MOM method. Press **Show** to apply it. It does not change the Removed list.
 
 **Is everything pulled in?** A row of small status chips (at the top of the queue, and under each Sync button on Home) shows each source with a dot, an icon, and when it was last pulled: a time for today, "Yesterday", or a date. A green dot means up to date: Slack was pulled after 5:30 PM on the latest evening (the tracker automation runs at 5 PM), the V2MOM in the last 31 days, and the others were synced today. An orange dot means it needs a pull; press that Sync button. Hover over a chip for the details: the exact time, how many new items came in, the date of the newest item, and what's missing. "(about)" means the time is estimated from when items were added, before the app kept a sync history.
 
@@ -418,7 +420,7 @@ The page opens in **dark mode**; the small sun button next to **Coffee Shop** (t
 2. On **Home**, add an entry ("Paired with Sam on the release", kind "Had a conversation") and check you land on **Conversations** with it at the top.
 3. Open **Wins**: two made-up wins are there. Use **Count this as a win** on your new entry, pick a size, and save; it asks which leveling guide items it shows.
 4. Open **Performance map**, then **Promotion (optional)**: the made-up guide shows a few experiences as started or shown.
-5. Open the **Intake Review Queue**, pick **Everything** in the first menu, and try **Looks right**, a type button, and **Remove** on a row. Rows update without the page reloading.
+5. Open the **Intake Review Queue**, pick **Everything** in the first menu, and try **Looks right**, **Looks right for selected**, a type button, and **Remove** on a row. Rows update without the page reloading. Tick **No V2MOM method** and press **Show**.
 6. Search for "rollback" with the box at the top.
 
 If something looks wrong or confusing, note what you clicked and what you saw.
