@@ -59,6 +59,8 @@ def refuse(path: str) -> str | None:
             return f"*{suffix} file"
     if name.endswith(".xlsx") and not "/".join(parts).startswith(LEVELING):
         return "*.xlsx outside data/leveling/"
+    if name.endswith(".docx") and parts[0] != "data":
+        return "*.docx outside data/"
     return None
 
 

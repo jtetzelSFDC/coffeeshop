@@ -73,7 +73,7 @@ def _v2mom(dd: DataDir) -> tuple[str, str]:
     if src and not moved:
         return "pass", ""
     return "fail", f"{'Your V2MOM PDF has moved. Connect it again' if moved else 'Connect your V2MOM PDF'}: " \
-                   "uv run coffeeshop v2mom connect <path to the PDF>"
+                   "uv run coffeeshop v2mom connect <path to the PDF, or your V2MOM page's URL>"
 
 
 def _read(tool: str, prompt: str, service: str) -> tuple[str, str]:

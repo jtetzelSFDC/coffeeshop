@@ -16,6 +16,9 @@ Rules that never bend:
 - Never read Slack DMs or group DMs. Never print or open the person's notebook files, V2MOM, or messages.
 - Never commit anything from their notebook (it lives outside this repo) or from their V2MOM PDF. Do not run `git add` or `git commit`.
 - You cannot sign in to Google or Slack for them. That happens in Claude Code's connector settings.
+- Prefer the AI Expert Suite plugins: `slack`, `google-workspace`, and `browser`. The app's tool names use them
+  first and fall back to another connected Slack or Google server only when the plugin's is down.
+- Their notebook lives outside this repo (`~/Library/Application Support/coffeeshop` on a Mac). Never move it.
 
 ## 1. Check uv
 
@@ -47,8 +50,11 @@ This also loads the role's leveling guide. Tell them the next level it found.
 
 ## 5. V2MOM
 
-If "V2MOM connected" failed, ask where their V2MOM PDF is (downloaded from the V2MOM app), then run
-`uv run coffeeshop v2mom connect "<path>"`. If they have no PDF yet, skip this and say they can add it later on the
+If "V2MOM connected" failed, ask for the link to their V2MOM profile page in the V2MOM app, then run
+`uv run coffeeshop v2mom connect "<https link>"`. The sync reads that page through the AI Expert Suite browser
+plugin (`browser_navigate`, `browser_wait`, `browser_a11y_tree`), signed in as them. A PDF still works: if they
+would rather use one, or the page can't be read, ask where the PDF downloaded from the V2MOM app is, then run
+`uv run coffeeshop v2mom connect "<path>"`. If they have neither yet, skip this and say they can add it later on the
 V2MOM page of the app.
 
 ## 6. Connectors

@@ -87,6 +87,38 @@ def test_connect_saves_the_doc_id_owner_only(tmp_path):
         connector.save_source(dd, "not a doc")
 
 
+def test_connect_saves_a_page_url_and_refuses_plain_http(tmp_path):
+    dd, _ = personal(tmp_path)
+    url = "https://v2mom.example.com/v2mom/a0X000000000001"
+    r = CliRunner().invoke(cli, ["v2mom", "connect", url, "--data-dir", str(dd.root)])
+    assert r.exit_code == 0 and "Saved page" in r.output, r.output
+    assert connector.load_source(dd) == dict(kind="url", value=url)
+    with pytest.raises(ValueError, match="https"):
+        connector.save_source(dd, "http://v2mom.example.com/v2mom")
+
+
+def test_a_page_url_is_read_through_the_page_reader(fake):
+    url = "https://v2mom.example.com/v2mom/a0X000000000001"
+    parsed, origin = connector.read(dict(kind="url", value=url), page_reader=lambda u: fake.setdefault("url", u) and DOC)
+    assert fake["url"] == url and origin == url and fake["data"] == DOC and len(parsed["methods"]) == 2
+    assert "tool" not in fake  # the Google connector is not used
+
+
+def test_the_page_text_is_the_a11y_tree_answer(monkeypatch):
+    seen = {}
+
+    def call_tools(prompt, tools, **k):
+        seen["tools"] = tools
+        return [(connector.BROWSER + "browser_navigate", {}, "Navigated"),
+                (connector.BROWSER + "browser_a11y_tree", {}, "heading: Vision\nReleases so calm nobody notices them.")]
+    monkeypatch.setattr(connector, "call_tools", call_tools)
+    assert connector.page_text("https://v2mom.example.com/x") == "heading: Vision\nReleases so calm nobody notices them."
+    assert seen["tools"] == connector.BROWSER_TOOLS
+    monkeypatch.setattr(connector, "call_tools", lambda *a, **k: [(connector.BROWSER + "browser_a11y_tree", {}, "")])
+    with pytest.raises(ClaudeError, match="no text"):
+        connector.page_text("https://v2mom.example.com/x")
+
+
 def test_a_pull_saves_the_version_methods_measures_and_obstacles(tmp_path, fake):
     dd, Session = personal(tmp_path)
     assert pull(Session) == dict(methods=2, added=2, retired=0, obstacles=1)

@@ -411,6 +411,19 @@ def create_app(dd: DataDir) -> FastAPI:
             return back(str(exc), "/v2mom")
         return start_sync(request, "v2mom", to="/v2mom")
 
+    @app.post("/v2mom/url", dependencies=[Depends(check_csrf)])
+    def v2mom_url(request: Request, url: str = Form("")):
+        """Connect the V2MOM app page by its link and read it now. Personal notebook only."""
+        if not personal:
+            return back("Connecting a V2MOM only works with your personal notebook.", "/v2mom")
+        if not url.strip().lower().startswith("https://"):
+            return back("Paste your V2MOM page's https:// link.", "/v2mom")
+        try:
+            v2mom_conn.save_source(dd, url)
+        except ValueError as exc:
+            return back(str(exc), "/v2mom")
+        return start_sync(request, "v2mom", to="/v2mom")
+
     def sync_view(s: Session) -> dict[str, dict]:
         st = sync_status(s)
         if personal and not v2mom_conn.load_source(dd):

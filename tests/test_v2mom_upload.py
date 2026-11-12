@@ -77,6 +77,18 @@ def test_upload_without_the_csrf_token_is_refused(nb, monkeypatch):
     assert not stored(dd).exists() and started == []
 
 
+def test_a_page_link_is_connected_and_read_and_a_local_path_is_refused(nb, monkeypatch):
+    started = stub_job(monkeypatch)
+    dd, c, token, _ = nb
+    assert 'action="/v2mom/url"' in c.get("/v2mom").text
+    r = c.post("/v2mom/url", data={"csrf": token, "url": "/etc/FY27 V2MOM.pdf"}, follow_redirects=False)
+    assert r.status_code == 303 and "https://" in unquote(r.headers["location"])
+    assert connector.load_source(dd) is None and started == []
+    url = "https://v2mom.example.com/v2mom/a0X000000000001"
+    r = c.post("/v2mom/url", data={"csrf": token, "url": url}, follow_redirects=False)
+    assert r.status_code == 303 and connector.load_source(dd) == dict(kind="url", value=url) and started == ["v2mom"]
+
+
 def test_the_practice_notebook_refuses_an_upload(tmp_path, monkeypatch):
     started = stub_job(monkeypatch)
     dd = DataDir(tmp_path / "practice")

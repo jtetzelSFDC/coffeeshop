@@ -446,20 +446,21 @@ def slack_pull(data_dir: Optional[str] = DataOpt) -> None:
     from .web import syncs
     _run_job(data_dir, "Slack sync", syncs.SLACK_STEPS, syncs.run_slack)
 
-v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from its PDF or a Google Doc (read-only)")
+v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from its PDF, its page, or a Google Doc (read-only)")
 app.add_typer(v2mom_app, name="v2mom")
 
 
 @v2mom_app.command("connect")
-def v2mom_connect(doc: str = typer.Argument(..., help="The PDF downloaded from the V2MOM app, or a link to the "
-                                                      "Google Doc you pasted your V2MOM into"),
+def v2mom_connect(doc: str = typer.Argument(..., help="The PDF downloaded from the V2MOM app, your V2MOM page's "
+                                                      "https:// link, or a link to the Google Doc you pasted it into"),
                   data_dir: Optional[str] = DataOpt) -> None:
-    """Remember where your V2MOM is: its PDF (the newest V2MOM PDF in that folder is read each time) or a Doc."""
+    """Remember where your V2MOM is: its PDF (the newest V2MOM PDF in that folder is read each time), its page in the
+    V2MOM app (read through Claude Code's browser connector), or a Doc."""
     from .v2mom.connector import save_source
     dd, _ = _open_personal(data_dir, "V2MOM sync")
     try:
         src = save_source(dd, doc)
-        typer.echo(f"Saved {'PDF' if src['kind'] == 'pdf' else 'Doc'} {src['value']}. "
+        typer.echo(f"Saved {dict(pdf='PDF', url='page', doc='Doc')[src['kind']]} {src['value']}. "
                    "Now run: uv run coffeeshop v2mom sync")
     except ValueError as exc:
         typer.echo(str(exc))

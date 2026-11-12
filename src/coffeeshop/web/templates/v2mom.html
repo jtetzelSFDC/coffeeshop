@@ -9,13 +9,20 @@
     <input id="v2mom-pdf" type="file" name="pdf" accept="application/pdf,.pdf" required>
     <button>Upload and read</button>
   </form>
-  <p class="help">Download it as a PDF from the V2MOM app. It stays in this notebook, only you can read it, and it's read right away. The command <code>uv run coffeeshop v2mom connect</code> still works.</p>
+  <p class="help">Download it as a PDF from the V2MOM app. It stays in this notebook, only you can read it, and it's read right away. The command <code>uv run coffeeshop v2mom connect</code> still works. When a folder holds more than one of your V2MOM PDFs, only the newest is read; they are never compared.</p>
+  <form method="post" action="/v2mom/url" class="row">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="v2mom-url">Or your V2MOM page's link</label>
+    <input id="v2mom-url" type="url" name="url" placeholder="https://…" pattern="https://.*" required>
+    <button>Connect and read</button>
+  </form>
+  <p class="help">Claude Code reads the page through its browser connector, signed in as you. If that fails, upload the PDF instead.</p>
 {% endif %}{% endmacro %}
 {% if r %}{% set v = r.version %}
 <section class="card">
   <h2>V2MOM{% if v.fiscal_year %} {{ v.fiscal_year }}{% endif %}</h2>
   <p class="sub">Active: {{ v.fiscal_year or r.fy }} V2MOM, read {{ v.pulled_at.date()|short_day }}</p>
-  <p class="sub">{{ r.active }} of {{ r.methods|length }} methods active this quarter{% if v.published %} &middot; published {{ v.published }}{% endif %} &middot; read from your {{ 'PDF' if v.doc_id.lower().endswith('.pdf') else 'Doc' }} {{ v.pulled_at.date()|short_day }}</p>
+  <p class="sub">{{ r.active }} of {{ r.methods|length }} methods active this quarter{% if v.published %} &middot; published {{ v.published }}{% endif %} &middot; read from your {{ 'PDF' if v.doc_id.lower().endswith('.pdf') else 'page' if v.doc_id.startswith('https://') else 'Doc' }} {{ v.pulled_at.date()|short_day }}</p>
   {{ upload() }}
   {% if v.vision or v.values %}{% call howto("Vision and values") %}
     {% if v.vision %}<p><b>Vision.</b> {{ v.vision }}</p>{% endif %}
