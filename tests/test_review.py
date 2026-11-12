@@ -119,12 +119,18 @@ def test_no_v2mom_filter_lists_read_records_with_no_method(nb):
     with open_session(dd) as s:
         gap = add(s, "Gap record alpha", v2mom_read=True)
         linked = add(s, "Linked record beta", v2mom_read=True)
+        won = add(s, "Win linked record delta", v2mom_read=True)
         add(s, "Unread record gamma")
         m = load_v2mom(s)
         link(s, m["M1"], entry_id=linked)
+        w = Win(day="2026-10-01", title="Shipped", entry_id=won, created_at=datetime.now())
+        s.add(w)
+        s.flush()
+        link(s, m["M1"], win_id=w.id)
         s.commit()
     page = c.get("/sheet?show=all&v2mom=none").text
     assert "Gap record alpha" in page and "Linked record beta" not in page and "Unread record gamma" not in page
+    assert "Win linked record delta" not in page
     assert 'scope="col"' in page and "Looks right for selected" in page
     assert "Counts as: the activity this record adds to on the performance map" in page
     assert "Part of: one piece of work, counted once" in page and "No V2MOM method" in page

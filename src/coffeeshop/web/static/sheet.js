@@ -94,6 +94,10 @@ document.addEventListener("submit", async (ev) => {
       keep(row, fresh, form);
       row.replaceWith(fresh);
     }
+    for (const box of sheetBoxes()) {
+      const row = box.closest("tr");
+      if (row) row.classList.remove("busy"); // a skipped row was never redrawn, so it would stay faded
+    }
     selectedCount();
     return;
   }

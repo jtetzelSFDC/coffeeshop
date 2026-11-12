@@ -626,8 +626,9 @@ def create_app(dd: DataDir) -> FastAPI:
              "removed": q.where(false()), "all": q}[f["show"]]
         # shortcut: Removed is another table and has no V2MOM links, so this filter does not apply there
         if f.get("v2mom") == "none" and f["show"] != "removed":
-            has_method = select(V2momLink.entry_id).where(V2momLink.entry_id.is_not(None))
-            q = q.where(JournalEntry.v2mom_read.is_(True), JournalEntry.id.not_in(has_method))
+            on_entry = select(V2momLink.entry_id).where(V2momLink.entry_id.is_not(None))
+            on_win = select(Win.entry_id).join(V2momLink, V2momLink.win_id == Win.id).where(Win.entry_id.is_not(None))
+            q = q.where(JournalEntry.v2mom_read.is_(True), JournalEntry.id.not_in(on_entry), JournalEntry.id.not_in(on_win))
         return q
 
     def sheet_ctx(s: Session, f: dict) -> dict:

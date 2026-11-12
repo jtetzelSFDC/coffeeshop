@@ -33,7 +33,10 @@ function matchSimple(el, sel) {
   if (!m || m[1].toLowerCase() !== el.tagName.toLowerCase()) return false;
   if (m[2] && !(el.className || "").split(/\s+/).includes(m[2])) return false;
   if (!m[3]) return true;
-  const pm = m[3].slice(1, -1).match(/^([a-z]+)\^=['"]?([^'"]+)['"]?$/i);
+  const body = m[3].slice(1, -1);
+  const eq = body.match(/^([a-z]+)=['"]?([^'"]+)['"]?$/i);
+  if (eq) return (el.getAttribute(eq[1]) || "") === eq[2];
+  const pm = body.match(/^([a-z]+)\^=['"]?([^'"]+)['"]?$/i);
   return !!pm && (el.getAttribute(pm[1]) || "").startsWith(pm[2]);
 }
 
@@ -70,11 +73,15 @@ function makeEl(tag, attributes, inTemplate) {
     tagName: tag, childNodes: [], parentElement: null, inTemplate: !!inTemplate,
     attributes: { ...attributes }, className: attributes.class || "",
   };
-  el.classList = { add(c) {
-    const parts = el.className.split(/\s+/).filter(Boolean);
-    if (!parts.includes(c)) parts.push(c);
-    el.className = parts.join(" ");
-  } };
+  el.classList = {
+    add(c) {
+      const parts = el.className.split(/\s+/).filter(Boolean);
+      if (!parts.includes(c)) parts.push(c);
+      el.className = parts.join(" ");
+    },
+    remove(c) { el.className = el.className.split(/\s+/).filter((x) => x && x !== c).join(" "); },
+    contains(c) { return el.className.split(/\s+/).includes(c); },
+  };
   el.getAttribute = (k) => (k.toLowerCase() in el.attributes ? el.attributes[k.toLowerCase()] : null);
   el.querySelector = (sel) => queryAll(el, sel)[0] || null;
   el.querySelectorAll = (sel) => queryAll(el, sel);
@@ -303,4 +310,35 @@ async function save(client, server, action, submitter) {
     "/sheet/4/kind", { name: "kind", value: "ship" });
   assert.deepEqual(clash.querySelectorAll("details").map((d) => d.open), [false, false, true],
     "the win box stays open when its heading matches Notes");
+
+  const bulkTable = mount(`<table class="sheet"><tr id="r1"><td><input name="id" value="1"></td></tr><tr id="r2"><td><input name="id" value="2"></td></tr></table>`);
+  for (const box of bulkTable.querySelectorAll("input")) box.checked = true;
+  const bulkForm = { getAttribute: () => "/sheet/ok", action: "/sheet/ok" };
+  const listeners = [];
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "../src/coffeeshop/web/static/sheet.js"), "utf8"), vm.createContext({
+    document: {
+      addEventListener(type, fn) { if (type === "submit") listeners.push(fn); },
+      createElement,
+      querySelectorAll: (sel) => bulkTable.querySelectorAll(sel),
+      getElementById(id) {
+        function walk(node) {
+          for (const child of node.childNodes || []) {
+            if (child.tagName && child.getAttribute && child.getAttribute("id") === id) return child;
+            const found = walk(child);
+            if (found) return found;
+          }
+          return null;
+        }
+        return walk(bulkTable);
+      },
+    },
+    location: { reload() { throw new Error("reloaded"); } },
+    fetch: async () => ({ ok: true, headers: { get: () => null }, json: async () => ({ gone: [1], rows: {}, count: 1 }) }),
+    FormData: function FormData() { this.append = () => {}; },
+    setTimeout() {},
+  }));
+  await listeners[0]({ target: bulkForm, preventDefault() {} });
+  const bulkRows = bulkTable.querySelectorAll("tr");
+  assert.equal(bulkRows[0].className, "gone", "a confirmed row fades out");
+  assert.equal(bulkRows[1].className, "", "a skipped row does not stay faded");
 })().catch((err) => { console.error(err); process.exit(1); });
