@@ -45,9 +45,9 @@ role's levels with their job titles (again it ends with "Aborted"). Ask which is
 job titles at one grade; read both out. Save it with `uv run coffeeshop setup level --role "<role>" --grade <number>`.
 This also loads the role's leveling guide. Tell them the next level it found.
 
-Then ask for an optional note on their current projects and responsibilities. Today's three uses it when the usual
-goals are already on track, together with the leveling-guide gaps. They can skip it. If they give one, they save it
-on the Settings page under Projects and responsibilities; an empty box clears it. Do not open or edit their notebook.
+Then tell them about the optional Projects and responsibilities box on Settings. Today's three uses it when the usual
+goals are already on track, together with the leveling-guide gaps. They can skip it. An empty box clears it. Do not
+ask them to type the note in the chat, and do not open or edit their notebook.
 
 ## 5. V2MOM
 

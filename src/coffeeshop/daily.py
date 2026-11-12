@@ -1,6 +1,7 @@
 """The daily three: once each morning, Claude reads a short summary of where you stand (recent work, Promo map gaps,
 skills without evidence, your V2MOM) and suggests three small tasks, each doable in under ten minutes and each tied
-to one of those goals. Only titles go to Claude, never pasted notes or transcripts."""
+to one of those goals. Titles go to Claude, never pasted notes or transcripts. The Projects and
+responsibilities note from Settings is sent too, when it is set."""
 from __future__ import annotations
 
 import json
