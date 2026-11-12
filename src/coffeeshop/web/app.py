@@ -907,7 +907,19 @@ def create_app(dd: DataDir) -> FastAPI:
     def settings_page(request: Request, msg: str | None = None, s: Session = Depends(db)):
         if not personal:
             return back(needs_personal)
-        return page_html(request, "settings.html", "/settings", lv=gsvc.level(s), msg=msg)
+        note = gsvc.profile(s).get("responsibilities")
+        return page_html(request, "settings.html", "/settings", lv=gsvc.level(s), msg=msg,
+                         responsibilities=note.strip() if isinstance(note, str) else "")
+
+    @app.post("/settings", dependencies=[Depends(check_csrf)])
+    def settings_save(responsibilities: str = Form("")):
+        """Save the optional projects-and-responsibilities note; empty clears it."""
+        if not personal:
+            return back(needs_personal)
+        text = responsibilities.replace("\r\n", "\n").strip()[:gsvc.RESPONSIBILITIES_MAX]  # a browser sends CRLF
+        with _write_lock:
+            gsvc.save_profile(dd.root, responsibilities=text)
+        return back("Saved.", "/settings")
 
     @app.get("/kso", response_class=HTMLResponse)
     def kso_page(request: Request, fy: str = "", msg: str | None = None, s: Session = Depends(db)):

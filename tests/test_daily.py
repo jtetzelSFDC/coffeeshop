@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 from coffeeshop import daily
 from coffeeshop.claude_cli import ClaudeError
 from coffeeshop.cli import app as cli
+from coffeeshop.guide.service import save_profile
 from coffeeshop.sync_all import _daily_due as _real_daily_due
 from coffeeshop.storage.models import DailyTask, JournalAttachment, JournalEntry, WorkItem
 
@@ -45,6 +46,23 @@ def test_context_has_goals_and_recent_titles_but_never_notes(nb):
     assert any(i.startswith("Grade 6: ") for i in ids) and any(i.startswith("Skill: ") for i in ids)
     assert any("Release go/no-go for 4.2" in r for r in data["week"]["meetings"])
     assert "SECRET NOTES TEXT" not in json.dumps(data) and len(json.dumps(data)) <= daily.MAX_CONTEXT
+
+
+def test_responsibilities_reach_the_reader_only_when_set(nb):
+    dd, *_ = nb
+    save_profile(dd.root, responsibilities="")
+    seen = []
+
+    def read(_prompt, data):
+        seen.append(json.loads(data))
+        return reply([g["id"] for g in seen[-1]["goals"]])
+
+    with open_session(dd) as s:
+        daily.suggest(s, TODAY, reader=read)
+        save_profile(dd.root, responsibilities="Own the Pine release and the on-call rotation")
+        daily.suggest(s, TODAY, force=True, reader=read)
+    assert "responsibilities" not in seen[0]
+    assert seen[1]["responsibilities"] == "Own the Pine release and the on-call rotation"
 
 
 def test_context_has_this_weeks_meetings_open_tasks_and_projects(nb):

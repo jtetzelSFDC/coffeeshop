@@ -7,6 +7,13 @@
     &middot; <a href="/setup#level">Change</a></p>
   {% else %}<p class="muted">Not chosen yet. <a href="/setup#level">Choose them</a></p>{% endif %}
   <p class="help">Change it after a promotion. The next level, the Promo map, and the progress bars follow.</p>
+  <form method="post" action="/settings">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <h3><label for="responsibilities">Projects and responsibilities</label></h3>
+    <textarea id="responsibilities" name="responsibilities" maxlength="2000" style="min-height:4.5rem">{{ responsibilities }}</textarea>
+    <p class="help">Optional. When your usual goals are already on track, Today's three suggests work from this and the leveling-guide gaps. Empty clears it.</p>
+    <button>Save</button>
+  </form>
   <h3>Setup</h3>
   <p><a class="btnlike" href="/setup">Run setup again</a></p>
   <p class="help">Shows your role and level, your V2MOM, and checks the connections.</p>

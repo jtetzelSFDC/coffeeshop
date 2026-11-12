@@ -14,6 +14,7 @@ from .parse import parse_guide
 from .topics import grouped, suggest
 
 PROFILE = "profile.json"
+RESPONSIBILITIES_MAX = 2_000  # optional note; longer would crowd the daily prompt
 SETUP_HINT = "uv run coffeeshop setup level"
 POINTS = {"entry": 1, "small": 2, "medium": 3, "large": 4}
 RECOGNITION_SIZE = "medium"  # kudos from someone else count like a medium win

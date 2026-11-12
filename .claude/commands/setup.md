@@ -34,8 +34,8 @@ If "Local notebook" failed, run `uv run coffeeshop notebook init`. Never use `--
 
 ## 4. Role and level
 
-If "Role and level saved" passed, say what is saved and ask whether it is still right. Skip the rest of this step
-unless they want to change it (for example after a promotion).
+If "Role and level saved" passed, say what is saved and ask whether it is still right. Skip the role and level
+questions unless they want to change them (for example after a promotion).
 
 Otherwise ask for their role first. Run `uv run coffeeshop setup level < /dev/null` to list the roles. It then asks
 a question that cannot be answered here, so it ends with "Aborted"; that is fine, the list is what you wanted.
@@ -44,6 +44,10 @@ a short form and ask which one is theirs. Then run `uv run coffeeshop setup leve
 role's levels with their job titles (again it ends with "Aborted"). Ask which is their level now. Some roles list two
 job titles at one grade; read both out. Save it with `uv run coffeeshop setup level --role "<role>" --grade <number>`.
 This also loads the role's leveling guide. Tell them the next level it found.
+
+Then ask for an optional note on their current projects and responsibilities. Today's three uses it when the usual
+goals are already on track, together with the leveling-guide gaps. They can skip it. If they give one, they save it
+on the Settings page under Projects and responsibilities; an empty box clears it. Do not open or edit their notebook.
 
 ## 5. V2MOM
 
