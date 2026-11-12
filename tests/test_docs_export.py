@@ -24,7 +24,7 @@ def test_markdown_sourced_and_clean(nb):
         secs[0].sentences = [dict(text="Jordan led it.", sources=[1], valid=True, reason=""),
                              dict(text="Jordan saved 9 hours.", sources=[1], valid=False, reason="9 isn't in the evidence")]
         sourced, clean = docs_export.markdown(v, secs, True), docs_export.markdown(v, secs, False)
-        assert sourced.startswith("# Promotion case: Jordan") and "## Summary" in sourced and "## Growth areas" in sourced
+        assert sourced.startswith("# Promotion case: Jordan") and "## Project Highlights" in sourced and "## Talent Readiness" in sourced
         assert "Jordan led it. [1]" in sourced and "**[Check this: 9 isn't in the evidence]**" in sourced
         assert "## Sources" in sourced and "\n1. " in sourced
         assert "[1]" not in clean and "Check this" not in clean and "## Sources" not in clean

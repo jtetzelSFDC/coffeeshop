@@ -262,7 +262,7 @@ def test_promo_cites_check_ins_with_manager_comments_only(tmp_path):
         got = [p for p in pieces if p["kind"] == "checkin"]
         assert [p["text"] for p in got] == ["V2MOM check-in (Midyear FY27), manager comments: Strong half. The "
                                             "community sessions landed well with other teams."]
-        assert [k for k, ns in slices.items() if got[0]["n"] in ns] == ["summary", "accomplishments", "behaviors"]
+        assert [k for k, ns in slices.items() if got[0]["n"] in ns] == ["feedback"]
         store.save(s, connector.validate(json.loads(answer(*TWO))), DOC_ID)  # the Doc has no check-ins
         assert not any(p["kind"] == "checkin" for p in pe.build(s, "2026-02-01", "2026-10-29")[0])
 

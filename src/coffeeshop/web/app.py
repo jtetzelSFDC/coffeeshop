@@ -942,18 +942,20 @@ def create_app(dd: DataDir) -> FastAPI:
     def settings_page(request: Request, msg: str | None = None, s: Session = Depends(db)):
         if not personal:
             return back(needs_personal)
-        note = gsvc.profile(s).get("responsibilities")
+        prof = gsvc.profile(s)
+        note = prof.get("responsibilities")
         return page_html(request, "settings.html", "/settings", lv=gsvc.level(s), msg=msg,
-                         responsibilities=note.strip() if isinstance(note, str) else "")
+                         responsibilities=note.strip() if isinstance(note, str) else "",
+                         friday_case=prof.get("friday_case") is True)
 
     @app.post("/settings", dependencies=[Depends(check_csrf)])
-    def settings_save(responsibilities: str = Form("")):
-        """Save the optional projects-and-responsibilities note; empty clears it."""
+    def settings_save(responsibilities: str = Form(""), friday_case: str = Form("")):
+        """Save the responsibilities note and the Friday case switch. An empty note clears it; an unticked box is off."""
         if not personal:
             return back(needs_personal)
         text = responsibilities.replace("\r\n", "\n").strip()[:gsvc.RESPONSIBILITIES_MAX]  # a browser sends CRLF
         with _write_lock:
-            gsvc.save_profile(dd.root, responsibilities=text)
+            gsvc.save_profile(dd.root, responsibilities=text, friday_case=friday_case == "yes")
         return back("Saved.", "/settings")
 
     @app.get("/kso", response_class=HTMLResponse)
@@ -1108,12 +1110,20 @@ def create_app(dd: DataDir) -> FastAPI:
         va, vb = s.get(PromoVersion, a), s.get(PromoVersion, b)
         if va is None or vb is None:
             return back("Pick two drafts to compare.", "/performance/case")
-        secs = {v.id: {x.key: x for x in s.scalars(select(PromoSection).where(PromoSection.version_id == v.id))}
-                for v in (va, vb)}
+        stored = {v.id: list(s.scalars(select(PromoSection).where(PromoSection.version_id == v.id)
+                                       .order_by(PromoSection.position))) for v in (va, vb)}
+        by = {vid: {x.key: x for x in rows_} for vid, rows_ in stored.items()}
+        # A saved draft keeps its own headings, including ones from before the PAT template.
+        order = []
+        for v in (va, vb):
+            for sec in stored[v.id]:
+                if sec.key not in order:
+                    order.append(sec.key)
         rows = []
-        for key, heading, *_ in pw.SECTIONS:
-            sa, sb = secs[va.id].get(key), secs[vb.id].get(key)
-            rows.append(dict(heading=heading, diff=pw.compare(sa.sentences if sa else [], sb.sentences if sb else [])))
+        for key in order:
+            sa, sb = by[va.id].get(key), by[vb.id].get(key)
+            rows.append(dict(heading=(sa or sb).heading,
+                             diff=pw.compare(sa.sentences if sa else [], sb.sentences if sb else [])))
         return page_html(request, "promo_compare.html", "/performance", a=va, b=vb, rows=rows)
 
     @app.get("/performance/case", response_class=HTMLResponse)

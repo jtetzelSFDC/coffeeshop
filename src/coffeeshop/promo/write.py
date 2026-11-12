@@ -19,15 +19,26 @@ from sqlalchemy.orm import Session
 from ..claude_cli import ClaudeError, ask, reply_results
 from ..guide.service import SETUP_HINT, grades_text, level, person, profile, read_profile, save_profile
 from ..storage.models import PromoSection, PromoVersion
-from .evidence import SECTIONS, build, section_words
+from .evidence import AVOID, LEGACY, SECTIONS, VALUED, build, section_words
 
 WORKERS = 3
 MIN_PIECES = 3  # fewer linked wins, pieces of work, and records than this is too little to write a case from
 MAX_EXAMPLE = 6_000
 NUMBER = re.compile(r"(?<![A-Za-z])\d+(?:[.,:]\d+)*")  # not the 2 in "V2MOM M2", which every V2MOM piece has
 
-PROMPT = """You write one section of a promotion case for {name}, {who} at {grades}. \
-The section is "{heading}": {what}. Write {length}.
+PROMPT = """You write one section of a performance case for {name}, {who} at {grades}. \
+The section is "{heading}".
+
+The Performance Advocacy Tool says:
+{what}
+
+What is valued:
+{valued}
+
+What to avoid:
+{avoid}
+
+Write {length}.
 
 Write in the third person about {name} ("{name} led ..."), in plain professional English: concrete, specific, no \
 hype words (no "spearheaded", "rockstar", "passionate"). On stdin is JSON with numbered "evidence". Use ONLY that \
@@ -85,14 +96,24 @@ def _parse(reply: str) -> list[dict]:
     return [x for x in reply_results(reply, "sentences") if str(x.get("text", "")).strip()]
 
 
+def _spec(key: str) -> tuple[str, str, str]:
+    """Heading, guidance, and length. A draft saved before the PAT headings still has a spec."""
+    for row in (*SECTIONS, *LEGACY):
+        if row[0] == key:
+            return row[1], row[2], row[3]
+    raise ClaudeError("That section isn't one this case writes.")
+
+
 def read_section(name: str, key: str, evidence: list[dict], lv: dict, example: str = "") -> list[dict]:
-    """`lv` is the saved level (service.level), which the prompt and the section's description name. `example` is a
-    pasted strong case, sent as a style reference only."""
-    heading, what, length = next((h, w, l) for k, h, w, l in SECTIONS if k == key)
+    """`lv` is the saved level (service.level), which the prompt and a legacy section's description name. `example`
+    is a pasted strong case, sent as a style reference only."""
+    heading, what, length = _spec(key)
+    if "{ready}" in what or "{aims}" in what:  # the older five sections name the level; the template text does not
+        what = what.format(**section_words(lv))
     data = json.dumps(dict(evidence=[dict(n=p["n"], text=p["text"]) for p in evidence],
                            **({"style_example": example} if example else {})))
     prompt = PROMPT.format(name=name, who=person(lv), grades=grades_text(lv), heading=heading,
-                           what=what.format(**section_words(lv)), length=length)
+                           what=what, valued=VALUED, avoid=AVOID, length=length)
     return _parse(ask(prompt, data, timeout=480))
 
 

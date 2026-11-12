@@ -77,11 +77,11 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 
 ## 7. Performance case section
 
-`promo/write.py` `PROMPT`. Writes one of five sections from that section's numbered evidence, in the third person, every sentence citing its sources.
-- **Gets:** the section's slice of `promo/evidence.py`'s pieces, capped by `CAPS` (40, or 50 for accomplishments), from a window of 365 days by default. Piece text is clipped: check-in comments 600, kudos 400, single records 200, 4 records per piece of work at 120, 3 V2MOM examples at 80; at most 15 wins in the summary, 20 kudos, 60 single records. 3 sections at a time.
+`promo/write.py` `PROMPT`. Writes one Performance Advocacy Tool section from that section's numbered evidence, in the third person, every sentence citing its sources. The section's guidance, and the template's what-is-valued and what-to-avoid lists, are read from `data/pat/pat-template.docx`.
+- **Gets:** the section's slice of `promo/evidence.py`'s pieces, capped by `CAPS` (40, or 50 for Project Highlights), from a window of 365 days by default. Piece text is clipped: check-in comments 600, kudos 400, single records 200, 4 records per piece of work at 120, 3 V2MOM examples at 80; at most 15 wins in Talent Readiness, 20 kudos, 60 single records. 3 sections at a time. Strategic Business Need is at least 25 words; Talent Readiness is at most 400 words; the other sections are a concise section.
 - **Checked by:** `check()`: sources must be in this section's evidence, and every number in a sentence must appear in it. A failing sentence is kept and flagged **Check this**. A section with no evidence says so; no linked work at all refuses before asking; if every section fails, nothing is saved.
-- **New user:** with little evidence the prompt still asks for 3 to 8 sentences per section, which invites padding.
-- **Decision: keep.** The prompt and the section descriptions use the saved role and level. Too little evidence refuses before asking Claude, and an activity count is used only in a section that also cites that kind of work.
+- **New user:** with little evidence, Strategic Business Need still asks for at least 25 words, which can invite padding. The citation check still flags an invented number.
+- **Decision: change.** The headings and the guidance are the template's, not the old five. The opening still names the saved role and level. Too little evidence refuses before asking Claude, and an activity count is used only in a section that also cites that kind of work. A draft saved under the old headings still opens and can be rewritten.
 
 ## 8. Slack tracker kinds
 

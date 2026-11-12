@@ -91,7 +91,7 @@ Good output:
 
 ## Write my performance case
 
-`promo/`. A third-person draft in five sections (Summary, Key accomplishments, Impact, Behaviors & values, Growth areas), written only from the numbered evidence built from your notebook, every sentence citing its sources.
+`promo/`. A third-person draft in the Performance Advocacy Tool's sections (Project Highlights, Business Contributions, Professional Development, Feedback, and Promotion Readiness: Strategic Business Need and Talent Readiness), written only from the numbered evidence built from your notebook, every sentence citing its sources. The section guidance comes from `data/pat/pat-template.docx`.
 
 Good output:
 - Every sentence cites one or more evidence numbers, and they're in that section's evidence.
@@ -99,8 +99,9 @@ Good output:
 - Kudos and manager check-in comments are quoted exactly, saying who said them.
 - A V2MOM method is named only when a cited piece says the work advances it.
 - Plain, concrete English; no hype words.
-- Growth areas are honest gaps with next steps, not strengths in disguise.
-- With little evidence, a short section or "No evidence for this section in the window", never padding to reach a sentence count.
+- Strategic Business Need is at least 25 words. Talent Readiness stays within 400 words.
+- Feedback quotes the person, and the same story is not repeated just to fill another section.
+- With little evidence, a short section or "No evidence for this section in the window", never padding past what the evidence supports.
 
 | | Sentence |
 |---|---|
