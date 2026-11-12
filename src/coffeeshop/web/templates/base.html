@@ -107,6 +107,9 @@ table.sheet td{padding:.22rem .4rem}a.btnlike{color:var(--text);text-decoration:
 .card.home-tile>details[open]>summary::after{transform:rotate(225deg);margin-top:.3rem}
 .card.home-tile>details::details-content{height:0;overflow:hidden;opacity:0;transition:height .3s ease,opacity .2s ease}
 .card.home-tile>details[open]::details-content{height:auto;opacity:1}
+/* The done box hangs below its row. The tile clips overflow for the open animation, so the last row's box is cut off. */
+.card.home-tile.daily:has(.tick-d[open]){position:relative;z-index:6}
+.card.home-tile.daily:has(.tick-d[open])>details::details-content{overflow:visible}
 .chip{display:inline-block;font-size:.76rem;border-radius:99px;padding:.05rem .6rem;margin-left:.4rem;
   background:var(--btn);color:var(--muted);vertical-align:middle}
 .chip.done{color:var(--good)}a.chip{text-decoration:none;margin-left:0}
