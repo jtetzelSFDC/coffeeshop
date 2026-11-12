@@ -316,10 +316,15 @@ def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
     try:
         parsed, origin = connector.read(src)
     except ClaudeError as exc:
+        was = src.get("was") if src.get("kind") == "url" else None
+        if isinstance(was, dict) and was.get("kind") in ("pdf", "doc") and was.get("value"):
+            connector.write_source(dd, dict(kind=was["kind"], value=was["value"]))
         job.fail(0, str(exc))
         job.skip(1)
         job.finish("V2MOM sync couldn't read your V2MOM, so nothing changed.")
         return
+    if src.get("was"):
+        connector.write_source(dd, dict(kind=src["kind"], value=src["value"]))
     job.done(0, f"{_plural(len(parsed['methods']), 'method')}, {_plural(len(parsed['obstacles']), 'obstacle')}"
              + (f", {_plural(len(parsed['check_ins']), 'check-in')}" if parsed["check_ins"] else ""))
     job.start(1)

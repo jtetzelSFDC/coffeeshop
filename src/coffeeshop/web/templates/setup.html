@@ -29,7 +29,7 @@
 
 <section class="card">
   <h2>Your V2MOM</h2>
-  {% if v2mom %}<p class="sub">Connected: your {{ 'PDF' if v2mom.kind == 'pdf' else 'Google Doc' }}. See it on the <a href="/v2mom">V2MOM page</a>.</p>
+  {% if v2mom %}<p class="sub">Connected: your {{ {'pdf': 'PDF', 'url': 'V2MOM page'}.get(v2mom.kind, 'Google Doc') }}. See it on the <a href="/v2mom">V2MOM page</a>.</p>
   {% else %}<p class="sub">Not connected yet. Add your V2MOM PDF on the <a href="/v2mom">V2MOM page</a>.</p>{% endif %}
 </section>
 

@@ -51,6 +51,8 @@ def test_local_steps_fail_until_done_and_pass_after(tmp_path, workbook):
     assert [got[k] for k in ("database", "level", "guide", "v2mom")] == ["pass"] * 4
     pdf.unlink()
     assert states(setup.run_checks(dd))["v2mom"] == "fail"  # the PDF moved
+    connector.save_source(dd, "https://v2mom.example.com/my-v2mom")
+    assert states(setup.run_checks(dd))["v2mom"] == "fail"  # a page link counts once a V2MOM has been read
     assert states(setup.run_checks(DataDir(tmp_path / "nothing")))["database"] == "fail"
 
 

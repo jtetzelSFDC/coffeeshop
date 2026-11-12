@@ -141,7 +141,8 @@ def _kso_due(Session_, now: datetime) -> bool:
 def _v2mom_due(dd: DataDir, Session_, now: datetime) -> bool:
     """Monthly, and only once a V2MOM PDF or Doc is connected."""
     from .v2mom import connector, store
-    if not connector.load_source(dd):
+    src = connector.load_source(dd)
+    if not src or src["kind"] == "url":  # a page read needs you signed in; the button runs it, the schedule does not
         return False
     with Session_() as s:
         return store.due(s, now)
