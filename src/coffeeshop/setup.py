@@ -70,7 +70,14 @@ def _v2mom(dd: DataDir) -> tuple[str, str]:
     from .v2mom import connector
     src = connector.load_source(dd)
     moved = bool(src) and src["kind"] == "pdf" and not connector.newest_pdf(src["value"])
-    if src and not moved:
+    saved = False
+    if src and src["kind"] != "pdf":
+        try:
+            with closing(sqlite3.connect(f"{dd.db.resolve().as_uri()}?mode=ro", uri=True)) as c:
+                saved = bool(c.execute("SELECT 1 FROM v2mom_version LIMIT 1").fetchone())
+        except sqlite3.Error:
+            saved = False
+    if src and not moved and (src["kind"] == "pdf" or saved):
         return "pass", ""
     return "fail", f"{'Your V2MOM PDF has moved. Connect it again' if moved else 'Connect your V2MOM PDF'}: " \
                    "uv run coffeeshop v2mom connect <path to the PDF, or your V2MOM page's URL>"

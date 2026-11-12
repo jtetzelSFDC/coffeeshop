@@ -97,6 +97,32 @@ def test_connect_saves_a_page_url_and_refuses_plain_http(tmp_path):
         connector.save_source(dd, "http://v2mom.example.com/v2mom")
 
 
+def test_a_failed_page_read_puts_the_old_source_back(tmp_path, monkeypatch):
+    import threading
+
+    from coffeeshop.storage.db import init_db, make_engine, make_session_factory
+    from coffeeshop.web import syncs
+    from coffeeshop.web.jobs import Job
+
+    dd, Session = personal(tmp_path)
+    pdf = tmp_path / "FY27 V2MOM.pdf"
+    pdf.write_bytes(b"%PDF")
+    connector.save_source(dd, str(pdf))
+    url = "https://v2mom.example.com/v2mom/a0X000000000001"
+    connector.save_source(dd, url)
+    assert connector.load_source(dd)["was"]["value"] == str(pdf.resolve())
+    assert sync_all._v2mom_due(dd, Session, datetime.now()) is False
+
+    def boom(src, **k):
+        raise ClaudeError("sign in")
+
+    monkeypatch.setattr(connector, "read", boom)
+    engine = make_engine(dd.db)
+    init_db(engine)
+    syncs.run_v2mom(Job(syncs.V2MOM_STEPS), make_session_factory(engine), threading.Lock(), dd)
+    assert connector.load_source(dd) == dict(kind="pdf", value=str(pdf.resolve()))
+
+
 def test_a_page_url_is_read_through_the_page_reader(fake):
     url = "https://v2mom.example.com/v2mom/a0X000000000001"
     parsed, origin = connector.read(dict(kind="url", value=url), page_reader=lambda u: fake.setdefault("url", u) and DOC)
@@ -109,11 +135,12 @@ def test_the_page_text_is_the_a11y_tree_answer(monkeypatch):
 
     def call_tools(prompt, tools, **k):
         seen["tools"] = tools
+        seen["turns"] = k.get("max_turns")
         return [(connector.BROWSER + "browser_navigate", {}, "Navigated"),
                 (connector.BROWSER + "browser_a11y_tree", {}, "heading: Vision\nReleases so calm nobody notices them.")]
     monkeypatch.setattr(connector, "call_tools", call_tools)
     assert connector.page_text("https://v2mom.example.com/x") == "heading: Vision\nReleases so calm nobody notices them."
-    assert seen["tools"] == connector.BROWSER_TOOLS
+    assert seen["tools"] == connector.BROWSER_TOOLS and seen["turns"] == 3
     monkeypatch.setattr(connector, "call_tools", lambda *a, **k: [(connector.BROWSER + "browser_a11y_tree", {}, "")])
     with pytest.raises(ClaudeError, match="no text"):
         connector.page_text("https://v2mom.example.com/x")

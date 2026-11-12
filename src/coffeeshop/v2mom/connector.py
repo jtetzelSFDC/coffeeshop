@@ -100,14 +100,23 @@ def save_source(dd: DataDir, value: str) -> dict:
         if url.scheme != "https":
             raise ValueError("Use the V2MOM page's https:// link.")
         src = dict(kind="url", value=value)
+        old = load_source(dd)
+        if old and old.get("kind") != "url":
+            src["was"] = dict(kind=old["kind"], value=old["value"])  # put back if this page read fails
+        elif old and old.get("was"):
+            src["was"] = old["was"]
     else:
         m = DOC_ID.search(value)
         if not m:
             raise ValueError("That isn't a PDF, your V2MOM page's https:// link, or a Google Doc link "
                              "(https://docs.google.com/document/d/…).")
         src = dict(kind="doc", value=m.group(1))
-    write_private(source_file(dd), json.dumps(src) + "\n")
+    write_source(dd, src)
     return src
+
+
+def write_source(dd: DataDir, src: dict) -> None:
+    write_private(source_file(dd), json.dumps(src) + "\n")
 
 
 def load_source(dd: DataDir) -> dict | None:
@@ -181,7 +190,7 @@ def page_text(url: str) -> str:
     answers = call_tools(f"Call browser_navigate once with tab_id=research and url={json.dumps(url)}. Then call "
                          "browser_wait once with tab_id=research. Then call browser_a11y_tree once with "
                          "tab_id=research, preset=content, and limit=3000. When it returns, reply with only DONE.",
-                         BROWSER_TOOLS, timeout=300, max_turns=6)
+                         BROWSER_TOOLS, timeout=300, max_turns=3)
     text = "\n".join(raw for name, _, raw in answers if name.endswith("__browser_a11y_tree"))
     if err := connector_error(text, "browser"):
         raise ClaudeError(err)
