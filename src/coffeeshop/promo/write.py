@@ -144,7 +144,7 @@ def check(sentences: list[dict], evidence: list[dict]) -> list[dict]:
 
 def write_case(s: Session, *, start: str, end: str, name: str,
                reader: Callable[[str, str, list[dict]], list[dict]] | None = None,
-               on_section: Callable[[str, str], None] | None = None) -> PromoVersion:
+               on_section: Callable[[str, str], None] | None = None, note: str = "Written") -> PromoVersion:
     """Build the evidence, write every section (three at a time), check them, and save a new version."""
     reader = _reader(s, reader)
     pieces, slices = build(s, start, end)
@@ -170,7 +170,7 @@ def write_case(s: Session, *, start: str, end: str, name: str,
     if all(results[k][0] is None for k, *_ in SECTIONS):
         raise ClaudeError("Claude couldn't write any section, so nothing was saved. Try again.")
     version = PromoVersion(created_at=datetime.now(), window_start=start, window_end=end, name=name, voice="third",
-                           evidence=pieces, slices=slices, note="Written")
+                           evidence=pieces, slices=slices, note=note)
     s.add(version)
     s.flush()
     for pos, (key, heading, *_rest) in enumerate(SECTIONS):

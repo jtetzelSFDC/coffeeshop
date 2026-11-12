@@ -784,13 +784,22 @@ def digest_notify(data_dir: Optional[str] = DataOpt) -> None:
     desktop_notify("Coffee Shop: your week", line)
     typer.echo(line)
     if read_profile(dd.root).get("friday_case") is True:
-        start, end = pw.default_window()
-        try:
-            v = pw.write_case(s, start=start, end=end, name=pw.load_name(dd) or "the candidate")
-        except ClaudeError as exc:
-            typer.echo(f"No new performance case: {exc}")
+        from datetime import datetime, timedelta
+        from sqlalchemy import select
+        from .storage.models import PromoVersion
+        since = datetime.now() - timedelta(days=6)
+        if s.scalar(select(PromoVersion.id).where(PromoVersion.note == "Friday refresh",
+                                                  PromoVersion.created_at >= since).limit(1)):
+            typer.echo("A Friday performance case was already written this week.")
         else:
-            typer.echo(f"Performance case draft {v.id} saved, {start} to {end}.")
+            start, end = pw.default_window()
+            try:
+                v = pw.write_case(s, start=start, end=end, name=pw.load_name(dd) or "the candidate",
+                                  note="Friday refresh")
+            except ClaudeError as exc:
+                typer.echo(f"No new performance case: {exc}")
+            else:
+                typer.echo(f"Performance case draft {v.id} saved, {start} to {end}.")
 
 
 daily_app = typer.Typer(no_args_is_help=True, help="Three small tasks a day toward your promotion and V2MOM")

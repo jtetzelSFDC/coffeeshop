@@ -13,7 +13,7 @@ The case was five sections we wrote ourselves: Summary, Key accomplishments, Imp
 
 ## Choice
 
-The second. New drafts use Project Highlights, Business Contributions, Professional Development, Feedback, and Promotion Readiness (Strategic Business Need, at least 25 words, and Talent Readiness, at most 400 words). The template's "What is valued" and "What to avoid" lists go in the prompt. A draft saved under the old headings still opens, and it can still be edited or rewritten. The Friday digest writes a draft for the last 12 months only when `friday_case` is true in `profile.json`. That switch is off unless someone turns it on, so Friday does nothing extra until then. One case write per Friday run, and only when the switch is on.
+The second. New drafts use Project Highlights, Business Contributions, Professional Development, Feedback, and Promotion Readiness (Strategic Business Need, at least 25 words, and Talent Readiness, at most 400 words). The template's "What is valued" and "What to avoid" lists go in the prompt. A draft saved under the old headings still opens, and it can still be edited or rewritten. The Friday digest writes a draft for the last 12 months only when `friday_case` is true in `profile.json`. That switch is off unless someone turns it on, so Friday does nothing extra until then. A second run in the same week does not write another.
 
 ## Consequences
 
