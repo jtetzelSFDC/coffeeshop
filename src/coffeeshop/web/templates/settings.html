@@ -12,6 +12,9 @@
     <h3><label for="responsibilities">Projects and responsibilities</label></h3>
     <textarea id="responsibilities" name="responsibilities" maxlength="2000" style="min-height:4.5rem">{{ responsibilities }}</textarea>
     <p class="help">Optional. When your usual goals are already on track, Today's three suggests work from this and the leveling-guide gaps. Empty clears it.</p>
+    <h3>Friday performance case</h3>
+    <label class="row"><input id="friday-case" type="checkbox" name="friday_case" value="yes" {{ 'checked' if friday_case }}> Refresh the performance case every Friday</label>
+    <p class="help">Off unless you turn it on. When it's on, the Friday noon digest also writes one draft for the last 12 months. One draft a week.</p>
     <button>Save</button>
   </form>
   <h3>Setup</h3>

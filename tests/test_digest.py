@@ -110,3 +110,27 @@ def test_notify_shows_a_line_written_by_code(nb, monkeypatch):
     assert r.exit_code == 0, r.output
     assert shown and shown[0][0] == "Coffee Shop: your week"
     assert shown[0][1].startswith("This week: 1 win, 3 records, 1 kudos,") and "/digest" in shown[0][1]
+
+
+def test_friday_notify_writes_one_case_a_week(nb, monkeypatch):
+    from coffeeshop.guide.service import save_profile
+    from coffeeshop.storage.models import PromoVersion
+    dd, *_ = nb
+    save_profile(dd.root, friday_case=True)
+    calls = []
+
+    def fake_write(s, **k):
+        calls.append(k.get("note"))
+        v = PromoVersion(created_at=datetime.now(), window_start="2025-11-12", window_end="2026-11-12",
+                         name="Jordan", note=k.get("note") or "", evidence=[], slices={})
+        s.add(v)
+        s.commit()
+        return v
+
+    monkeypatch.setattr("coffeeshop.promo.write.write_case", fake_write)
+    monkeypatch.setattr("coffeeshop.sync_all.mac_notify", lambda *a: None)
+    last = None
+    for _ in range(2):
+        last = CliRunner().invoke(cli, ["digest", "notify", "--data-dir", str(dd.root)])
+        assert last.exit_code == 0, last.output
+    assert calls == ["Friday refresh"] and "already written this week" in last.output
