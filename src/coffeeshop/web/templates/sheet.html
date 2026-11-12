@@ -34,7 +34,7 @@
   <tbody>
   {% for r in rows %}<tr id="r{{ r.id }}">
     <td><form method="post" action="/sheet/removed/{{ r.id }}/restore">{{ hidden() }}<button>Restore</button></form></td>
-    <td style="white-space:nowrap" title="{{ r.day }}">{{ r.day|short_day }}</td><td>{{ r.source }}</td><td>{{ r.kind }}</td><td>{{ r.text }}</td></tr>{% endfor %}
+    <td style="white-space:nowrap" title="{{ r.day }}">{{ r.day|short_day }}</td><td>{{ r.source }}</td><td>{{ r.kind }}</td><td>{% if r.text|length > 160 %}<details class="clip"><summary><span class="what">{{ r.text }}</span> <span class="when-closed">More</span><span class="when-open">Less</span></summary></details>{% else %}{{ r.text }}{% endif %}</td></tr>{% endfor %}
   </tbody>
 </table>
 {% else %}

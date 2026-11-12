@@ -189,6 +189,17 @@ def test_sheet_one_click_actions(nb):
     assert c.post(f"/sheet/{a}/kind", data={"csrf": "nope", "kind": "task"}).status_code == 403
 
 
+def test_long_what_text_offers_more(nb):
+    dd, c, *_ = nb
+    long = "x" * 161
+    with open_session(dd) as s:
+        add(s, long)
+        add(s, "short note")
+    rows = c.get("/sheet").text.split('<tr id="r')
+    assert any(long in r and "More" in r for r in rows)
+    assert any("short note" in r and "More" not in r for r in rows)
+
+
 def test_sheet_script_updates_rows_in_place(nb):
     dd, c, token, _ = nb
     with open_session(dd) as s:
