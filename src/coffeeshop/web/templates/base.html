@@ -183,9 +183,15 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid v
 .att-d{display:inline}.att-d>summary{list-style:none;cursor:pointer}.att-d>summary::-webkit-details-marker{display:none}
 .att-d[open]{display:block;flex-basis:100%}.att-body{margin:.3rem 0 .4rem;padding-left:.8rem;border-left:2px solid var(--line)}
 body.wide{max-width:1400px}
-table.sheet{width:100%;border-collapse:collapse;font-size:.86rem}
+table.sheet{width:100%;border-collapse:collapse;font-size:.86rem;table-layout:fixed}
 .sheet th{text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);padding:.35rem .4rem;position:sticky;top:0;background:var(--card)}
-.sheet td{border-bottom:1px dashed var(--line);padding:.35rem .4rem;vertical-align:top}
+.sheet td{border-bottom:1px dashed var(--line);padding:.35rem .4rem;vertical-align:top;overflow-wrap:anywhere}
+/* One copy of the text lives in the summary, so opening it drops the clamp. */
+details.clip>summary{list-style:none;cursor:pointer}details.clip>summary::-webkit-details-marker{display:none}
+details.clip .what{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+details.clip[open] .what{display:block;-webkit-line-clamp:unset;overflow:visible}
+details.clip .when-open,details.clip[open] .when-closed{display:none}details.clip[open] .when-open{display:inline}
+details.clip .when-closed,details.clip .when-open{color:var(--muted)}
 .rtools{display:flex;flex-wrap:wrap;gap:.2rem .7rem;align-items:center;margin-top:.25rem}.rtools details{margin:0}
 form.mini{display:inline-flex;gap:.3rem;align-items:center}form.mini label{white-space:nowrap}form.mini select{width:auto;max-width:10.5rem;font-size:.76rem;padding:.08rem .3rem}
 .qhead{display:flex;gap:.4rem 1rem;align-items:center;flex-wrap:wrap}.qhead .chips-sync{margin:0}
