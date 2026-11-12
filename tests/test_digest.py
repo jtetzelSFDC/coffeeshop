@@ -91,7 +91,7 @@ def test_every_nudge_link_resolves_and_the_page_shows_the_week(nb):
             rec(s, 2, f"Unchecked {i}", reviewed=False)
         s.commit()
         nudges = digest.build(s, TODAY)["nudges"]
-    assert {n["link"] for n in nudges} >= {"/promo", "/wins", "/sheet?show=todo"}
+    assert {n["link"] for n in nudges} >= {"/performance", "/wins", "/sheet?show=todo"}
     for n in nudges:
         assert c.get(n["link"]).status_code == 200, n["link"]
     page = c.get("/digest").text

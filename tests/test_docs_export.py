@@ -68,8 +68,8 @@ def test_button_saves_both_links(nb, monkeypatch):
             return doc_reply(f"doc{len(sent)}")
         return sent[len(sent) - 1]
     monkeypatch.setattr(docs_export, "call_tool", fake)
-    assert "Send to Google Docs" in c.get(f"/promo/case/{vid}").text
-    assert c.post(f"/promo/case/{vid}/gdoc", data={"csrf": token}, headers={"X-Sync": "1"}).json() == {"started": True}
+    assert "Send to Google Docs" in c.get(f"/performance/case/{vid}").text
+    assert c.post(f"/performance/case/{vid}/gdoc", data={"csrf": token}, headers={"X-Sync": "1"}).json() == {"started": True}
     for _ in range(200):
         job = c.get("/sync/status").json().get("promo")
         if job and job["state"] != "running":
@@ -79,5 +79,5 @@ def test_button_saves_both_links(nb, monkeypatch):
     with open_session(dd) as s:
         v = s.get(PromoVersion, vid)
         assert v.google_doc_url.endswith("doc1/edit?usp=drivesdk") and "doc2" in v.google_doc_clean_url
-    page = c.get(f"/promo/case/{vid}").text
+    page = c.get(f"/performance/case/{vid}").text
     assert ">with sources</a>" in page and ">clean copy</a>" in page

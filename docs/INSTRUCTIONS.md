@@ -4,9 +4,9 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests. Claude sorts each one against your role's leveling guide. Your V2MOM and your KSOs join that sort when you connect them. Your wins stay too, so the Promo map, the promo case, the KSO page, and each morning's three small tasks reflect what you have actually done.
+Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests. Claude sorts each one against your role's leveling guide. Your V2MOM and your KSOs join that sort when you connect them. Your wins stay too, so the Performance map, the performance case, the KSO page, and each morning's three small tasks reflect what you have actually done.
 
-Everything stays on this laptop. Something leaves only when Claude reads or sorts it: a sync, adding an entry or checking off a daily task, Have Claude read, Write my promo case, Suggest now, Re-estimate, a `kso` command, or Send to Google Docs. The full list is in [What goes to Claude](TECHNICAL.md#what-goes-to-claude).
+Everything stays on this laptop. Something leaves only when Claude reads or sorts it: a sync, adding an entry or checking off a daily task, Have Claude read, Write my performance case, Suggest now, Re-estimate, a `kso` command, or Send to Google Docs. The full list is in [What goes to Claude](TECHNICAL.md#what-goes-to-claude).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -72,12 +72,12 @@ Tips:
 
 - **What I did** is one line starting with a verb: "Led", "Fixed", "Mentored", "Automated".
 - **Why it mattered** is the result: who it helped, what got faster, cheaper, or safer. Numbers help. You can leave it blank and fill it in later with the pencil button; a win without it shows an orange **add why it mattered** badge, and the **missing why** chip at the top lists just those.
-- **Size** is your own call: small for a helpful fix, large for something you'd lead a promotion case with.
+- **Size** is your own call: small for a helpful fix, large for something you'd lead a performance case with.
 - **Theme** (Delivery, Leadership, Mentoring, and so on) groups wins in the export, which maps nicely onto promotion criteria.
 
 **Reading the page.** The chips at the top count the year's wins (all, small, medium, large, missing why); click one to show only those, and the year chips switch years. Each win is one line: the date, the title, its size and theme, and three icon buttons (pencil to edit, target to link it to the leveling guide, × to remove). Under it is why it mattered, the record it came from, and the guide items it shows.
 
-## Leveling guide and Promo map
+## Leveling guide and Performance map
 
 The app knows your role's leveling guide, so your work can be lined up against what the next grades ask for. It's set up for someone aiming at the next grade, with evidence for the grade after that where the work is already at that level. The next grade is the next one your role has, so on DevOps, Grade 9 goes for Grade 11. The examples below are for DevOps Grade 5, which goes for Grade 6 and Grade 7.
 
@@ -88,13 +88,13 @@ cd ~/Documents/coffeeshop
 uv run coffeeshop setup level
 ```
 
-It lists the roles, then your role's grades with their job titles, saves your choice in your notebook, and loads that role's guide. To skip the questions: `uv run coffeeshop setup level --role DevOps --grade 5`. A few roles have two job titles at the same grade, such as a manager and an architect. Those are listed as two roles, for example "Quality Engineering" and "Quality Engineering (Test Automation Architect)"; pick the one you're on. On the top grade of your path there's no next level, so Home and the Promo map say that instead of showing bars. On paths other than DevOps, the Promo map lists your next grades' key experiences in one plain list, without the topics and ideas below.
+It lists the roles, then your role's grades with their job titles, saves your choice in your notebook, and loads that role's guide. To skip the questions: `uv run coffeeshop setup level --role DevOps --grade 5`. A few roles have two job titles at the same grade, such as a manager and an architect. Those are listed as two roles, for example "Quality Engineering" and "Quality Engineering (Test Automation Architect)"; pick the one you're on. On the top grade of your path there's no next level, so Home and the Performance map say that instead of showing bars. On paths other than DevOps, the Performance map lists your next grades' key experiences in one plain list, without the topics and ideas below.
 
 **When a new guide comes out.** Download the whole Google Sheet as an `.xlsx` file and run `uv run coffeeshop guide update <file>`. It checks that every role tab reads, says which roles were added, removed, or changed, and only then replaces the copy in the repo. Commit it, then run `setup level` again to load it. Links you've made are kept. Anything the new guide drops leaves the map but stays on the wins that pointed to it.
 
 **Linking your work.** Each time you save a win, the app asks **Which parts of the leveling guide does this show?** It ticks the items that look related based on your words, such as "sandbox", "deploy", "merge", or "demo". Untick what doesn't fit, tick what it missed, and click **Save**, or choose **Skip for now**. Nothing is linked until you save. Notebook entries can be linked too. Entries that look related show dashed **Might show** chips, and linked ones show **Shows** with the items; the target button on the entry links or changes them.
 
-**The Promo map tab.** It shows:
+**The Performance map tab.** It leads with this year's V2MOM method progress and KSO bars. When an earlier year is already in the notebook, that year sits beside this one. The leveling guide is folded under **Promotion (optional)**. Open that, and it shows:
 
 - A progress bar for Grade 6 and for Grade 7 with the percent shown (hover for the strong/started/not-yet detail), plus chips for Claude's unchecked picks and for records that might show guide items (each opens the right list in the Intake Review Queue).
 - **Aim for next**: one concrete step per topic, one line each (hover for the guide item). Topics you've started come first, and a topic moves to its Grade 7 step once Grade 6 is shown.
@@ -103,17 +103,17 @@ It lists the roles, then your role's grades with their job titles, saves your ch
 
 Colors come from points. A linked entry is worth 1, and a small, medium, or large win is worth 2, 3, or 4. One point makes an item Started, 3 make it Shown, and 6 make it Strong. So one large win shows an experience, and a large win plus a medium one makes it strong. An entry and the win made from it only count once.
 
-**Write my promo case** is on the Promo map, or at http://127.0.0.1:8765/promo/case. Pick who it is about (your first name, remembered next time) and the dates (the last 12 months by default), then press the button. It takes a minute or two, and each section shows its progress.
+**Write my performance case** is on the Performance map, or at http://127.0.0.1:8765/performance/case. Pick who it is about (your first name, remembered next time) and the dates (the last 12 months by default), then press the button. It takes a minute or two, and each section shows its progress.
 
-The draft has five sections: **Summary, Key accomplishments, Impact, Behaviors & values, Growth areas**. They are written in the third person, and only from your notebook: wins and why they mattered, pieces of work, linked records, the impact numbers, and the Promo map's gaps and next steps. Only items inside the dates are used.
+The draft has five sections: **Summary, Key accomplishments, Impact, Behaviors & values, Growth areas**. They are written in the third person, and only from your notebook: wins and why they mattered, pieces of work, linked records, the impact numbers, and the Performance map's gaps and next steps. Only items inside the dates are used.
 
 Every sentence ends with small [numbers] that jump to its sources. The sources are listed at the bottom as they were when the draft was written. The app then checks each sentence. One with no source, or with a number that is not in its evidence, is marked **Check this** and the reason is shown. The check catches invented numbers and missing sources, not every wrong word, so read the draft before you use it. A count such as "12 deployments" is used only in a section that also cites work of that kind.
 
 If the dates hold fewer than three linked wins, pieces of work, or records, the page says so and does not ask Claude. Log more, let a sync link your records, or pick wider dates.
 
-Under **Style example (optional)** you can paste a strong promo case, yours or someone else's. Claude copies only its tone and structure, never its facts, and the checks above still apply. The example stays on this computer, in `profile.json` next to your database. It is sent to Claude when you write or rewrite a section. Empty the box and write again to clear it. Every draft is kept.
+Under **Style example (optional)** you can paste a strong performance case, yours or someone else's. Claude copies only its tone and structure, never its facts, and the checks above still apply. The example stays on this computer, in `profile.json` next to your database. It is sent to Claude when you write or rewrite a section. Empty the box and write again to clear it. Every draft is kept.
 
-From Terminal: `uv run coffeeshop promo write` (with `--start`, `--end`, `--name`).
+From Terminal: `uv run coffeeshop performance write` (with `--start`, `--end`, `--name`).
 
 **V2MOM alignment.** Once your V2MOM is loaded and records are linked to its methods, the evidence also has one piece per current method with work in the window, like "V2MOM M2 (Build Reusable Pipeline Accelerators, On Track, 50% progress): 3 wins and 12 records between … and …, for example: …", and each win and piece of work says which methods it advances ("Advances V2MOM M2."). These go to the Summary and Impact sections, so the case can say a piece of work was "advancing V2MOM method M2 (its name)", but only when a source it cites says so; the usual check applies. Methods with nothing in the window, and ones dropped from your V2MOM, are left out. When your V2MOM came from the PDF, each check-in with manager comments also becomes a piece, like "V2MOM check-in (Midyear FY27), manager comments: …" (up to about 600 characters), for the Summary, Key accomplishments, and Behaviors & values, so the case can quote your manager's own words. Check-ins without comments are left out. With no V2MOM loaded, the case is written exactly as before.
 
@@ -123,7 +123,7 @@ From Terminal: `uv run coffeeshop promo write` (with `--start`, `--end`, `--name
 
 **Sending a draft to Google Docs.** On a draft, **Send to Google Docs** makes two Docs in My Drive: one with the [numbers], the **Check this** notes, and a Sources list (for you), and a clean copy without them (for sharing). Fix any **Check this** sentences first if you're sharing, since the clean copy includes them without the warning. The draft passes through the AI tool on its way to Google (the Google connector can't read files on this laptop), so the app reads each new Doc back and compares its words with the draft: a step that doesn't match shows an error, and its link is still saved so you can look. Links to both Docs appear on the draft, and a copy of what was sent is kept in `exports/` in the notebook folder.
 
-**Download evidence (Markdown)** writes the evidence behind the Promo map grouped by grade and topic. Each guide item lists the wins and entries behind it, with dates and why they mattered, and a **Not shown yet** list at the end shows what to aim for before you submit.
+**Download evidence (Markdown)** writes the evidence behind the Performance map grouped by grade and topic. Each guide item lists the wins and entries behind it, with dates and why they mattered, and a **Not shown yet** list at the end shows what to aim for before you submit.
 
 ## Intake Review Queue: sorting everything that comes in
 
@@ -137,14 +137,14 @@ The **Intake Review Queue** (in the Menu) lists every record (calendar meetings,
 
 **Is everything pulled in?** A row of small status chips (at the top of the queue, and under each Sync button on Home) shows each source with a dot, an icon, and when it was last pulled: a time for today, "Yesterday", or a date. A green dot means up to date: Slack was pulled after 5:30 PM on the latest evening (the tracker automation runs at 5 PM), the V2MOM in the last 31 days, and the others were synced today. An orange dot means it needs a pull; press that Sync button. Hover over a chip for the details: the exact time, how many new items came in, the date of the newest item, and what's missing. "(about)" means the time is estimated from when items were added, before the app kept a sync history.
 
-**One piece of work, counted once.** A deployment often shows up three times: a calendar meeting, a Slack thread, and a Google task. Claude groups records like that into one piece of work, and the Promo map counts the piece once, at its strongest evidence (a large win made from one of them beats a plain record). A grouped row shows **Part of: Pine 5.1.2 release · 3 records** (marked AI until you check the row). **Not the same work** takes a row out of its group, and **Group with…** puts it in a nearby group or starts a new one you name. Claude never regroups a row you grouped, split, or marked **Looks right**. A piece of work runs at most 30 days from its first record, and a record joins only work that's had activity in the last 14 days, so groups don't snowball. New records are grouped after every sync. To group everything already in the notebook (it shows what it would do first with `--dry-run`):
+**One piece of work, counted once.** A deployment often shows up three times: a calendar meeting, a Slack thread, and a Google task. Claude groups records like that into one piece of work, and the Performance map counts the piece once, at its strongest evidence (a large win made from one of them beats a plain record). A grouped row shows **Part of: Pine 5.1.2 release · 3 records** (marked AI until you check the row). **Not the same work** takes a row out of its group, and **Group with…** puts it in a nearby group or starts a new one you name. Claude never regroups a row you grouped, split, or marked **Looks right**. A piece of work runs at most 30 days from its first record, and a record joins only work that's had activity in the last 14 days, so groups don't snowball. New records are grouped after every sync. To group everything already in the notebook (it shows what it would do first with `--dry-run`):
 
 ```
 uv run coffeeshop guide group --dry-run
 uv run coffeeshop guide group
 ```
 
-**Impact numbers.** Claude tags each record with the one activity it shows, from a fixed list: deployment, sandbox refresh, release coordinated, PR reviewed or approved, incident or blocker resolved, document written, process change, mentoring or teaching, demo or presentation, access request handled, branch audit, hotfix, and training or certification. Routine meetings and status pings get nothing, and a meeting *about* a deploy isn't a deployment. The Promo map's **By the numbers** table counts each activity for this half (calendar halves), this year, and all time. A piece of work counts once per day it was done: three records of the same deploy on the same day count once, and a release deployed to lab on Monday and to UAT on Thursday counts twice. Open tasks don't count. Click a number to see the records behind it. In the Intake Review Queue, **Counts as** shows each record's activity (marked AI until you set it) and lets you change it; Claude never changes one you set. New records are tagged after every sync. To tag everything already in the notebook: `uv run coffeeshop guide activities`. The promo case download includes the table.
+**Impact numbers.** Claude tags each record with the one activity it shows, from a fixed list: deployment, sandbox refresh, release coordinated, PR reviewed or approved, incident or blocker resolved, document written, process change, mentoring or teaching, demo or presentation, access request handled, branch audit, hotfix, and training or certification. Routine meetings and status pings get nothing, and a meeting *about* a deploy isn't a deployment. The Performance map's **By the numbers** table counts each activity for this half (calendar halves), this year, and all time. A piece of work counts once per day it was done: three records of the same deploy on the same day count once, and a release deployed to lab on Monday and to UAT on Thursday counts twice. Open tasks don't count. Click a number to see the records behind it. In the Intake Review Queue, **Counts as** shows each record's activity (marked AI until you set it) and lets you change it; Claude never changes one you set. New records are tagged after every sync. To tag everything already in the notebook: `uv run coffeeshop guide activities`. The performance case download includes the table.
 
 **Skipping a recurring meeting for good.** To keep a meeting you don't attend out of the notebook, including future ones, add a skip rule. It removes the ones already here and Calendar sync skips any meeting whose title contains the text (any capitalization):
 
@@ -156,7 +156,7 @@ uv run coffeeshop calendar unskip "Team Daily Standup"  # stop skipping
 
 Buttons in the queue save without reloading the page: a row you check or remove fades out, and a row you change redraws in place.
 
-Purple **AI** marks are Claude's picks: guide links, drafted wins, and type changes ("AI, was Other"). They count on the Promo map straight away, and the Promo map says how many are still unchecked. Use the **Show** menu for **Changed by Claude**, **Not linked**, **Wins**, or **Checked**.
+Purple **AI** marks are Claude's picks: guide links, drafted wins, and type changes ("AI, was Other"). They count on the Performance map straight away, and the Performance map says how many are still unchecked. Use the **Show** menu for **Changed by Claude**, **Not linked**, **Wins**, or **Checked**.
 
 **Claude's read-through.** Claude has read every record against the Grade 6 and 7 key experiences and skills. It linked each one to the guide items it shows (none for routine standups and status pings), drafted wins for the stand-out ones, and fixed obvious type mix-ups (only for Slack and typed records; calendar items stay meetings and Google Tasks stay tasks). Records you add by hand are read right away. When others come in and haven't been read (for example before the guide was loaded), the queue shows a **Have Claude read the N records it hasn't read** button. It only counts records you haven't checked yet: **Looks right** on a row Claude never read leaves it unread, so press **Checked** on it to take the check back first. It runs in the background with a progress box (the same step every sync ends with), so you can keep working. You can also run it in Terminal:
 
@@ -186,7 +186,7 @@ uv run coffeeshop slack connect <canvas link>
 
 ## Daily three
 
-Every morning, as the last step of the 8 AM sync (so it sees yesterday's work), Claude suggests **three small tasks**, each ten minutes or less, that each move one of your goals a step. Goals are offered in this order: V2MOM methods that are quiet, unstarted, or behind; the Promo map's Aim for next; V2MOM methods on track but with measures still open; Grade 6 or 7 key experiences that are gaps; and skills with little or no evidence. It reads only short summaries: the goals (names, status, progress, open measures), this week's context (the titles of this week's meetings, your open tasks, and the releases or projects your work was grouped into), and the titles of your last two weeks of work. Never your pasted notes or transcripts. If you saved a Projects and responsibilities note on Settings, that note is sent too; an empty box stops it. With only a few records, for example in your first days, the tasks lean on the goals themselves, and Claude is told not to make up a doc, release, or person that isn't in your titles.
+Every morning, as the last step of the 8 AM sync (so it sees yesterday's work), Claude suggests **three small tasks**, each ten minutes or less, that each move one of your goals a step. Goals are offered in this order: V2MOM methods that are quiet, unstarted, or behind; the Performance map's Aim for next; V2MOM methods on track but with measures still open; Grade 6 or 7 key experiences that are gaps; and skills with little or no evidence. It reads only short summaries: the goals (names, status, progress, open measures), this week's context (the titles of this week's meetings, your open tasks, and the releases or projects your work was grouped into), and the titles of your last two weeks of work. Never your pasted notes or transcripts. If you saved a Projects and responsibilities note on Settings, that note is sent too; an empty box stops it. With only a few records, for example in your first days, the tasks lean on the goals themselves, and Claude is told not to make up a doc, release, or person that isn't in your titles.
 
 ```
 cd ~/Documents/coffeeshop
@@ -195,7 +195,7 @@ uv run coffeeshop daily suggest --force   # a new three, keeping any you've alre
 uv run coffeeshop daily show              # print today's three
 ```
 
-**On Home**, **Promotion Progress** is the top cell. Its title row has a small green bar for the next grade, and clicking the cell opens it. Under that are **Today's Three**, **New Entry**, and **Sync Status**. Each stays closed until you click it.
+**On Home**, **Performance Progress** is the top cell. Open, it shows V2MOM and KSOs first, then the grade bars. Its title row has a small green bar for the next grade, and clicking the cell opens it. Under that are **Today's Three**, **New Entry**, and **Sync Status**. Each stays closed until you click it.
 
 **New Entry** is for something a sync missed. **Gained a certification** is for a credential you earned, including one from before this notebook. **Date earned** appears so you can put the real date. It lands on the **Certifications** tab and counts as a training or certification. Every entry you add starts Claude reading it right away, in the background: it links the entry to the leveling guide and your V2MOM (your KSOs follow from the V2MOM methods), and marks its picks AI. Open the **Intake Review Queue**, check them, and press **Looks right**. If a sync is running when you add an entry, that sync's last step, or the next one, reads it instead. A row that Claude hasn't read yet says so.
 
@@ -212,9 +212,9 @@ Each task names its goal, like `V2MOM M4` or `Grade 6: …`. If Claude's answer 
 
 At the top are **nudges**, each with a link to where to act:
 
-- **Aim for next:** the top two suggestions from the Promo map.
-- **Big wins without "why it mattered":** medium and large wins with no impact sentence, which the promo case can't use well.
-- **Quiet areas:** a Promo map area with evidence before but nothing in the last 60 days (unless it's already an Aim for next).
+- **Aim for next:** the top two suggestions from the Performance map.
+- **Big wins without "why it mattered":** medium and large wins with no impact sentence, which the performance case can't use well.
+- **Quiet areas:** a Performance map area with evidence before but nothing in the last 60 days (unless it's already an Aim for next).
 - **Quiet V2MOM methods:** each method of your current V2MOM with nothing linked in the last 30 days, or nothing linked at all. Methods the Doc marks Completed are left out, and so are weeks before the V2MOM's fiscal year. Each links to the **V2MOM** page.
 - **The queue:** 25 or more records in the Intake Review Queue not checked yet.
 
@@ -230,7 +230,7 @@ On Fridays at 12:00 PM the schedule shows a notification like "This week: 13 win
 - **Before Claude sees anything**, messages without a word of praise (thanks, great, shout-out, congrats, appreciate, and so on) are dropped. A year of mentions can run into the thousands; only the ones with praise words are sent on.
 - Claude then keeps only real recognition: praise, a shout-out, or thanks that says what you did. A bare "thanks!", thanks for an invite, requests, FYIs, and announcements that just list you among many people are dropped. When unsure, Claude drops it.
 
-Each kept message becomes a **Kudos** record with a short **word-for-word quote** and who said it, like `Robin Vale: "really nice work on that planning meeting with the PMs!!!"`, with a link to the message. If Claude's quote isn't exactly in the message, the message's own words are used instead. On the Promo map, a kudos record **counts like a medium win**, and the promo case quotes it exactly.
+Each kept message becomes a **Kudos** record with a short **word-for-word quote** and who said it, like `Robin Vale: "really nice work on that planning meeting with the PMs!!!"`, with a link to the message. If Claude's quote isn't exactly in the message, the message's own words are used instead. On the Performance map, a kudos record **counts like a medium win**, and the performance case quotes it exactly.
 
 You can also mark any record as kudos yourself: press **Kudos** in its row of the Intake Review Queue. Everything recognition-related is on the **Kudos** tab.
 
@@ -351,7 +351,7 @@ Below, one row per method, in your V2MOM's order:
 
 On **Home**, a strip under the readiness bars says "V2MOM: 6 of 8 methods active this quarter", with a small bar per method (how many wins and records it has this quarter, longest for the busiest; orange for a method that's gone quiet). Click the line for the V2MOM page, or a bar for that method. The strip is hidden until a V2MOM is loaded. Everything here is worked out when the page opens, from the notebook only: no Claude, nothing stored.
 
-The promo case then shows how your work lines up with your V2MOM (see **V2MOM alignment** under the promo case).
+The performance case then shows how your work lines up with your V2MOM (see **V2MOM alignment** under the performance case).
 
 ## KSOs: how your manager rates the year
 
@@ -389,19 +389,20 @@ At year end, pick the year on the Wins tab and click **Download as Markdown**. T
 
 ## What you should see
 
-The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Promo map, V2MOM, KSOs, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
+The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Performance map, V2MOM, KSOs, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
 
-- **Home**: Promotion Progress, Today's Three, New Entry, then Sync Status. Each cell stays closed until you click it.
-  - **Promotion Progress:** a small green bar for the next grade on the title. Clicking the tile opens it; it does not leave Home.
+- **Home**: Performance Progress, Today's Three, New Entry, then Sync Status. Each cell stays closed until you click it.
+  - **Performance Progress:** V2MOM and KSOs first, then the grade bars. The title row has a small green bar for the next grade. Clicking the tile opens it; it does not leave Home.
   - **Today's Three:** see **Daily three** above. The practice notebook shows a made-up three (run `demo seed` again on a new day to see it).
-  - **Promotion readiness:** a bar each for Grade 6 and Grade 7, showing how many key experiences are shown, with a percentage (hover for the detail; click for the Promo map).
   - **V2MOM:** how many of your V2MOM's methods had work this quarter, with a small bar per method (see **The V2MOM page**). Hidden until a V2MOM is loaded.
+  - **KSOs:** a bar for each KSO this year. Hidden until KSOs are loaded.
+  - **Grade bars:** a bar each for Grade 6 and Grade 7, showing how many key experiences are shown, with a percentage (hover for the detail; click for the Performance map).
   - **Four tiles:** leveling-guide skills with evidence, wins this half, kudos this half, and records waiting in the Intake Review Queue.
   - **Momentum:** a small chart of evidence per week (wins plus records linked to the guide) for the last 12 weeks, with the current week in darker green. Hover over a bar for its count.
-  - **Next:** one line with the Promo map's top Aim for next.
+  - **Next:** one line with the Performance map's top Aim for next.
   - **Sync Status:** the Sync buttons and the last-pull chips for Calendar, Tasks, Docs, Slack, Kudos, and the V2MOM. Closed until you click it.
   - There's no day-by-day list here any more. The daily review happens in the Intake Review Queue, and the Friday digest covers the week. Every record is still on its tab.
-- **Wins**, **Promo map**, **V2MOM**, **KSOs**, and the **Intake Review Queue**: described in their own sections above.
+- **Wins**, **Performance map**, **V2MOM**, **KSOs**, and the **Intake Review Queue**: described in their own sections above.
 - **Meetings / Conversations / Documents / Tasks / Kudos / Certifications / Other**: one tab per kind of entry, newest first. Each entry is one line: a small icon for where it came from (calendar, Slack, Docs, GitHub, Tasks, kudos, or a pencil for typed), the text, and four icon buttons on the right (hover for their names):
   - **+** adds notes or a link to it.
   - **Trophy** counts it as a win.
@@ -416,7 +417,7 @@ The page opens in **dark mode**; the small sun button next to **Coffee Shop** (t
 1. Start the practice notebook (above) and open http://127.0.0.1:8765. A note at the top says it's a practice notebook.
 2. On **Home**, add an entry ("Paired with Sam on the release", kind "Had a conversation") and check you land on **Conversations** with it at the top.
 3. Open **Wins**: two made-up wins are there. Use **Count this as a win** on your new entry, pick a size, and save; it asks which leveling guide items it shows.
-4. Open **Promo map**: the made-up guide shows a few experiences as started or shown.
+4. Open **Performance map**, then **Promotion (optional)**: the made-up guide shows a few experiences as started or shown.
 5. Open the **Intake Review Queue**, pick **Everything** in the first menu, and try **Looks right**, a type button, and **Remove** on a row. Rows update without the page reloading.
 6. Search for "rollback" with the box at the top.
 
@@ -440,7 +441,7 @@ Your personal notebook is connected to Google Calendar, Google Tasks, Google Doc
    - Do the owners of the customer-related channels and repos mind a personal tool keeping titles and short notes from them?
    - Is Claude, through Claude Code, approved for this kind of work content?
    - Is the notebook folder backed up (Time Machine) and kept out of synced folders (iCloud, Dropbox)?
-3. **At year end,** download the promo case from the Promo map and your wins from the Wins tab.
+3. **At year end,** download the performance case from the Performance map and your wins from the Wins tab.
 
 Keep real data out of `/tmp/cos-demo`; the practice notebook never syncs with Slack or Google.
 
@@ -494,7 +495,7 @@ The calendar part starts Claude Code with permission to use only the calendar to
 Everything (entries, pasted notes, wins) is in one file, `coffeeshop.db`, in the notebook folder (`~/Library/Application Support/coffeeshop` on a Mac, `%LOCALAPPDATA%\coffeeshop` on Windows), on this computer only. It is not in iCloud, OneDrive, or any synced folder, and the app refuses to keep a real notebook in one. Time Machine backs it up on a Mac if Time Machine is on. Daily copies go into `backups/` next to it (see "Is my real notebook backed up?" above).
 
 **Can I export everything, not just wins?**
-Yes. Click **Download everything (CSV)** at the bottom of any page. You get one zip with six spreadsheets: `entries.csv` (every meeting, task, and note), `pasted_notes.csv` (everything pasted under them, with the entry it belongs to), `wins.csv`, `guide_links.csv` (which wins and entries you linked to which leveling guide items), `v2mom_links.csv` (which ones advance which V2MOM method), and `promo_drafts.csv` (every section of every promo case draft). They open in Excel, Numbers, or Google Sheets, so the data stays readable even without this app. It's a snapshot of that moment; download a fresh one whenever you like, for example at year end. The zip holds everything you pasted, so keep it somewhere as safe as this laptop, and remember that removing something in the app doesn't remove it from zips you already downloaded. Text that starts with `=`, `+`, `-`, or `@` gets a leading `'` so a spreadsheet shows it instead of running it as a formula.
+Yes. Click **Download everything (CSV)** at the bottom of any page. You get one zip with six spreadsheets: `entries.csv` (every meeting, task, and note), `pasted_notes.csv` (everything pasted under them, with the entry it belongs to), `wins.csv`, `guide_links.csv` (which wins and entries you linked to which leveling guide items), `v2mom_links.csv` (which ones advance which V2MOM method), and `promo_drafts.csv` (every section of every performance case draft). They open in Excel, Numbers, or Google Sheets, so the data stays readable even without this app. It's a snapshot of that moment; download a fresh one whenever you like, for example at year end. The zip holds everything you pasted, so keep it somewhere as safe as this laptop, and remember that removing something in the app doesn't remove it from zips you already downloaded. Text that starts with `=`, `+`, `-`, or `@` gets a leading `'` so a spreadsheet shows it instead of running it as a formula.
 
 **After a restart the app opened with demo data and my entries were missing. Were they lost?**
 No. The app had been started with `--data-dir /tmp/cos-demo`, which opens the practice folder instead of your notebook. Run `uv run coffeeshop serve` with no `--data-dir` and your notebook comes back.

@@ -33,7 +33,7 @@ from .jobs import Jobs
 from ..storage.db import init_db, make_engine, make_session_factory
 from ..guide import activities, work
 from ..storage.models import (DailyTask, GuideItem, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, V2momLink,
-                              V2momMethod, Win, WorkItem)
+                              V2momMethod, V2momVersion, Win, WorkItem)
 
 ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
 CSP = ("default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self'; "
@@ -58,11 +58,11 @@ TABS = {  # path -> (kind, tab name, heading, what's on it)
     "/conversations": ("conversation", "Conversations", "Conversations", "Chats and calls you've noted, newest first."),
     "/documents": ("document", "Documents", "Documents", "Documents you've worked on, newest first."),
     "/tasks": ("task", "Tasks", "Tasks", "Google Tasks you've finished, grouped by the day you completed them, plus any you've noted yourself (open ones you typed stay at the top)."),
-    "/recognition": ("recognition", "Kudos", "Kudos", "Recognition from other people: shout-outs and thanks found in public and private Slack channels (never DMs), and anything you marked as recognition. Each counts like a medium win on the Promo map."),
+    "/recognition": ("recognition", "Kudos", "Kudos", "Recognition from other people: shout-outs and thanks found in public and private Slack channels (never DMs), and anything you marked as recognition. Each counts like a medium win on the Performance map."),
     "/certifications": ("certification", "Certifications", "Certifications", "Credentials you've earned, including ones from before this notebook. Each counts as a training or certification."),
     "/other": ("note", "Other", "Something else", "Anything that didn't fit the other tabs."),
 }
-PAGES = {"/", "/search", "/wins", "/promo", "/v2mom", "/kso", "/sheet", "/digest", *TABS}
+PAGES = {"/", "/search", "/wins", "/performance", "/v2mom", "/kso", "/sheet", "/digest", *TABS}
 SOURCE_LABEL = {"calendar": "Calendar", "tasks": "Google Tasks", "slack": "Slack", "docs": "Google Docs", "github": "GitHub",
                 "kudos": "Slack kudos", "daily": "Daily three", "": "Typed"}
 SHEET_KIND = [("meeting", "Meeting"), ("conversation", "Convo"), ("document", "Doc"), ("task", "Task"), ("recognition", "Kudos"),
@@ -562,7 +562,7 @@ def create_app(dd: DataDir) -> FastAPI:
                         s: Session = Depends(db)):
         t = link_target(s, win, entry)
         if t is None or not gsvc.has_guide(s):
-            return back("That item is gone, or the leveling guide isn't loaded yet.", "/promo")
+            return back("That item is gone, or the leveling guide isn't loaded yet.", "/performance")
         pm = gsvc.promo_map(s)
         obj, ref, text = t
         linked = gsvc.linked_ids(s, **ref)
@@ -571,7 +571,7 @@ def create_app(dd: DataDir) -> FastAPI:
             linked = linked or gsvc.linked_ids(s, entry_id=obj.entry_id)
             linked_methods = linked_methods or v2mom_links.linked_ids(s, entry_id=obj.entry_id)
         suggested = set() if linked else gsvc.suggested_ids(s, text)
-        return page_html(request, "guide_link.html", "/promo", obj=obj, is_win=isinstance(obj, Win), ref=ref,
+        return page_html(request, "guide_link.html", "/performance", obj=obj, is_win=isinstance(obj, Win), ref=ref,
                          checked=linked or suggested, suggested=bool(suggested), methods=v2mom_store.methods(s),
                          checked_methods=linked_methods, pm=pm, level=gsvc.level(s),
                          next=next if next in PAGES else "/wins")
@@ -843,16 +843,38 @@ def create_app(dd: DataDir) -> FastAPI:
         """Have Claude read every record it hasn't read yet against the guide, in the background."""
         return start_sync(request, "review", to=f"/sheet?{urlencode(parse_ret(ret))}")
 
-    @app.get("/promo", response_class=HTMLResponse)
-    def promo_page(request: Request, msg: str | None = None, s: Session = Depends(db)):
+    def _v2_years(s: Session) -> list:
+        """This year's V2MOM, and the newest earlier stored year beside it. A year that was never stored is left out."""
+        cur = v2mom_report.build(s)
+        if not cur:
+            return []
+        stored = cur["version"].fiscal_year
+        prev = v2mom_report.prior_year(list(s.scalars(select(V2momVersion.fiscal_year))), stored) if stored else None
+        old = s.scalar(select(V2momVersion).where(V2momVersion.fiscal_year == prev)
+                       .order_by(V2momVersion.pulled_at.desc(), V2momVersion.id.desc()).limit(1)) if prev else None
+        last = v2mom_report.build(s, version=old) if old is not None else None
+        return [x for x in (last, cur) if x]
+
+    def _kso_years(s: Session) -> list:
+        from ..kso import progress as kso_progress
+        cur = kso_progress.build(s)
+        if not cur:
+            return []
+        prev = v2mom_report.prior_year(cur["years"], cur["fw"].fiscal_year)
+        last = kso_progress.build(s, prev) if prev else None
+        return [x for x in (last, cur) if x]
+
+    @app.get("/performance", response_class=HTMLResponse)
+    def performance_page(request: Request, msg: str | None = None, s: Session = Depends(db)):
         guided = gsvc.has_guide(s)
         hints = 0
         if guided:
             linked = set(s.scalars(select(GuideLink.entry_id).where(GuideLink.entry_id.is_not(None))))
             hints = sum(1 for eid, text in s.execute(select(JournalEntry.id, JournalEntry.text).where(
                 JournalEntry.ai_read.is_(False))) if eid not in linked and suggest(text)[0])
-        return page_html(request, "promo.html", "/promo", pm=gsvc.promo_map(s) if guided else None, hints=hints,
-                         ai=gsvc.ai_counts(s), level=gsvc.level(s), guided=guided, msg=msg)
+        return page_html(request, "promo.html", "/performance", pm=gsvc.promo_map(s) if guided else None, hints=hints,
+                         ai=gsvc.ai_counts(s), level=gsvc.level(s), guided=guided, msg=msg,
+                         v2_years=_v2_years(s), kso_years=_kso_years(s))
 
     @app.get("/digest", response_class=HTMLResponse)
     def digest_page(request: Request, week: str = "", s: Session = Depends(db)):
@@ -994,7 +1016,7 @@ def create_app(dd: DataDir) -> FastAPI:
             return HTMLResponse("Not found", status_code=404)
         window = window if window in ("half", "year", "all") else "all"
         groups = activities.records(s, key, window)
-        return page_html(request, "impact.html", "/promo", label=activities.LABEL[key], key=key, window=window,
+        return page_html(request, "impact.html", "/performance", label=activities.LABEL[key], key=key, window=window,
                          groups=groups)
 
     @app.post("/sheet/{eid}/activity", dependencies=[Depends(check_csrf)])
@@ -1008,94 +1030,94 @@ def create_app(dd: DataDir) -> FastAPI:
                 s.commit()
         return sheet_back(request, s, ret, eid)
 
-    @app.post("/promo/write", dependencies=[Depends(check_csrf)])
+    @app.post("/performance/write", dependencies=[Depends(check_csrf)])
     def promo_write(request: Request, start: str = Form(""), end: str = Form(""), name: str = Form("", max_length=80),
                     example: str = Form(""), s: Session = Depends(db)):
         """Start writing a draft in the background; the page shows progress per section. Too little data to write
         from is said here, before Claude is asked."""
         from ..promo import evidence as pe, write as pw
         if not personal:
-            return back("Writing the case only works with your personal notebook.", "/promo/case")
+            return back("Writing the case only works with your personal notebook.", "/performance/case")
         lo, hi = pw.default_window()
         try:
             start, end = date.fromisoformat(start or lo).isoformat(), date.fromisoformat(end or hi).isoformat()
         except ValueError:
-            return back("Those dates don't look right; use the date pickers.", "/promo/case")
+            return back("Those dates don't look right; use the date pickers.", "/performance/case")
         if msg := pw.shortage(pe.build(s, start, end)[0], start, end):
             if request.headers.get("x-sync") == "1":
                 return JSONResponse({"started": False, "message": msg}, status_code=409)
-            return back(msg, "/promo/case")
+            return back(msg, "/performance/case")
         name = " ".join(name.split()) or pw.load_name(dd) or "the candidate"
         pw.save_name(dd, name)
         pw.save_example(dd, example)
         labels = [f"Write {h}" for _k, h, *_r in pw.SECTIONS]
         return started_reply(request, jobs.start("promo", labels, lambda j: syncs.run_promo(j, Session_, start, end, name)),
-                             "Writing your promo case. This takes a minute or two; refresh to see it.",
-                             "A draft is already being written.", "/promo/case")
+                             "Writing your performance case. This takes a minute or two; refresh to see it.",
+                             "A draft is already being written.", "/performance/case")
 
-    @app.post("/promo/case/{vid}/edit/{key}", dependencies=[Depends(check_csrf)])
+    @app.post("/performance/case/{vid}/edit/{key}", dependencies=[Depends(check_csrf)])
     def promo_edit(vid: int, key: str, text: str = Form("", max_length=20_000), s: Session = Depends(db)):
         """Save your wording of one section as a new draft (one sentence per line; [n] keeps its sources)."""
         from ..promo import write as pw
         from ..storage.models import PromoVersion
         v = s.get(PromoVersion, vid)
         if v is None:
-            return back("That draft is gone.", "/promo/case")
+            return back("That draft is gone.", "/performance/case")
         with _write_lock:
             try:
                 new = pw.edit_section(s, v, key, text)
             except KeyError:
-                return back("That section isn't in this draft.", f"/promo/case/{vid}")
-        return RedirectResponse(f"/promo/case/{new.id}#sec-{key}", status_code=303)
+                return back("That section isn't in this draft.", f"/performance/case/{vid}")
+        return RedirectResponse(f"/performance/case/{new.id}#sec-{key}", status_code=303)
 
-    @app.post("/promo/case/{vid}/rewrite/{key}", dependencies=[Depends(check_csrf)])
+    @app.post("/performance/case/{vid}/rewrite/{key}", dependencies=[Depends(check_csrf)])
     def promo_rewrite(request: Request, vid: int, key: str, confirm: str = Form(""), s: Session = Depends(db)):
         """Have Claude redo one section, in the background; your edited sections need a confirm first."""
         from ..storage.models import PromoSection
         if not personal:
-            return back("Writing the case only works with your personal notebook.", "/promo/case")
+            return back("Writing the case only works with your personal notebook.", "/performance/case")
         sec = s.scalar(select(PromoSection).where(PromoSection.version_id == vid, PromoSection.key == key))
         if sec is None:
-            return back("That section isn't in this draft.", f"/promo/case/{vid}")
+            return back("That section isn't in this draft.", f"/performance/case/{vid}")
         if sec.edited and confirm != "yes":
             msg = f"You've edited {sec.heading}. Tick “Replace my edits” to have Claude rewrite it anyway."
             if request.headers.get("x-sync") == "1":
                 return JSONResponse({"started": False, "message": msg}, status_code=409)
-            return back(msg, f"/promo/case/{vid}")
+            return back(msg, f"/performance/case/{vid}")
         return started_reply(request, jobs.start("promo", [f"Rewrite {sec.heading}"],
                                                  lambda j: syncs.run_rewrite(j, Session_, vid, key)),
-                             "Rewriting it now; refresh in a minute.", "A draft is already being written.", "/promo/case")
+                             "Rewriting it now; refresh in a minute.", "A draft is already being written.", "/performance/case")
 
-    @app.post("/promo/case/{vid}/gdoc", dependencies=[Depends(check_csrf)])
+    @app.post("/performance/case/{vid}/gdoc", dependencies=[Depends(check_csrf)])
     def promo_gdoc(request: Request, vid: int, s: Session = Depends(db)):
         """Send this draft to Google Docs in My Drive: a copy with sources, and a clean one for sharing."""
         from ..storage.models import PromoVersion
         if not personal:
-            return back("Sending to Google Docs only works with your personal notebook.", "/promo/case")
+            return back("Sending to Google Docs only works with your personal notebook.", "/performance/case")
         if s.get(PromoVersion, vid) is None:
-            return back("That draft is gone.", "/promo/case")
+            return back("That draft is gone.", "/performance/case")
         return started_reply(request, jobs.start("promo", syncs.GDOC_STEPS, lambda j: syncs.run_gdoc(j, Session_, dd, vid)),
                              "Sending it to Google Docs; refresh in a minute.", "Something is already running.",
-                             f"/promo/case/{vid}")
+                             f"/performance/case/{vid}")
 
-    @app.get("/promo/compare", response_class=HTMLResponse)
+    @app.get("/performance/compare", response_class=HTMLResponse)
     def promo_compare(request: Request, a: int = 0, b: int = 0, s: Session = Depends(db)):
         """Two drafts side by side, section by section: what was removed and what was added."""
         from ..promo import write as pw
         from ..storage.models import PromoSection, PromoVersion
         va, vb = s.get(PromoVersion, a), s.get(PromoVersion, b)
         if va is None or vb is None:
-            return back("Pick two drafts to compare.", "/promo/case")
+            return back("Pick two drafts to compare.", "/performance/case")
         secs = {v.id: {x.key: x for x in s.scalars(select(PromoSection).where(PromoSection.version_id == v.id))}
                 for v in (va, vb)}
         rows = []
         for key, heading, *_ in pw.SECTIONS:
             sa, sb = secs[va.id].get(key), secs[vb.id].get(key)
             rows.append(dict(heading=heading, diff=pw.compare(sa.sentences if sa else [], sb.sentences if sb else [])))
-        return page_html(request, "promo_compare.html", "/promo", a=va, b=vb, rows=rows)
+        return page_html(request, "promo_compare.html", "/performance", a=va, b=vb, rows=rows)
 
-    @app.get("/promo/case", response_class=HTMLResponse)
-    @app.get("/promo/case/{vid}", response_class=HTMLResponse)
+    @app.get("/performance/case", response_class=HTMLResponse)
+    @app.get("/performance/case/{vid}", response_class=HTMLResponse)
     def promo_case(request: Request, vid: int | None = None, msg: str | None = None, s: Session = Depends(db)):
         from ..promo import write as pw
         from ..storage.models import PromoSection, PromoVersion
@@ -1108,17 +1130,32 @@ def create_app(dd: DataDir) -> FastAPI:
         cited = sorted({n for sec in sections for x in sec.sentences for n in x["sources"]})
         by_n = {p["n"]: p for p in (v.evidence if v else [])}
         lo, hi = pw.default_window()
-        return page_html(request, "promo_case.html", "/promo", v=v, versions=versions, sections=sections,
+        return page_html(request, "promo_case.html", "/performance", v=v, versions=versions, sections=sections,
                          sources=[by_n[n] for n in cited if n in by_n], latest=versions[0].id if versions else None,
                          texts={x.key: pw.to_text(x.sentences) for x in sections},
                          flagged=sum(1 for sec in sections for x in sec.sentences if not x["valid"]), start=lo,
                          end=hi, name=pw.load_name(dd), example=gsvc.profile(s).get("example", ""), guided=gsvc.has_guide(s), msg=msg)
 
-    @app.get("/promo/export")
+    def _promo_redirect(request: Request, rest: str = "") -> RedirectResponse:
+        dest = "/performance" + (f"/{rest}" if rest else "")
+        if request.url.query:
+            dest += "?" + request.url.query
+        return RedirectResponse(dest, status_code=308)
+
+    @app.get("/promo")
+    def promo_redirect(request: Request):
+        """Old address of the performance map. The rest of a /promo path, and its query, come along."""
+        return _promo_redirect(request)
+
+    @app.get("/promo/{rest:path}")
+    def promo_redirect_rest(request: Request, rest: str):
+        return _promo_redirect(request, rest)
+
+    @app.get("/performance/export")
     def promo_export(s: Session = Depends(db)):
         pm = gsvc.promo_map(s) if gsvc.has_guide(s) else None
         if pm is None:
-            return back("There's no Promo map to download yet; see the Promo map page.", "/promo")
+            return back("There's no Performance map to download yet; see the Performance page.", "/performance")
         name = f"promo-case-{date.today().isoformat()}.md"
         return Response(promo_markdown(pm), media_type="text/markdown; charset=utf-8",
                         headers={"Content-Disposition": f'attachment; filename="{name}"'})

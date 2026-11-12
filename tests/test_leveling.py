@@ -137,16 +137,16 @@ def test_pages_work_before_a_level_is_chosen_and_at_the_top(tmp_path, workbook):
         s.commit()
     app = create_app(dd)
     c, tok = TestClient(app, base_url=BASE), app.state.csrf_token
-    for page in ("/", "/promo"):
+    for page in ("/", "/performance"):
         assert "coffeeshop setup level" in c.get(page).text
     assert "Choose your role and level" in c.get(f"/guide/link?win={wid}").text
     form(c, "/guide/link", tok, win=wid, next="/wins")  # saving the page without a Promo map keeps the links
     with open_session(dd) as s:
         assert s.scalar(select(GuideLink.item_id)) == item
         save_level(s, "Widget Release Engineering", 7, "Widget Architect")
-    for page in ("/", "/promo", "/wins", "/sheet", "/promo/case"):
+    for page in ("/", "/performance", "/wins", "/sheet", "/performance/case"):
         assert c.get(page).status_code == 200
-    for page in ("/", "/promo"):
+    for page in ("/", "/performance"):
         assert "Grade 7 is the top of the Widget Release Engineering path" in c.get(page).text
 
 

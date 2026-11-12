@@ -300,7 +300,7 @@ def guide_group(dry_run: bool = typer.Option(False, "--dry-run", help="Show the 
                                                                 "(never ones you grouped or split yourself)"),
                 limit: Optional[int] = typer.Option(None, help="Only this many records (oldest first)"),
                 data_dir: Optional[str] = DataOpt) -> None:
-    """Group records that describe the same piece of work, so it counts once on the Promo map (marked AI)."""
+    """Group records that describe the same piece of work, so it counts once on the Performance map (marked AI)."""
     from .claude_cli import ClaudeError
     from .guide import work
     dd, s = _open_personal(data_dir, "Grouping")
@@ -365,16 +365,17 @@ def guide_activities(redo: bool = typer.Option(False, "--redo", help="Also re-ta
         typer.echo(f"  {c['all']:>4} {c['label']} ({c['year']} this year)")
 
 
-promo_app = typer.Typer(no_args_is_help=True, help="Your promotion case")
-app.add_typer(promo_app, name="promo")
+performance_app = typer.Typer(no_args_is_help=True, help="Your performance case")
+app.add_typer(performance_app, name="performance")
+app.add_typer(performance_app, name="promo", hidden=True)  # old name; `performance write` is the command
 
 
-@promo_app.command("write")
-def promo_write_cmd(start: Optional[str] = typer.Option(None, help="First day, YYYY-MM-DD (default: a year ago)"),
-                    end: Optional[str] = typer.Option(None, help="Last day, YYYY-MM-DD (default: today)"),
-                    name: Optional[str] = typer.Option(None, help="Who it's about (default: the saved name)"),
-                    data_dir: Optional[str] = DataOpt) -> None:
-    """Have Claude draft the promotion case from your notebook; open it at /promo/case."""
+@performance_app.command("write")
+def performance_write_cmd(start: Optional[str] = typer.Option(None, help="First day, YYYY-MM-DD (default: a year ago)"),
+                          end: Optional[str] = typer.Option(None, help="Last day, YYYY-MM-DD (default: today)"),
+                          name: Optional[str] = typer.Option(None, help="Who it's about (default: the saved name)"),
+                          data_dir: Optional[str] = DataOpt) -> None:
+    """Have Claude draft the performance case from your notebook; open it at /performance/case."""
     from .claude_cli import ClaudeError
     from .promo import write as pw
     dd, s = _open_personal(data_dir, "Writing the case")
@@ -394,7 +395,7 @@ def promo_write_cmd(start: Optional[str] = typer.Option(None, help="First day, Y
     secs = list(s.scalars(select(PromoSection).where(PromoSection.version_id == v.id)))
     flagged = sum(1 for sec in secs for x in sec.sentences if not x["valid"])
     typer.echo(f"Draft {v.id} saved" + (f", {flagged} sentences to check" if flagged else ", every sentence sourced")
-               + f". Open http://127.0.0.1:8765/promo/case/{v.id}")
+               + f". Open http://127.0.0.1:8765/performance/case/{v.id}")
 
 
 slack_app = typer.Typer(no_args_is_help=True, help="Bring Slack canvases into your notebook (read-only)")

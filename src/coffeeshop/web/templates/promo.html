@@ -7,19 +7,58 @@
   {% endif %}
 {% endmacro %}
 {% block body %}
-{% if not pm %}
+{% if v2_years or kso_years %}
+<section class="card" aria-label="Performance">
+  <h2>Performance</h2>
+  {% if v2_years %}
+  <p class="st">V2MOM</p>
+  <div class="{{ 'grid2' if v2_years|length > 1 else '' }}">
+    {% for r in v2_years %}<div>
+      <p class="sub">{{ r.fy }}</p>
+      <div class="ready">
+        {% for x in r.methods %}{% set m = x.m %}
+        <a class="ready-row" href="/v2mom/{{ m.id }}" title="{{ m.label }} {{ m.name }}">
+          <span class="ready-label">{{ m.label }}</span>
+          <span class="bar" role="img" aria-label="{{ r.fy }} {{ m.label }}: {{ m.progress if m.progress is not none else 0 }} percent"><span class="b-strong" style="width:{{ m.progress or 0 }}%"></span></span>
+          <span class="ready-num">{% if m.progress is not none %}<b>{{ m.progress }}%</b>{% else %}<span class="muted">no percent yet</span>{% endif %}</span>
+        </a>
+        {% else %}<p class="muted">No methods in this V2MOM.</p>{% endfor %}
+      </div>
+    </div>{% endfor %}
+  </div>
+  {% endif %}
+  {% if kso_years %}
+  <p class="st">KSOs</p>
+  <div class="{{ 'grid2' if kso_years|length > 1 else '' }}">
+    {% for r in kso_years %}<div>
+      <p class="sub"><a href="/kso?fy={{ r.fw.fiscal_year }}">{{ r.fw.fiscal_year }}</a></p>
+      <div class="ready">
+        {% for k in r.ksos %}
+        <a class="ready-row" href="/kso?fy={{ r.fw.fiscal_year }}" title="KSO {{ k.key }} {{ k.name }}">
+          <span class="ready-label">{{ k.key }}</span>
+          <span class="bar" role="img" aria-label="{{ r.fw.fiscal_year }} KSO {{ k.key }}: {{ k.bar if k.bar is not none else 0 }} percent"><span class="b-strong" style="width:{{ k.bar or 0 }}%"></span></span>
+          <span class="ready-num">{% if k.bar is not none %}<b>{{ k.bar }}%</b>{% else %}<span class="muted">no percent yet</span>{% endif %}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>{% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
 <section class="card">
-  <h2>Promo map</h2>
+  <details>
+  <summary><h2>Promotion (optional)</h2></summary>
+{% if not pm %}
   {% if level and level.top %}<p class="muted">{{ level_note(level) }}</p>
   {% else %}<p class="muted">Choose your role and level first, and the app loads that role's leveling guide. In Terminal:</p>
   <pre class="paper">cd ~/Documents/coffeeshop
 uv run coffeeshop setup level</pre>{% endif %}
-</section>
 {% else %}
 <section class="card">
-  <div class="qhead"><h2>Promo map: Grade {{ pm.current }} to {{ pm.grades[0] }}{% if pm.grades|length > 1 %}, aiming at {{ pm.grades[-1] }}{% endif %}</h2>
-    <div class="row" style="margin-left:auto"><a class="btnlike" href="/promo/case">Write my promo case</a>
-      <form method="get" action="/promo/export"><button title="Download the evidence as Markdown">Download evidence</button></form></div>
+  <div class="qhead"><h2>Grade {{ pm.current }} to {{ pm.grades[0] }}{% if pm.grades|length > 1 %}, aiming at {{ pm.grades[-1] }}{% endif %}</h2>
+    <div class="row" style="margin-left:auto"><a class="btnlike" href="/performance/case">Write my performance case</a>
+      <form method="get" action="/performance/export"><button title="Download the evidence as Markdown">Download evidence</button></form></div>
   </div>
   {% call howto() %}<p class="muted">Each key experience from the leveling guide, colored by how much of your own logged work backs it up. Link wins and entries to the guide to fill it in. Wins count more than plain entries, and bigger wins count more.</p>{% endcall %}
   {% if ai.links or ai.wins or hints %}<div class="stats filters">
@@ -89,4 +128,6 @@ uv run coffeeshop setup level</pre>{% endif %}
   </details>
 </section>
 {% endif %}
+  </details>
+</section>
 {% endblock %}

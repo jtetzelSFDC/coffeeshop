@@ -90,8 +90,8 @@ def test_write_button_shows_the_draft_with_sources(nb, monkeypatch):
     monkeypatch.setattr(pw, "ask", lambda prompt, data, timeout=0: json.dumps({"sentences": [
         {"text": "Jordan ran the full sandbox refresh <b>for four teams</b>.", "sources": [json.loads(data)["evidence"][0]["n"]]},
         {"text": "Jordan cut costs by 40%.", "sources": [1]}]}))
-    assert "Write my promo case" in c.get("/promo/case").text and "No draft yet" in c.get("/promo/case").text
-    r = c.post("/promo/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29"},
+    assert "Write my performance case" in c.get("/performance/case").text and "No draft yet" in c.get("/performance/case").text
+    r = c.post("/performance/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29"},
                headers={"X-Sync": "1"})
     assert r.json() == {"started": True}
     for _ in range(200):
@@ -101,12 +101,12 @@ def test_write_button_shows_the_draft_with_sources(nb, monkeypatch):
         time.sleep(0.05)
     assert job["state"] == "done" and all(st["state"] in ("done", "skipped") for st in job["steps"]), job
     assert "No evidence for this section" in next(st["detail"] for st in job["steps"] if st["state"] == "skipped")
-    page = c.get("/promo/case").text
-    assert "Promotion case: Jordan" in page and "&lt;b&gt;for four teams" in page and "<b>for four teams" not in page
+    page = c.get("/performance/case").text
+    assert "Performance case: Jordan" in page and "&lt;b&gt;for four teams" in page and "<b>for four teams" not in page
     assert 'href="#src-' in page and 'id="src-' in page and "Check this (40 isn" in page
     assert re.search(r"<b>\d+</b> to check", page) and '<details class="sources-d">' in page
-    assert c.get("/promo/case/999").status_code == 404
-    assert c.post("/promo/write", data={"csrf": "nope"}).status_code == 403
+    assert c.get("/performance/case/999").status_code == 404
+    assert c.post("/performance/write", data={"csrf": "nope"}).status_code == 403
     assert pw.load_name(dd) == "Jordan"
 
 
@@ -214,11 +214,11 @@ def test_too_little_data_is_said_before_claude_is_asked(nb):
         promo_seed(s)
         pieces, _ = pe.build(s, "2025-10-29", "2026-10-29")
         assert pw.shortage(pieces, "2025-10-29", "2026-10-29") == "" and pw.shortage(pieces[:2], "a", "b")
-    r = c.post("/promo/write", data={"csrf": token, "name": "Jordan", "start": "2026-10-01", "end": "2026-10-02"},
+    r = c.post("/performance/write", data={"csrf": token, "name": "Jordan", "start": "2026-10-01", "end": "2026-10-02"},
                headers={"X-Sync": "1"})
     assert r.status_code == 409 and "too little to write a case" in r.json()["message"]
     assert "promo" not in c.get("/sync/status").json()
-    r = c.post("/promo/write", data={"csrf": token, "start": "2026-10-01", "end": "2026-10-02"}, follow_redirects=True)
+    r = c.post("/performance/write", data={"csrf": token, "start": "2026-10-01", "end": "2026-10-02"}, follow_redirects=True)
     assert "too little to write a case" in r.text
 
 
@@ -233,7 +233,7 @@ def test_a_style_example_is_sent_as_style_only_and_never_as_evidence(nb, monkeyp
         return json.dumps({"sentences": [{"text": "Jordan cut release time by 90%.", "sources": [1]}]})
     monkeypatch.setattr(pw, "ask", fake)
     example = "Sam led the Maple release and cut release time by 90%."
-    r = c.post("/promo/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29",
+    r = c.post("/performance/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29",
                                      "example": example}, headers={"X-Sync": "1"})
     assert r.json() == {"started": True}
     for _ in range(200):
@@ -244,16 +244,16 @@ def test_a_style_example_is_sent_as_style_only_and_never_as_evidence(nb, monkeyp
     prompt, data = sent[0]
     assert data["style_example"] == example and "only its tone" in prompt and "Never use a fact" in prompt
     assert all(example not in p["text"] for p in data["evidence"])  # never evidence
-    page = c.get("/promo/case").text
+    page = c.get("/performance/case").text
     assert "Check this (90 isn" in page and example in page  # the claim is still rejected; the box remembers it
-    r = c.post("/promo/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29"},
+    r = c.post("/performance/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29"},
                headers={"X-Sync": "1"})  # an empty box clears it, and nothing extra is sent
     for _ in range(200):
         job = c.get("/sync/status").json().get("promo")
         if job and job["state"] != "running":
             break
         time.sleep(0.05)
-    assert "style_example" not in sent[-1][1] and example not in c.get("/promo/case").text
+    assert "style_example" not in sent[-1][1] and example not in c.get("/performance/case").text
 
 
 def test_a_long_multi_line_example_posted_with_crlf_is_kept(nb):
@@ -261,7 +261,7 @@ def test_a_long_multi_line_example_posted_with_crlf_is_kept(nb):
     with open_session(dd) as s:
         promo_seed(s)
     example = "\r\n".join(["Sam led the release."] * 280)  # about 5,800 characters as typed, over 6,000 as posted
-    r = c.post("/promo/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29",
+    r = c.post("/performance/write", data={"csrf": token, "name": "Jordan", "start": "2025-10-29", "end": "2026-10-29",
                                      "example": example}, headers={"X-Sync": "1"})
     assert r.status_code == 200
     assert pw.read_profile(dd.root)["example"] == example.replace("\r\n", "\n") and "\r" not in pw.read_profile(dd.root)["example"]

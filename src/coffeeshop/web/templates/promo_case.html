@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block body %}
-<section class="card slim fold" tabindex="-1" aria-label="Write a promo case">
-  <form method="post" action="/promo/write" data-sync="promo" class="quick">
+<section class="card slim fold" tabindex="-1" aria-label="Write a performance case">
+  <form method="post" action="/performance/write" data-sync="promo" class="quick">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <label class="help" for="pc-name">About</label>
     <input id="pc-name" name="name" value="{{ name }}" maxlength="80" placeholder="Your first name" style="max-width:10rem">
     <label class="help" for="pc-start">from</label><input id="pc-start" type="date" name="start" value="{{ start }}">
     <label class="help" for="pc-end">to</label><input id="pc-end" type="date" name="end" value="{{ end }}">
-    <button class="primary" data-label="Write my promo case" {{ 'disabled' if not (personal and guided) }}>Write my promo case</button>
+    <button class="primary" data-label="Write my performance case" {{ 'disabled' if not (personal and guided) }}>Write my performance case</button>
     <details style="flex-basis:100%"><summary>Style example (optional)</summary>
-      <textarea name="example" maxlength="6000" rows="6" style="width:100%" aria-label="Example of a strong promo case" placeholder="Paste a strong promo case here (someone else's, or an older one of yours). Claude copies only its tone and structure, never its facts.">{{ example }}</textarea>
+      <textarea name="example" maxlength="6000" rows="6" style="width:100%" aria-label="Example of a strong performance case" placeholder="Paste a strong performance case here (someone else's, or an older one of yours). Claude copies only its tone and structure, never its facts.">{{ example }}</textarea>
     </details>
   </form>
   <div class="job" data-job="promo" hidden></div>
@@ -19,18 +19,18 @@
 </section>
 
 {% if not v %}
-<section class="card"><p class="muted">No draft yet. Pick the window above (the last 12 months by default) and press <b>Write my promo case</b>.</p></section>
+<section class="card"><p class="muted">No draft yet. Pick the window above (the last 12 months by default) and press <b>Write my performance case</b>.</p></section>
 {% else %}
-{% if v.id != latest %}<div class="note">You're looking at draft {{ v.id }}. <a href="/promo/case/{{ latest }}">The newest is draft {{ latest }}</a>.</div>{% endif %}
+{% if v.id != latest %}<div class="note">You're looking at draft {{ v.id }}. <a href="/performance/case/{{ latest }}">The newest is draft {{ latest }}</a>.</div>{% endif %}
 <section class="card">
-  <h2>Promotion case: {{ v.name }}</h2>
+  <h2>Performance case: {{ v.name }}</h2>
   <div class="stats">
     <span title="{{ v.created_at.strftime('%b %-d, %Y at %-I:%M %p') }}"><b>Draft {{ v.id }}</b>{% if v.note %} &middot; {{ v.note|lower }}{% endif %} &middot; {{ v.created_at.date()|short_day }}</span>
     <span title="The work this draft is written from">{{ v.window_start|short_day }} to {{ v.window_end|short_day }}</span>
     {% if flagged %}<a href="#sec-{{ sections[0].key if sections else '' }}" class="late-stat"><b>{{ flagged }}</b> to check</a>{% else %}<span class="ok-stat">every sentence sourced</span>{% endif %}
   </div>
   {% call howto("About drafts") %}<p class="help">It's a draft: read it, fix it, and make it yours. Every edit or rewrite saves a new draft, so nothing is lost. A sentence with no source, or with a number that isn't in your evidence, is marked <span class="check">Check this</span>.</p>{% endcall %}
-  {% if personal %}<form method="post" action="/promo/case/{{ v.id }}/gdoc" data-sync="promo" class="row">
+  {% if personal %}<form method="post" action="/performance/case/{{ v.id }}/gdoc" data-sync="promo" class="row">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <button data-label="Send to Google Docs">Send to Google Docs</button>
     {% call howto() %}<p class="help">Makes two Docs in My Drive: one with the [numbers] and sources (for you), one clean copy for sharing. {% if flagged %}<b>The {{ flagged }} sentence{{ '' if flagged == 1 else 's' }} marked Check this go too</b>; fix {{ 'it' if flagged == 1 else 'them' }} first if you're sharing. {% endif %}The draft text passes through the AI tool on the way to Google, and the app reads each Doc back to check every word arrived.</p>{% endcall %}
@@ -41,8 +41,8 @@
     {% if v.google_doc_clean_url %}<a href="{{ v.google_doc_clean_url }}" target="_blank" rel="noreferrer noopener">clean copy</a>{% endif %}</p>{% endif %}
   {% if versions|length > 1 %}
   <details><summary>All drafts ({{ versions|length }}) and compare</summary>
-    <ul>{% for x in versions %}<li>{% if x.id == v.id %}<b>Draft {{ x.id }}</b>{% else %}<a href="/promo/case/{{ x.id }}">Draft {{ x.id }}</a>{% endif %} <span class="muted">{{ x.created_at.strftime('%b %-d, %-I:%M %p') }}{% if x.note %} &middot; {{ x.note }}{% endif %}</span></li>{% endfor %}</ul>
-    <form method="get" action="/promo/compare" class="row">
+    <ul>{% for x in versions %}<li>{% if x.id == v.id %}<b>Draft {{ x.id }}</b>{% else %}<a href="/performance/case/{{ x.id }}">Draft {{ x.id }}</a>{% endif %} <span class="muted">{{ x.created_at.strftime('%b %-d, %-I:%M %p') }}{% if x.note %} &middot; {{ x.note }}{% endif %}</span></li>{% endfor %}</ul>
+    <form method="get" action="/performance/compare" class="row">
       <label class="help" for="cmp-a">Compare draft</label><select id="cmp-a" name="a">{% for x in versions %}<option value="{{ x.id }}" {{ 'selected' if loop.index == 2 }}>{{ x.id }}</option>{% endfor %}</select>
       <label class="help" for="cmp-b">with</label><select id="cmp-b" name="b">{% for x in versions %}<option value="{{ x.id }}" {{ 'selected' if x.id == v.id }}>{{ x.id }}</option>{% endfor %}</select>
       <button>Compare</button></form>
@@ -51,14 +51,14 @@
 {% for sec in sections %}
 <section class="card" id="sec-{{ sec.key }}">
   <div class="qhead"><h2>{{ sec.heading }}</h2>{% if sec.edited %}<span class="chip guide">edited by you</span>{% endif %}
-    {% if personal %}<form method="post" action="/promo/case/{{ v.id }}/rewrite/{{ sec.key }}" data-sync="promo" class="row" style="margin-left:auto">
+    {% if personal %}<form method="post" action="/performance/case/{{ v.id }}/rewrite/{{ sec.key }}" data-sync="promo" class="row" style="margin-left:auto">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       {% if sec.edited %}<label class="help"><input type="checkbox" name="confirm" value="yes"> Replace my edits</label>{% endif %}
       <button data-label="Rewrite" title="Have Claude rewrite this section (saved as a new draft)">Rewrite</button></form>{% endif %}</div>
   {% if sec.error %}<p class="muted">{{ sec.error }}</p>{% endif %}
   <p class="case">{% for x in sec.sentences %}<span class="{{ '' if x.valid else 'check' }}"{% if not x.valid %} title="Check this: {{ x.reason }}"{% endif %}>{% if not x.valid %}<b class="check-tag">Check this ({{ x.reason }}):</b> {% endif %}{{ x.text }}{% for n in x.sources %}<a class="cite" href="#src-{{ n }}">[{{ n }}]</a>{% endfor %}</span> {% endfor %}</p>
   <details><summary>Edit</summary>
-    <form method="post" action="/promo/case/{{ v.id }}/edit/{{ sec.key }}" class="stack">
+    <form method="post" action="/performance/case/{{ v.id }}/edit/{{ sec.key }}" class="stack">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       {% call howto() %}<p class="help">One sentence per line. Keep the [numbers] at the end of a line to keep its sources; your wording is checked the same way as Claude's. Saving makes a new draft.</p>{% endcall %}
       <textarea name="text" maxlength="20000" aria-label="Edit {{ sec.heading }}">{{ texts[sec.key] }}</textarea>

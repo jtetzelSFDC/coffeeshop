@@ -96,6 +96,6 @@ End with one paragraph on what goes to Claude, before their first sync, in these
 reads your Google Calendar, Tasks, and the Docs you wrote, your Slack tracker canvas, and Slack messages that mention
 you in public and private channels (never DMs), and it sorts the notebook's records, your V2MOM, and the leveling
 guide to find the work that counts toward your next level. Each job sends only what it needs. Everything is stored
-on this laptop, in your notebook folder, outside this repo; nothing else leaves it, except a promo case you choose
+on this laptop, in your notebook folder, outside this repo; nothing else leaves it, except a performance case you choose
 to send to Google Docs. The full list is in
 docs/TECHNICAL.md under "What goes to Claude".

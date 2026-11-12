@@ -183,7 +183,7 @@ def build(s: Session, start: str, end: str) -> tuple[list[dict], dict[str, list[
     pm = promo_map(s)
     for gr in pm["grades"] if pm else ():
         p = pm["progress"][gr]
-        add("progress", f"Promo map, Grade {gr}: {p['shown'] + p['strong']} of {p['total']} key experiences shown "
+        add("progress", f"Performance map, Grade {gr}: {p['shown'] + p['strong']} of {p['total']} key experiences shown "
             f"({p['strong']} strong), {p['started']} started, {p['gap']} not shown yet.", end, [],
             ["summary", "growth"])
     for row in pm["rows"] if pm else ():

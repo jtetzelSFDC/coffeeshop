@@ -61,11 +61,11 @@ def test_win_flow_suggests_then_saves_only_what_user_confirms(nb):
     page = c.get(f"/guide/link?win={win_id}").text
     assert f'value="{sandbox[6]}" checked' in page and f'value="{sandbox[7]}" checked' not in page
 
-    promo = c.get("/promo").text
+    promo = c.get("/performance").text
     assert 'title="Grade 6: 1 of 3 key experiences shown' in promo and 'title="Grade 7: 0 of 3' in promo
     assert "<b>33%</b> <span class=\"muted\">1/3</span>" in promo
     assert "Automated the sandbox refresh for UAT" in promo and "Aim for next" in promo
-    md = c.get("/promo/export")
+    md = c.get("/performance/export")
     assert md.headers["content-type"].startswith("text/markdown")
     body = md.text
     assert body.startswith("# Promotion case draft: Grade 5 to Grade 6, with Grade 7 evidence")
@@ -118,7 +118,7 @@ def test_reimport_keeps_links_and_retires_removed_items(nb, tmp_path):
     with open_session(dd) as s:
         g = s.get(GuideItem, mentor)
         assert g.active is False and s.scalar(select(GuideLink.item_id)) == mentor
-    assert "Mentors newer" not in c.get("/promo").text
+    assert "Mentors newer" not in c.get("/performance").text
 
 
 def test_guide_links_are_in_the_csv_export_and_bad_input_is_ignored(nb):
@@ -141,5 +141,5 @@ def test_promo_page_without_a_guide_explains_how_to_load_it(tmp_path):
     dd = DataDir(tmp_path / "nb")
     dd.init_personal()
     c = TestClient(create_app(dd), base_url=BASE)
-    assert "coffeeshop setup level" in c.get("/promo").text
+    assert "coffeeshop setup level" in c.get("/performance").text
     assert "Link to the leveling guide" not in c.get("/").text

@@ -3,7 +3,7 @@
 <p align="center"><em>Do the work. It remembers.</em></p>
 
 <p align="center">
-  <img src="docs/img/home.jpg" width="300" alt="Coffee Shop's Home page on a phone-size screen in dark mode, on the practice notebook. Promotion Progress is open, with Grade 6 and Grade 7 bars and the Promo map link. The other tiles are closed.">
+  <img src="docs/img/home.jpg" width="300" alt="Coffee Shop's Home page on a phone-size screen in dark mode, on the practice notebook. Performance Progress is open, with V2MOM and KSO bars, then Grade 6 and Grade 7, and the Performance map link. The other tiles are closed.">
 </p>
 
 ## What it does
@@ -16,11 +16,13 @@
 - It shows how your year is going, one progress bar per KSO.
 - It shows the path: what is shown, what is strong, what is still to come.
 - Each morning it offers three small steps, none longer than ten minutes.
-- When the season comes, it writes your promotion case, each sentence with its source, for you to shape and send to Google Docs.
+- When the season comes, it writes your performance case, each sentence with its source, for you to shape and send to Google Docs.
 - On Friday it tells you what the week added.
 - It marks what Claude chose, so that you may decide.
 - Each day it keeps a copy, and you may take everything with you.
 - It lives on your machine. Only what Claude must read leaves it.
+
+This notebook is personal coaching. It stays on this laptop. A manager and Salesforce do not see it unless you share it, for example by sending a case to Google Docs.
 
 ## Begin
 
