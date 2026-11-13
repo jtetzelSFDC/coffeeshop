@@ -74,10 +74,10 @@ Good output, file summary:
 
 ## After every sync: the read-through
 
-`guide/`, `v2mom/links.py`. After Slack, Google, and GitHub records come in, Claude reads them against the leveling guide and the V2MOM, groups records of the same work, and tags each with one activity. Every pick is marked AI until you check it.
+`guide/`, `v2mom/links.py`, `values/links.py`. After Slack, Google, and GitHub records come in, Claude reads them against the leveling guide, the V2MOM, and Values & Behaviors, groups records of the same work, and tags each with one activity. Every pick is marked AI until you check it.
 
 Good output:
-- Guide and V2MOM links only when the record is real evidence. An empty list beats a weak link; standups, 1:1s, and status pings get none.
+- Guide, V2MOM, and Values & Behaviors links only when the record is real evidence. An empty list beats a weak link; standups, 1:1s, and status pings get none. At most two behaviors.
 - Next-level items only when the record shows that level (owning or leading it across teams).
 - A win only for a real accomplishment, with an impact sentence that uses only facts in the record. Most records aren't wins.
 - One piece of work groups records of the same release, refresh, or doc, not "everything about releases".

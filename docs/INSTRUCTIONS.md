@@ -4,9 +4,9 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 ## Where things stand
 
-Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests. Claude sorts each one against your role's leveling guide. Your V2MOM and your KSOs join that sort when you connect them. Your wins stay too, so the Performance map, the performance case, the KSO page, and each morning's three small tasks reflect what you have actually done.
+Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests. Claude sorts each one against your role's leveling guide and the Values & Behaviors. Your V2MOM and your KSOs join that sort when you connect them. Your wins stay too, so the Performance map, the performance case, the KSO page, and each morning's three small tasks reflect what you have actually done.
 
-Everything stays on this laptop. Something leaves only when Claude reads or sorts it: a sync, adding an entry or checking off a daily task, Have Claude read, Write my performance case, Suggest now, Re-estimate, a `kso` command, or Send to Google Docs. The full list is in [What goes to Claude](TECHNICAL.md#what-goes-to-claude).
+Everything stays on this laptop. Something leaves only when Claude reads or sorts it: a sync, adding an entry or checking off a daily task, Have Claude read, Write my performance case, Suggest now, Re-estimate, a `kso` command, `values tag`, or Send to Google Docs. The full list is in [What goes to Claude](TECHNICAL.md#what-goes-to-claude).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -129,12 +129,12 @@ On Settings, **Refresh the performance case every Friday** is off unless you tur
 
 ## Intake Review Queue: sorting everything that comes in
 
-The **Intake Review Queue** (in the Menu) is a grid of every record (calendar meetings, Google Tasks, Slack items, and what you typed), newest first, 100 to a page. The columns are **Select**, **Record** (date, where it came from, and the text), **Type**, **Counts as**, **Part of**, **Leveling guide**, **V2MOM**, **Win**, and **Actions**. Each heading has a one-line hint: hover the heading, or read the legend above the grid.
+The **Intake Review Queue** (in the Menu) is a grid of every record (calendar meetings, Google Tasks, Slack items, and what you typed), newest first, 100 to a page. The columns are **Select**, **Record** (date, where it came from, and the text), **Type**, **Counts as**, **Part of**, **Leveling guide**, **V2MOM**, **Values**, **Win**, and **Actions**. Each heading has a one-line hint: hover the heading, or read the legend above the grid.
 
 - **Select**: tick rows, or the heading checkbox for every row on this page, then **Looks right for selected (N)**. A row Claude has not read yet is skipped. **Looks right** on one row still works.
 - **Type**: Meeting, Convo, Doc, Task, Kudos, Cert, or Other. The lit one is the current type.
 - **Counts as**: the activity this record adds to on the Performance map. **Part of**: the piece of work it belongs to, counted once.
-- **Leveling guide**: the guide items the record shows. **V2MOM**: the methods it moves forward (the method's name, shortened if it's long; hover for the full name). Click &times; to remove one, or **edit**/**link** in that column to pick them yourself.
+- **Leveling guide**: the guide items the record shows. **V2MOM**: the methods it moves forward (the method's name, shortened if it's long; hover for the full name). Click &times; to remove one, or **edit**/**link** in that column to pick them yourself. **Values**: the behaviors it shows, the behavior's name (hover for the value). Click &times; to remove one.
 - **Win**: **S**, **M**, or **L** makes the record a small, medium, or large win (or resizes it), and &times; removes the win. Click the win's title to see why it mattered, then **Edit on Wins** to reword it.
 - **Looks right** marks the row checked. Whatever Claude picked for it becomes yours, and the row leaves the **Not checked yet** list, so you can work down the list until it's empty. **Looks right for selected** does that for every ticked row. A row Claude has not read yet is skipped, the same as a row that shows no Looks right button.
 - **Remove** (under Looks right) takes a record out for good, for example a meeting you didn't attend. Its pasted notes, guide links, and any win Claude drafted from it go too; wins you made or edited stay. Calendar, Tasks, and Slack syncs skip removed records so they don't come back. Choose **Removed** in the Show menu to see them and **Restore** one if you change your mind. **No V2MOM method**, beside the other filters, lists records Claude has read that aren't linked to a V2MOM method. Press **Show** to apply it. It does not change the Removed list.
@@ -160,7 +160,7 @@ uv run coffeeshop calendar unskip "Team Daily Standup"  # stop skipping
 
 Buttons in the queue save without reloading the page: a row you check or remove fades out, and a row you change redraws in place.
 
-Purple **AI** marks are Claude's picks: guide links, drafted wins, and type changes ("AI, was Other"). They count on the Performance map straight away, and the Performance map says how many are still unchecked. Use the **Show** menu for **Changed by Claude**, **Not linked**, **Wins**, or **Checked**.
+Purple **AI** marks are Claude's picks: guide links, Values & Behaviors, drafted wins, and type changes ("AI, was Other"). They count on the Performance map straight away, and the Performance map says how many are still unchecked. Use the **Show** menu for **Changed by Claude** (that includes a behavior Claude picked), **Not linked**, **Wins**, or **Checked**.
 
 **Claude's read-through.** Claude has read every record against the Grade 6 and 7 key experiences and skills. It linked each one to the guide items it shows (none for routine standups and status pings), drafted wins for the stand-out ones, and fixed obvious type mix-ups (only for Slack and typed records; calendar items stay meetings and Google Tasks stay tasks). Records you add by hand are read right away. When others come in and haven't been read (for example before the guide was loaded), the queue shows a **Have Claude read the N records it hasn't read** button. It only counts records you haven't checked yet: **Looks right** on a row Claude never read leaves it unread, so press **Checked** on it to take the check back first. It runs in the background with a progress box (the same step every sync ends with), so you can keep working. You can also run it in Terminal:
 
@@ -169,7 +169,16 @@ cd ~/Documents/coffeeshop
 uv run coffeeshop guide review
 ```
 
-It never touches rows you've marked checked or guide links you picked yourself. Because Claude takes a few minutes, it looks at each record again just before saving: a record you removed or checked in the meantime is skipped, and a record you retyped keeps your type. You can keep clicking around the app while it runs. Record text, attached notes, and the leveling guide pass through the AI tool, with Claude's built-in tools (files, shell, web) turned off. Calendar and Tasks syncs never delete a record that has a win, guide links, or your check on it.
+It never touches rows you've marked checked or guide links you picked yourself. The same read also picks up to two Values & Behaviors the record really shows (none for a routine meeting or status ping), from the English value, behavior, and definition on the Individual Contributor tab of `data/competencies/values-behaviors.xlsx`. Because Claude takes a few minutes, it looks at each record again just before saving: a record you removed or checked in the meantime is skipped, and a record you retyped keeps your type. You can keep clicking around the app while it runs. Record text, attached notes, the leveling guide, and those behavior definitions pass through the AI tool, with Claude's built-in tools (files, shell, web) turned off. Calendar and Tasks syncs never delete a record that has a win, guide links, a behavior you set, or your check on it.
+
+**Values already in the notebook.** Records Claude read before Values & Behaviors were added have none yet. This reads them the same way as the V2MOM backfill (the last 90 days, or everything):
+
+```
+uv run coffeeshop values tag
+uv run coffeeshop values tag --all
+```
+
+It skips a record already read against them, and one whose behaviors you set, so running it again only does what's left. **Looks right** makes the picks yours. &times; on a chip removes that behavior for good.
 
 ## Slack: your Work Activity Tracker canvas
 

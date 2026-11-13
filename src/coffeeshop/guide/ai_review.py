@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from ..claude_cli import ClaudeError, ask, reply_results
 from ..storage.models import GuideLink, JournalAttachment, JournalEntry, Win
 from ..v2mom import links as v2links
+from ..values import links as value_links
 from .service import SETUP_HINT, experiences, grades_text, level, person, skills
 
 KINDS = ("meeting", "conversation", "document", "task", "certification", "note")
@@ -85,12 +86,19 @@ def guide_payload(s: Session) -> tuple[list[dict], dict[str, int]]:
 
 
 def read_batch(guide: list[dict], themes: list[str], records: list[dict],
-               v2mom: list[dict] | None = None, *, base: str = "") -> dict[str, dict]:
-    """With `v2mom` (the V2MOM's methods), each result also picks the methods the record advances. `base` is
+               v2mom: list[dict] | None = None, values: list[dict] | None = None, *, base: str = "") -> dict[str, dict]:
+    """With `v2mom` (the V2MOM's methods) or `values` (Values & Behaviors), each result also picks those. `base` is
     prompt_for(the saved level)."""
-    data = json.dumps(dict(THEMES=themes, guide=guide, records=records, **({"v2mom": v2mom} if v2mom else {})))
-    prompt = base + (v2links.PROMPT_PART if v2mom else "") + REPLY
-    return {str(r.get("id")): r for r in reply_results(ask(prompt, data, timeout=480))}
+    extra, parts, n = {}, "", 4
+    if v2mom:
+        extra["v2mom"] = v2mom
+        parts += v2links.PROMPT_PART
+        n = 5
+    if values:
+        extra["values"] = values
+        parts += value_links.PROMPT_PART.format(n=n)
+    data = json.dumps(dict(THEMES=themes, guide=guide, records=records, **extra))
+    return {str(r.get("id")): r for r in reply_results(ask(base + parts + REPLY, data, timeout=480))}
 
 
 def pending(s: Session, redo: bool = False) -> list[JournalEntry]:
@@ -101,10 +109,12 @@ def pending(s: Session, redo: bool = False) -> list[JournalEntry]:
 
 
 def _apply(s: Session, e: JournalEntry, r: dict, ids: dict[str, int], themes: list[str],
-           v2ids: dict[str, int] | None = None) -> dict[str, int]:
-    did = dict(links=0, wins=0, kinds=0, v2mom=0)
+           v2ids: dict[str, int] | None = None, vids: dict[str, int] | None = None) -> dict[str, int]:
+    did = dict(links=0, wins=0, kinds=0, v2mom=0, values=0)
     if v2ids:
         did["v2mom"] = v2links.apply_ai(s, e, r.get("v2mom"), v2ids)
+    if vids:
+        did["values"] = value_links.apply_ai(s, e, r.get("values"), vids)
     kind = r.get("kind")
     # a certification you typed stays one; Claude can still mark a different record as one
     if kind in KINDS and kind != e.kind and e.source not in FIXED_KIND and e.kind != "certification":
@@ -140,7 +150,8 @@ def _apply(s: Session, e: JournalEntry, r: dict, ids: dict[str, int], themes: li
 def review(s: Session, *, redo: bool = False, limit: int | None = None,
            reader: Callable[[list[dict], list[str], list[dict]], dict[str, dict]] | None = None,
            progress: Callable[[int, int], None] | None = None) -> dict[str, int]:
-    """Claude reads records it hasn't read: guide links, V2MOM methods, type fixes, drafted wins, all marked AI."""
+    """Claude reads records it hasn't read: guide links, V2MOM methods, Values & Behaviors, type fixes, drafted
+    wins, all marked AI."""
     from ..web.app import THEMES
     lv = level(s)
     if lv is None:
@@ -151,7 +162,12 @@ def review(s: Session, *, redo: bool = False, limit: int | None = None,
     if not guide:
         raise ClaudeError("Load the leveling guide first.")
     v2mom, v2ids = v2links.payload(s)
-    extra = {"v2mom": v2mom} if v2mom else {}
+    values, vids = value_links.payload(s)
+    extra = {}
+    if v2mom:
+        extra["v2mom"] = v2mom
+    if values:
+        extra["values"] = values
     ctx = _context(s, [e.id for e in todo])
     kinds = {e.id: e.kind for e in todo}
     batches = [todo[i:i + BATCH] for i in range(0, len(todo), BATCH)]
@@ -169,7 +185,7 @@ def review(s: Session, *, redo: bool = False, limit: int | None = None,
             errors.append(str(exc))
             return None
 
-    tot = dict(read=0, links=0, wins=0, kinds=0, v2mom=0, failed=0)
+    tot = dict(read=0, links=0, wins=0, kinds=0, v2mom=0, values=0, failed=0)
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         for n, (b, got) in enumerate(zip(batches, pool.map(one, batches)), 1):
             if got is None:
@@ -186,7 +202,7 @@ def review(s: Session, *, redo: bool = False, limit: int | None = None,
                         continue
                     if e.kind != sent_kind:
                         r = {**r, "kind": None}
-                    for k, v in _apply(s, e, r, ids, THEMES, v2ids).items():
+                    for k, v in _apply(s, e, r, ids, THEMES, v2ids, vids).items():
                         tot[k] += v
                     tot["read"] += 1
                 s.commit()

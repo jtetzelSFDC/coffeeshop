@@ -12,6 +12,8 @@ Every prompt runs through `claude_cli.ask()`: tools off, one turn, data on stdin
 | 2 | `guide/ai_review.py` `PROMPT` + `REPLY` | Read-through: guide links, kind, win | Change |
 | 3 | `v2mom/links.py` `PROMPT_PART` | Read-through: V2MOM links (appended to 2) | Keep |
 | 4 | `v2mom/links.py` `TAG_PROMPT` | V2MOM links for already-read records | Keep |
+| 17 | `values/links.py` `PROMPT_PART` | Read-through: Values & Behaviors (appended to 2) | Keep |
+| 18 | `values/links.py` `TAG_PROMPT` | Values & Behaviors for already-read records | Keep |
 | 5 | `guide/work.py` `PROMPT` | Group records into pieces of work | Change |
 | 6 | `guide/activities.py` `PROMPT` | One impact activity per record | Change |
 | 7 | `promo/write.py` `PROMPT` | One section of the performance case | Change |
@@ -25,7 +27,7 @@ Every prompt runs through `claude_cli.ask()`: tools off, one turn, data on stdin
 | 15 | `kso/map.py` `PROMPT` | Match V2MOM methods to KSO parts | Keep |
 | 16 | `kso/estimate.py` `PROMPT` | Monthly 1 to 5 guess per KSO | Keep |
 
-That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't missed.
+`PROMPT_PART` (3 and 17) is a piece of 2, listed so its rule isn't missed.
 
 ## 1. Today's three
 
@@ -37,9 +39,9 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 
 ## 2. Read-through
 
-`guide/ai_review.py` `PROMPT` + `REPLY` (with 3 added when a V2MOM is loaded). For each record: guide items it shows, its kind, and whether it's a win.
-- **Gets:** `BATCH` 20 records (full text, plus attached Slack, AI summary, and task notes, 900 characters each and 1,500 in all), the whole guide (experiences with descriptions up to 400, skills up to 300), the win themes, and the V2MOM methods (description up to 300, 6 measures up to 150). 3 batches at a time.
-- **Checked by:** `_apply()`: only offered guide ids, at most `MAX_LINKS` 3; kind only from meeting, conversation, document, task, certification, or note, and never for calendar, tasks, GitHub, docs, or kudos records, or a certification you chose; a bad win size becomes small and an unknown theme is dropped. Links you made, checked rows, and a kind you changed meanwhile are never overwritten. Everything is marked AI. If no batch reads, nothing changes.
+`guide/ai_review.py` `PROMPT` + `REPLY` (with 3 added when a V2MOM is loaded, and 17 when Values & Behaviors are loaded). For each record: guide items it shows, its kind, and whether it's a win.
+- **Gets:** `BATCH` 20 records (full text, plus attached Slack, AI summary, and task notes, 900 characters each and 1,500 in all), the whole guide (experiences with descriptions up to 400, skills up to 300), the win themes, the V2MOM methods (description up to 300, 6 measures up to 150), and the behaviors (definition up to 1,500). 3 batches at a time.
+- **Checked by:** `_apply()`: only offered guide ids, at most `MAX_LINKS` 3; kind only from meeting, conversation, document, task, certification, or note, and never for calendar, tasks, GitHub, docs, or kudos records, or a certification you chose; a bad win size becomes small and an unknown theme is dropped. Links you made, checked rows, and a kind you changed meanwhile are never overwritten. Values picks are checked the same way as 17. Everything is marked AI. If no batch reads, nothing changes.
 - **New user:** refuses without a guide. A few records make one small batch, which is fine. Win impact "no invented numbers" is only asked, not checked.
 - **Decision: change.** Replace "DevOps release manager", `GRADES`, and "Grades 6 and 7" / "Grade 7 ... Grade 6" with the saved role and levels; the rules stay.
 
@@ -58,6 +60,22 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 - **Checked by:** `apply_ai()`, as in 3. If no batch reads, nothing changes.
 - **New user:** refuses without a V2MOM. Usually not needed, since 3 covers new records.
 - **Decision: keep.** Clear and checked; shares its rule with 3.
+
+## 17. Read-through: Values & Behaviors
+
+`values/links.py` `PROMPT_PART`. Adds the next numbered rule to 2 (4 with no V2MOM, 5 with one): the behaviors each record shows.
+- **Gets:** the behaviors in 2's data (value, behavior, definition up to 1,500).
+- **Checked by:** `apply_ai()`: only offered ids, at most `MAX_PICKS` 2; behaviors you set are never changed.
+- **New user:** loaded from the workbook in the repo, so the rule is present once that file reads.
+- **Decision: keep.** Same shape as 3; edit it with 18.
+
+## 18. Values & Behaviors for records already read
+
+`values/links.py` `TAG_PROMPT`. The one-time backfill (`values tag`) for records read before Values & Behaviors were added.
+- **Gets:** the behaviors (as in 2) and `BATCH` 40 records (full text, no notes). 3 batches at a time.
+- **Checked by:** `apply_ai()`, as in 17. If no batch reads, nothing changes.
+- **New user:** usually not needed, since 17 covers new records.
+- **Decision: keep.** Clear and checked; shares its rule with 17.
 
 ## 5. Group into pieces of work
 

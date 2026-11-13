@@ -28,11 +28,13 @@ from ..slack import importer as slack_imp
 from ..storage.removal import remove_entry, restore_entry
 from ..storage.sync_log import status as sync_status
 from ..v2mom import connector as v2mom_conn, links as v2mom_links, report as v2mom_report, store as v2mom_store
+from ..values import links as value_links
 from . import syncs
 from .jobs import Jobs
 from ..storage.db import init_db, make_engine, make_session_factory
 from ..guide import activities, work
-from ..storage.models import (DailyTask, GuideItem, GuideLink, JournalAttachment, JournalEntry, RemovedEntry, V2momLink,
+from ..storage.models import (CompetencyLink, DailyTask, GuideItem, GuideLink, JournalAttachment, JournalEntry,
+                              RemovedEntry, V2momLink,
                               V2momMethod, V2momVersion, Win, WorkItem)
 
 ALLOWED_HOSTS = {"127.0.0.1", "localhost"}
@@ -620,7 +622,8 @@ def create_app(dd: DataDir) -> FastAPI:
              "ai": q.where(JournalEntry.reviewed.is_(False), (JournalEntry.kind_was != "") | JournalEntry.id.in_(
                  select(GuideLink.entry_id).where(GuideLink.by_ai)) | JournalEntry.id.in_(
                  select(Win.entry_id).where(Win.by_ai)) | JournalEntry.id.in_(
-                 select(V2momLink.entry_id).where(V2momLink.by_ai))),
+                 select(V2momLink.entry_id).where(V2momLink.by_ai)) | JournalEntry.id.in_(
+                 select(CompetencyLink.entry_id).where(CompetencyLink.by_ai))),
              "linked": q.where(JournalEntry.id.in_(linked)), "unlinked": q.where(JournalEntry.id.not_in(linked)),
              "wins": q.where(JournalEntry.id.in_(select(Win.entry_id).where(Win.entry_id.is_not(None)))),
              "removed": q.where(false()), "all": q}[f["show"]]
@@ -694,6 +697,7 @@ def create_app(dd: DataDir) -> FastAPI:
                                                          name=g.name))
         wins = {w.entry_id: w for w in s.scalars(select(Win).where(Win.entry_id.in_(ids)).order_by(Win.id))}
         v2mom = v2mom_links.chips(s, ids)
+        behaviors = value_links.chips(s, ids)
         notes: dict[int, str] = {}
         for a in s.scalars(select(JournalAttachment).where(JournalAttachment.entry_id.in_(ids),
                                                            JournalAttachment.kind == "notes")):
@@ -719,7 +723,7 @@ def create_app(dd: DataDir) -> FastAPI:
         return [dict(id=e.id, day=e.day, source=SOURCE_LABEL.get(e.source, e.source), kind=e.kind,
                      kind_was=dict(SHEET_KIND).get(e.kind_was, ""),
                      text=e.text, reviewed=e.reviewed, ai_read=e.ai_read, links=links.get(e.id, []),
-                     v2mom=v2mom.get(e.id, []),
+                     v2mom=v2mom.get(e.id, []), behaviors=behaviors.get(e.id, []),
                      win=wins.get(e.id), notes=notes.get(e.id, ""),
                      work=(dict(id=w.id, title=w.title, ai=w.by_ai and not e.work_fixed, size=members.get(w.id, 1))
                            if (w := by_id.get(e.work_item_id)) else None),
@@ -815,6 +819,12 @@ def create_app(dd: DataDir) -> FastAPI:
     def sheet_v2mom_unlink(request: Request, lid: int, ret: str = Form(""), s: Session = Depends(db)):
         with _write_lock:
             eid = v2mom_links.unlink(s, lid)
+        return sheet_back(request, s, ret, eid)
+
+    @app.post("/sheet/values/{lid}/delete", dependencies=[Depends(check_csrf)])
+    def sheet_values_unlink(request: Request, lid: int, ret: str = Form(""), s: Session = Depends(db)):
+        with _write_lock:
+            eid = value_links.unlink(s, lid)
         return sheet_back(request, s, ret, eid)
 
     @app.post("/sheet/ok", dependencies=[Depends(check_csrf)])

@@ -15,8 +15,8 @@ class Base(DeclarativeBase):
 
 class JournalEntry(Base):
     """One record of your work: a meeting, conversation, document, task, kudos, certification, or note, typed by
-    you or pulled in by a sync. Claude sorts it (kind, guide links, V2MOM methods, activity) and marks its picks
-    AI until you check it."""
+    you or pulled in by a sync. Claude sorts it (kind, guide links, V2MOM methods, Values & Behaviors, activity)
+    and marks its picks AI until you check it."""
     __tablename__ = "journal_entry"
     id: Mapped[int] = mapped_column(primary_key=True)
     day: Mapped[str] = mapped_column(String, index=True)  # YYYY-MM-DD
@@ -37,6 +37,8 @@ class JournalEntry(Base):
     activity_fixed: Mapped[bool] = mapped_column(Boolean, default=False)  # the user set it; Claude leaves it
     v2mom_read: Mapped[bool] = mapped_column(Boolean, default=False)  # Claude has read it against the V2MOM
     v2mom_fixed: Mapped[bool] = mapped_column(Boolean, default=False)  # the user set its methods; Claude leaves them
+    values_read: Mapped[bool] = mapped_column(Boolean, default=False)  # Claude has read it against Values & Behaviors
+    values_fixed: Mapped[bool] = mapped_column(Boolean, default=False)  # the user set its behaviors; Claude leaves them
 
 
 class WorkItem(Base):
@@ -263,5 +265,31 @@ class GuideLink(Base):
     item_id: Mapped[int] = mapped_column(ForeignKey("guide_item.id"), index=True)
     win_id: Mapped[int | None] = mapped_column(ForeignKey("win.id"), nullable=True, index=True)
     entry_id: Mapped[int | None] = mapped_column(ForeignKey("journal_entry.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    by_ai: Mapped[bool] = mapped_column(Boolean, default=False)  # picked by Claude, not yet confirmed
+
+
+class CompetencyItem(Base):
+    """One Individual Contributor behavior: the English value, the behavior, and its definition."""
+    __tablename__ = "competency_item"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String, unique=True)  # stable across re-reads, e.g. vb:trust:act-with-integrity
+    value: Mapped[str] = mapped_column(String)  # Trust, Customer Success, …
+    name: Mapped[str] = mapped_column(Text)  # the behavior
+    description: Mapped[str] = mapped_column(Text, default="")
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(default=True)  # False once a re-read no longer has it
+
+
+class CompetencyLink(Base):
+    """A win or a notebook entry showing a behavior: yours, or Claude's pick (by_ai) until you check it.
+    Goes away with the win or entry."""
+    __tablename__ = "competency_link"
+    __table_args__ = (UniqueConstraint("item_id", "win_id", "entry_id"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("competency_item.id"), index=True)
+    win_id: Mapped[int | None] = mapped_column(ForeignKey("win.id", ondelete="CASCADE"), nullable=True, index=True)
+    entry_id: Mapped[int | None] = mapped_column(ForeignKey("journal_entry.id", ondelete="CASCADE"), nullable=True,
+                                                 index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime)
     by_ai: Mapped[bool] = mapped_column(Boolean, default=False)  # picked by Claude, not yet confirmed

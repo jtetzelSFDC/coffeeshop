@@ -289,7 +289,8 @@ def guide_review(redo: bool = typer.Option(False, "--redo", help="Also re-read r
         typer.echo(str(exc))
         raise typer.Exit(1)
     typer.echo(f"Read {r['read']} records: {r['links']} guide links, "
-               + (f"{r['v2mom']} V2MOM links, " if r["v2mom"] else "") + f"{r['wins']} drafted wins, "
+               + (f"{r['v2mom']} V2MOM links, " if r["v2mom"] else "")
+               + (f"{r['values']} Values links, " if r.get("values") else "") + f"{r['wins']} drafted wins, "
                f"{r['kinds']} type changes, all marked AI."
                + (f" {r['failed']} couldn't be read; run this again to retry them." if r["failed"] else ""))
 
@@ -494,6 +495,33 @@ def v2mom_tag(everything: bool = typer.Option(False, "--all", help="Every record
         typer.echo(str(exc))
         raise typer.Exit(1)
     typer.echo(f"Read {r['read']} records: {r['links']} V2MOM links, all marked AI."
+               + (f" {r['failed']} couldn't be read; run this again to retry them." if r["failed"] else ""))
+
+
+values_app = typer.Typer(no_args_is_help=True, help="Values & Behaviors from the Individual Contributor workbook")
+app.add_typer(values_app, name="values")
+
+
+@values_app.command("tag")
+def values_tag(everything: bool = typer.Option(False, "--all", help="Every record, not just the last 90 days"),
+               data_dir: Optional[str] = DataOpt) -> None:
+    """Have Claude link records it already read to the Values & Behaviors they show (marked AI). Records it has
+    read against them, and ones whose behaviors you set, are skipped, so running it again only does the rest."""
+    from datetime import date, timedelta
+    from .claude_cli import ClaudeError
+    from .values import links
+    dd, s = _open_personal(data_dir, "Values & Behaviors tagging")
+    todo = links.pending(s, "" if everything else (date.today() - timedelta(days=90)).isoformat())
+    if not todo:
+        typer.echo("Nothing to read: every record has been read against Values & Behaviors.")
+        return
+    typer.echo(f"Claude is reading {len(todo)} records against Values & Behaviors. This takes a few minutes.")
+    try:
+        r = links.tag(s, todo, progress=lambda i, t: typer.echo(f"  batch {i} of {t} done"))
+    except ClaudeError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    typer.echo(f"Read {r['read']} records: {r['links']} Values links, all marked AI."
                + (f" {r['failed']} couldn't be read; run this again to retry them." if r["failed"] else ""))
 
 
