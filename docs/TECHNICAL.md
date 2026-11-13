@@ -28,6 +28,7 @@ Python 3.12, FastAPI, SQLAlchemy on SQLite, Jinja2, Typer, uv. No JavaScript fra
 | `guide/` | The leveling guide, links to it, grouping records into work, the Performance map, Claude's read-through |
 | `promo/` | The performance-case writer and its per-sentence checks |
 | `daily.py` | Today's three: context, one Claude ask, strict validation, check and uncheck |
+| `ask.py` | One read-only question: a clipped notebook slice, one Claude ask, nothing saved |
 | `kso/` | KSOs: the yearly framework read (`framework.py`), V2MOM method to part matching (`map.py`), the page's progress bars (`progress.py`), and the monthly estimate (`estimate.py`) |
 | `digest.py`, `dashboard.py` | The Friday digest and the Home numbers |
 | `export/` | Markdown and CSV downloads |
@@ -88,6 +89,7 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 | Performance case | The numbered evidence list, that section's guidance from `data/pat/pat-template.docx` (including what is valued and what to avoid), and your pasted style example if you added one (tone only) |
 | Send to Google Docs | The whole case, written into a new Doc in your Drive |
 | Daily three | Goals (V2MOM methods with open measures, Performance map items, and KSO parts with their explanation and two examples) and recent record and win titles, plus this week's meeting, open task, and project titles, and your Projects and responsibilities note if set, about 8k characters at most |
+| Ask | The question, plus record and win titles in the window you pick (not pasted notes or transcripts), V2MOM methods, Values & Behaviors, and leveling-guide topics. About 8,000 characters. Nothing is saved |
 | KSO connect (yearly, by hand) | The KSO deck and guide canvases, through the Google and Slack connectors |
 | KSO matching | KSO part names and explanations, and V2MOM method names, descriptions, and measures |
 | KSO estimate (monthly) | The rubric, the matched V2MOM methods with measures and comments, this year's linked work titles (8k total, split evenly across parts), and the kudos count |

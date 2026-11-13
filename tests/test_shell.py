@@ -6,7 +6,7 @@ from coffeeshop.web.app import TABS, short_day
 from helpers import open_session
 
 
-PAGES = ["/", "/wins", "/performance", "/sheet", "/digest", "/search?q=refresh", "/performance/case", "/impact/deployment", *TABS]
+PAGES = ["/", "/wins", "/performance", "/sheet", "/digest", "/ask", "/search?q=refresh", "/performance/case", "/impact/deployment", *TABS]
 
 
 def test_every_page_has_the_app_name_and_no_greeting(nb):
