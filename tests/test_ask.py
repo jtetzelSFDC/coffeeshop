@@ -6,9 +6,9 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import func, select
 
 from coffeeshop import ask
-from coffeeshop.storage.models import Base, JournalAttachment, JournalEntry
+from coffeeshop.storage.models import Base, JournalAttachment, JournalEntry, Win
 
-from helpers import open_session
+from helpers import add, link, load_v2mom, open_session
 
 
 def _counts(s):
@@ -53,3 +53,25 @@ def test_answer_cites_a_sent_record_and_writes_nothing(nb):
         assert _counts(s) == before
         assert s.get(JournalEntry, eid).text == "Ran the Pine release"
         assert s.scalar(select(JournalAttachment.body).where(JournalAttachment.entry_id == eid)) == "SECRET NOTES TEXT"
+
+
+def test_a_method_linked_only_on_the_win_still_counts(nb):
+    dd, *_ = nb
+    today = date.today()
+    with open_session(dd) as s:
+        ids = load_v2mom(s)
+        eid = add(s, "Pine release notes", day=today.isoformat())
+        w = Win(day=today.isoformat(), title="Shipped Pine", size="small", entry_id=eid, created_at=datetime.now())
+        s.add(w)
+        s.flush()
+        link(s, ids["M1"], win_id=w.id)
+        s.commit()
+        seen = []
+
+        def reader(_prompt, data):
+            seen.append(json.loads(data))
+            return "M1 already covers it."
+
+        ask.answer(s, "Work with no V2MOM method: suggest methods to add", "week", reader=reader, today=today)
+    assert seen[0]["records"][0]["n"] == eid
+    assert seen[0]["records"][0]["methods"] == ["M1"]

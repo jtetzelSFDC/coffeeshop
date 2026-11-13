@@ -17,7 +17,7 @@ from .digest import week_of
 from .guide.activities import windows
 from .guide.service import counting_wins, experiences, level
 from .guide.topics import TOPICS, grouped
-from .storage.models import JournalEntry, Win
+from .storage.models import JournalEntry, V2momLink, V2momMethod, Win
 from .v2mom import links as v2mom_links
 from .v2mom import store as v2mom_store
 from .values.parse import parse_behaviors
@@ -91,6 +91,22 @@ def context(s: Session, question: str, window: str, today: date | None = None) -
         entry_work.update(s.execute(select(JournalEntry.id, JournalEntry.work_item_id).where(
             JournalEntry.id.in_(missing))).all())
     linked = v2mom_links.chips(s, [e.id for e in entries]) if entries else {}
+    methods_for: dict[int, list[str]] = {}
+    for eid, chips_ in linked.items():
+        for c in chips_:
+            got = methods_for.setdefault(eid, [])
+            if c["label"] not in got:
+                got.append(c["label"])
+    # A method on the record's win counts too, same as the queue's "no V2MOM method" filter.
+    # shortcut: a method that lives only on a group win still looks unmapped
+    if entries:
+        for eid, method in s.execute(select(Win.entry_id, V2momMethod).join(
+                V2momLink, V2momLink.win_id == Win.id).join(
+                V2momMethod, V2momMethod.id == V2momLink.method_id).where(
+                Win.entry_id.in_([e.id for e in entries]))):
+            got = methods_for.setdefault(eid, [])
+            if method.label not in got:
+                got.append(method.label)
     try:
         values = [dict(value=b["value"], name=b["name"], actions=_actions(b["description"])) for b in parse_behaviors()]
     except ValueError:
@@ -103,7 +119,7 @@ def context(s: Session, question: str, window: str, today: date | None = None) -
     data = dict(
         question=question, window=dict(start=lo, end=hi),
         records=[dict(n=e.id, day=e.day, kind=e.kind, text=clip(e.text, MAX_LINE),
-                      methods=[c["label"] for c in linked.get(e.id, [])]) for e in entries],
+                      methods=methods_for.get(e.id, [])) for e in entries],
         wins=[dict(day=w.day, title=clip(w.title, MAX_LINE), size=w.size,
                    **({"record": w.entry_id} if w.entry_id else {}),
                    **({"why": clip(w.impact, 120)} if w.impact else {})) for w in counting_wins(wins, entry_work)],

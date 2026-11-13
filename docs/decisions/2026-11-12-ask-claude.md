@@ -18,4 +18,4 @@ The third. `claude_cli.ask` runs with tools off and one turn, the same as the ot
 
 ## Consequences
 
-An answer can only use what was in the slice, so a wider question needs a wider window. A citation is a record number from that slice. Nothing is written, so removing the page and the command is the rollback. There is no new table.
+An answer can only use what was in the slice, so a wider question needs a wider window. A citation is a record number from that slice. A method linked only through that record's win is included, so the no-method question does not suggest one again. A method that lives only on a group win still looks unmapped. Nothing is written, so removing the page and the command is the rollback. There is no new table.

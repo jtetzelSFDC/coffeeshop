@@ -169,7 +169,7 @@ Every prompt runs through `claude_cli.ask()`: tools off, one turn, data on stdin
 ## 19. Ask
 
 `ask.py` `PROMPT`. One plain-language answer to a question about the notebook. Nothing is saved.
-- **Gets:** the question, record lines (160 characters) and win titles in the chosen window (last 7 days, last 30 days, this half, or this year; open tasks left out), V2MOM method names, Values & Behaviors (key actions clipped to 220), and leveling-guide topics. Notes and transcripts are not loaded. It all fits `MAX_CONTEXT` 8,000 characters: the oldest record lines go first, then the oldest wins, then the behavior key actions.
+- **Gets:** the question, record lines (160 characters) and win titles in the chosen window (last 7 days, last 30 days, this half, or this year; open tasks left out), V2MOM method names (a method linked only on that record's win counts), Values & Behaviors (key actions clipped to 220), and leveling-guide topics. Notes and transcripts are not loaded. It all fits `MAX_CONTEXT` 8,000 characters: the oldest record lines go first, then the oldest wins, then the behavior key actions.
 - **Checked by:** nothing is parsed. The prompt asks for `[n]` citations of record numbers that were sent. A bad answer is only shown, and the notebook is unchanged.
 - **New user:** an empty window still asks; Claude is told to say when the slice is not enough. A missing workbook leaves behaviors out of the slice.
 - **Decision: keep.** Read-only, and the slice is the same size cap as the daily three.
