@@ -64,7 +64,7 @@ TABS = {  # path -> (kind, tab name, heading, what's on it)
     "/certifications": ("certification", "Certifications", "Certifications", "Credentials you've earned, including ones from before this notebook. Each counts as a training or certification."),
     "/other": ("note", "Other", "Something else", "Anything that didn't fit the other tabs."),
 }
-PAGES = {"/", "/search", "/wins", "/performance", "/v2mom", "/kso", "/sheet", "/digest", *TABS}
+PAGES = {"/", "/search", "/wins", "/performance", "/v2mom", "/kso", "/sheet", "/digest", "/ask", *TABS}
 SOURCE_LABEL = {"calendar": "Calendar", "tasks": "Google Tasks", "slack": "Slack", "docs": "Google Docs", "github": "GitHub",
                 "kudos": "Slack kudos", "daily": "Daily three", "": "Typed"}
 SHEET_KIND = [("meeting", "Meeting"), ("conversation", "Convo"), ("document", "Doc"), ("task", "Task"), ("recognition", "Kudos"),
@@ -947,6 +947,28 @@ def create_app(dd: DataDir) -> FastAPI:
             [dict(iso=nxt.isoformat(), label="Week after")] if nxt <= date.today() else [])
         return page_html(request, "digest.html", "/digest", d=digest.build(s, end), weeks=weeks,
                          size_label=SIZE_LABEL)
+
+    def ask_html(request: Request, question: str = "", window: str = "week", answer: str | None = None,
+                 error: str | None = None):
+        from .. import ask as askmod
+        return page_html(request, "ask.html", "/ask", question=question, window=window, windows=askmod.WINDOWS,
+                         groups=askmod.preset_groups(), answer=answer, error=error)
+
+    @app.get("/ask", response_class=HTMLResponse)
+    def ask_page(request: Request):
+        """A question for Claude. Nothing is saved."""
+        return ask_html(request)
+
+    @app.post("/ask", response_class=HTMLResponse, dependencies=[Depends(check_csrf)])
+    def ask_post(request: Request, question: str = Form("", max_length=500), window: str = Form("week"),
+                 s: Session = Depends(db)):
+        from .. import ask as askmod
+        from ..claude_cli import ClaudeError
+        try:
+            text = askmod.answer(s, question, window)
+        except ClaudeError as exc:
+            return ask_html(request, question=question.strip(), window=window, error=str(exc))
+        return ask_html(request, question=question.strip(), window=window, answer=text)
 
     @app.get("/v2mom", response_class=HTMLResponse)
     def v2mom_page(request: Request, s: Session = Depends(db)):

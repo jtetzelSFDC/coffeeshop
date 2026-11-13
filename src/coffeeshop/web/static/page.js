@@ -45,3 +45,12 @@ if (entryKind && entryDay && certDate && certDay) {
     certDay.name = on ? "day" : "";
   });
 }
+
+// A preset on Ask fills the question so it can be edited before it is sent.
+const askPreset = document.querySelector("[data-ask-preset]");
+const askQuestion = document.querySelector("[data-ask-question]");
+if (askPreset && askQuestion) {
+  askPreset.addEventListener("change", () => {
+    if (askPreset.value) askQuestion.value = askPreset.value;
+  });
+}

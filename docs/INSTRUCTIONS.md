@@ -6,7 +6,7 @@ Plain-language notes on running and testing the app. New questions and answers g
 
 Coffee Shop is your work notebook. It pulls in your Google Calendar meetings, finished Google Tasks, the Docs you wrote, your Slack messages and tracker, kudos, and GitHub pull requests. Claude sorts each one against your role's leveling guide and the Values & Behaviors. Your V2MOM and your KSOs join that sort when you connect them. Your wins stay too, so the Performance map, the performance case, the KSO page, and each morning's three small tasks reflect what you have actually done.
 
-Everything stays on this laptop. Something leaves only when Claude reads or sorts it: a sync, adding an entry or checking off a daily task, Have Claude read, Write my performance case, Suggest now, Re-estimate, a `kso` command, `values tag`, or Send to Google Docs. The full list is in [What goes to Claude](TECHNICAL.md#what-goes-to-claude).
+Everything stays on this laptop. Something leaves only when Claude reads or sorts it: a sync, adding an entry or checking off a daily task, Have Claude read, Write my performance case, Suggest now, Re-estimate, a `kso` command, `values tag`, Ask (the page or `coffeeshop ask`), or Send to Google Docs. The full list is in [What goes to Claude](TECHNICAL.md#what-goes-to-claude).
 
 There's also a **practice notebook** of made-up data, for trying things out without touching your real one.
 
@@ -235,6 +235,17 @@ When nothing needs you, it says so. The page is worked out when you open it, fro
 
 On Fridays at 12:00 PM the schedule shows a notification like "This week: 13 wins, 54 records, 3 nudges. Open http://127.0.0.1:8765/digest". The notification doesn't open the link, so open the page from the Menu. To see it now: `uv run coffeeshop digest notify`. If **Refresh the performance case every Friday** is on in Settings, that same run also writes one performance-case draft for the last 12 months. The switch is off by default, and then Friday only shows the notification.
 
+## Ask Claude
+
+**Ask** in the Menu, or `uv run coffeeshop ask "your question"`. Pick a window (last 7 days, last 30 days, this half, or this year) and a preset, or type your own question. Presets fill the question so you can edit it before sending:
+
+- What was most impactful last week?
+- Examples of me showing a behavior (one for each behavior in the Values & Behaviors workbook)
+- Where am I lacking?
+- Work with no V2MOM method: suggest methods to add
+
+Claude sees the question, record and win titles in that window (not pasted notes or transcripts), your V2MOM methods, Values & Behaviors, and leveling-guide topics, about 8,000 characters. Answers cite record numbers. Nothing is saved. On the command, `--window` is `week` (the default), `month`, `half`, or `year`.
+
 ## Kudos: recognition from other people
 
 **Sync Slack tracker** (and the scheduled sync) also looks for kudos: messages that mention you and recognize your work, in your **public and private Slack channels**. **DMs and group DMs are never searched.**
@@ -402,7 +413,7 @@ At year end, pick the year on the Wins tab and click **Download as Markdown**. T
 
 ## What you should see
 
-The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Performance map, V2MOM, KSOs, Intake Review Queue, Weekly digest, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
+The app has these pages, opened from the three-bar **Menu** at the top left (Home, Wins, Performance map, V2MOM, KSOs, Intake Review Queue, Weekly digest, Ask, then Meetings, Conversations, Documents, Tasks, Kudos, Other). The name of the page you're on sits next to the Menu button:
 
 - **Home**: Performance Progress, Today's Three, New Entry, then Sync Status. Each cell stays closed until you click it.
   - **Performance Progress:** V2MOM and KSOs first, then the grade bars. The title row has a small green bar for the next grade. Clicking the tile opens it; it does not leave Home.

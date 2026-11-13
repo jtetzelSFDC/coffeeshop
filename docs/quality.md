@@ -8,6 +8,7 @@ What each AI feature should produce, written before anyone tunes a prompt, so a 
 - [After every sync: the read-through](#after-every-sync-the-read-through)
 - [Write my performance case](#write-my-performance-case)
 - [Weekly digest](#weekly-digest)
+- [Ask](#ask)
 
 ## Today's three
 
@@ -125,3 +126,19 @@ Good output:
 | Good | 2 big wins without "why it mattered". A sentence each makes them count in the performance case. → Open Wins |
 | Good | Nothing new for V2MOM M3 (Grow the pipeline toolkit) in 30 days (last: 2026-02-02). → Open the V2MOM |
 | Bad | You should do more this week. (No action, no link.) |
+
+## Ask
+
+`ask.py`. One answer to a question. It uses only the slice it was given, cites record numbers from that slice as `[n]`, and is not saved.
+
+Good output:
+- Names work that is in the slice, and cites a record number that was sent.
+- Says what is missing (a topic, a behavior, or a V2MOM method) when the question asks, instead of inventing a project.
+- Says when the slice is not enough.
+
+| | Answer |
+|---|---|
+| Good | The Pine release was the one that moved the week. [12] |
+| Good | Nothing in this window shows Act with Integrity. The records are releases and a sandbox refresh. |
+| Bad | You led the Maple audit and saved two weeks. [12] (Maple is not in the slice) |
+| Bad | The Pine release mattered. (No record number.) |

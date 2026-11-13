@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en" data-theme="{{ theme }}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-{% set main_pages = [("/", "Home"), ("/wins", "Wins"), ("/performance", "Performance map"), ("/v2mom", "V2MOM"), ("/kso", "KSOs"), ("/sheet", "Intake Review Queue"), ("/digest", "Weekly digest")] %}
+{% set main_pages = [("/", "Home"), ("/wins", "Wins"), ("/performance", "Performance map"), ("/v2mom", "V2MOM"), ("/kso", "KSOs"), ("/sheet", "Intake Review Queue"), ("/digest", "Weekly digest"), ("/ask", "Ask")] %}
 {% set ns = namespace(here='Search' if page == '/search' else 'Setup' if page == '/setup' else 'Settings' if page == '/settings' else '') %}
 {% for path, label in main_pages %}{% if path == page %}{% set ns.here = label %}{% endif %}{% endfor %}
 {% for path, tab in tabs.items() %}{% if path == page %}{% set ns.here = tab[1] %}{% endif %}{% endfor %}

@@ -862,6 +862,30 @@ def _task_line(t) -> str:
     return f"{'[x]' if t.done_at else '[ ]'} {t.text}  (~{t.minutes} min, {t.goal})"
 
 
+@app.command("ask")
+def ask_cmd(question: str = typer.Argument(..., help="What to ask"),
+            window: str = typer.Option("week", "--window", help="week, month, half, or year"),
+            data_dir: Optional[str] = DataOpt) -> None:
+    """Ask Claude about your notebook. Sends a short slice (not notes or transcripts) and saves nothing."""
+    from . import ask as askmod
+    from .claude_cli import ClaudeError
+    os.umask(0o077)
+    dd = resolve(data_dir)
+    try:
+        dd.require_known()
+    except NotDemoData as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    engine = make_engine(dd.db)
+    init_db(engine)
+    with make_session_factory(engine)() as s:
+        try:
+            typer.echo(askmod.answer(s, question, window))
+        except ClaudeError as exc:
+            typer.echo(str(exc))
+            raise typer.Exit(1)
+
+
 @app.command("serve")
 def serve(port: int = 8765, data_dir: Optional[str] = DataOpt) -> None:
     """Serve the review UI on loopback only (host is not configurable)."""

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="card">
+  <h2>Ask Claude</h2>
+  <p class="note">Claude gets your question and a short slice of this notebook: record and win titles in the window you pick, not pasted notes or transcripts, plus your V2MOM methods, Values &amp; Behaviors, and leveling-guide topics. The slice stays under about 8,000 characters. Nothing is saved.</p>
+  <form method="post" action="/ask" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="help" for="ask-window">Window</label>
+    <select id="ask-window" name="window">{% for key, label in windows %}<option value="{{ key }}" {{ 'selected' if key == window }}>{{ label }}</option>{% endfor %}</select>
+    <label class="help" for="ask-preset">Presets</label>
+    <select id="ask-preset" data-ask-preset>
+      <option value="">Choose a preset question</option>
+      {% for group, items in groups %}<optgroup label="{{ group }}">{% for item in items %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</optgroup>{% endfor %}
+    </select>
+    <label class="help" for="ask-question">Question</label>
+    <textarea id="ask-question" name="question" data-ask-question maxlength="500" rows="3" required>{{ question }}</textarea>
+    <div><button class="primary">Ask</button></div>
+  </form>
+  {% if error %}<p class="note" role="alert">{{ error }}</p>{% endif %}
+  {% if answer %}<div class="exp" style="white-space:pre-wrap" role="status">{{ answer }}</div>{% endif %}
+</section>
+{% endblock %}
