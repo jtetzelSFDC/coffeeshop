@@ -137,10 +137,22 @@ def status(points: float) -> tuple[str, str]:
 
 
 def work_key(entry: JournalEntry | None, win: Win | None = None) -> str:
-    """What counts once: a whole piece of work when the record is grouped, else the record (or a lone win) itself."""
+    """What counts once: a whole piece of work when the record is grouped or the win is that group's win,
+    else the record (or a lone win) itself."""
+    item = (win.work_item_id if win is not None else None) or (entry.work_item_id if entry is not None else None)
+    if item:
+        return f"w{item}"
     if entry is not None:
-        return f"w{entry.work_item_id}" if entry.work_item_id else f"e{entry.id}"
+        return f"e{entry.id}"
     return f"win{win.id}"
+
+
+def counting_wins(wins: list[Win], entry_work: dict[int, int | None]) -> list[Win]:
+    """A group win stands in for the wins of its member records, so those are not counted again."""
+    covered = {w.work_item_id for w in wins if w.work_item_id}
+    if not covered:
+        return list(wins)
+    return [w for w in wins if not (w.entry_id and entry_work.get(w.entry_id) in covered)]
 
 
 def evidence(s: Session) -> dict[int, dict]:
@@ -264,6 +276,9 @@ def confirm(s: Session, entry_id: int) -> None:
     e.reviewed = True
     e.work_fixed = True  # accepting the row accepts its grouping (or lack of one), so a regroup run leaves it alone
     wins = list(s.scalars(select(Win).where(Win.entry_id == entry_id)))
+    if e.work_item_id:  # an AI win for the whole piece of work becomes yours, the same as a win on this row
+        seen = {w.id for w in wins}
+        wins.extend(w for w in s.scalars(select(Win).where(Win.work_item_id == e.work_item_id)) if w.id not in seen)
     for w in wins:
         w.by_ai = False
     for l in s.scalars(select(GuideLink).where(
