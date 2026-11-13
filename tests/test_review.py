@@ -13,7 +13,7 @@ from coffeeshop.guide.service import promo_map
 from coffeeshop.storage.db import init_db, make_engine
 from coffeeshop.storage.models import GuideLink, JournalEntry, SyncRun, Win
 
-from helpers import add, form, open_session
+from helpers import add, form, link, load_v2mom, open_session
 
 
 
@@ -22,7 +22,7 @@ def fake(answers):
     """A reader that answers by record text."""
     seen = []
 
-    def reader(guide, themes, records):
+    def reader(guide, themes, records, **_extra):
         seen.append(dict(guide=guide, records=records))
         return {r["id"]: answers.get(r["text"], {"guide": [], "kind": r["kind"], "win": None}) for r in records}
     reader.seen = seen
@@ -34,10 +34,13 @@ def test_old_notebooks_get_the_new_columns(tmp_path):
     with sqlite3.connect(db) as c:
         c.execute("CREATE TABLE win (id INTEGER PRIMARY KEY, day VARCHAR, title VARCHAR, impact TEXT, size VARCHAR,"
                   " theme VARCHAR, entry_id INTEGER, created_at DATETIME)")
+        c.execute("CREATE TABLE journal_entry (id INTEGER PRIMARY KEY, day VARCHAR, kind VARCHAR, text VARCHAR,"
+                  " created_at DATETIME)")
     init_db(make_engine(db))
     with sqlite3.connect(db) as c:
-        assert "by_ai" in {r[1] for r in c.execute("PRAGMA table_info(win)")}
-        assert {"kind_was", "ai_read", "reviewed"} <= {r[1] for r in c.execute("PRAGMA table_info(journal_entry)")}
+        assert {"by_ai", "work_item_id"} <= {r[1] for r in c.execute("PRAGMA table_info(win)")}
+        assert {"kind_was", "ai_read", "reviewed", "values_read", "values_fixed"} <= {
+            r[1] for r in c.execute("PRAGMA table_info(journal_entry)")}
 
 
 def test_review_links_fixes_kinds_and_drafts_wins(nb):
@@ -54,7 +57,7 @@ def test_review_links_fixes_kinds_and_drafts_wins(nb):
                 theme="Leadership")),
         }
         r = ai_review.review(s, reader=fake(answers))
-        assert r == dict(read=3, links=3, wins=1, kinds=1, v2mom=0, failed=0)
+        assert r == dict(read=3, links=3, wins=1, kinds=1, v2mom=0, values=0, failed=0)
         ea, eb = s.get(JournalEntry, a), s.get(JournalEntry, b)
         assert (ea.kind, ea.kind_was, ea.status, ea.ai_read) == ("task", "note", "done", True)
         assert eb.kind == "meeting" and eb.kind_was == ""  # calendar items stay meetings
@@ -64,7 +67,7 @@ def test_review_links_fixes_kinds_and_drafts_wins(nb):
         pm = promo_map(s)
         g7 = [x for row in pm["rows"] for x in row["cells"][7] if x["wins"]]
         assert g7 and g7[0]["status"] == "shown"  # a large win is 4 points, counted once with its entry
-        assert ai_review.review(s, reader=fake({})) == dict(read=0, links=0, wins=0, kinds=0, v2mom=0, failed=0)
+        assert ai_review.review(s, reader=fake({})) == dict(read=0, links=0, wins=0, kinds=0, v2mom=0, values=0, failed=0)
 
 
 def test_a_certification_keeps_its_kind_and_gains_its_guide_link(nb):
@@ -90,6 +93,51 @@ def test_an_unread_row_waits_instead_of_offering_looks_right(nb):
         s.commit()
     html = c.get("/sheet?show=all").text
     assert "Looks right" in html and "Claude is reading" not in html
+
+
+def test_bulk_looks_right_skips_unread_and_counts_the_rest(nb):
+    dd, c, token, _ = nb
+    with open_session(dd) as s:
+        unread = add(s, "Bulk unread")
+        read = add(s, "Bulk read", ai_read=True)
+        other = add(s, "Bulk other", ai_read=True)
+    assert c.post("/sheet/ok", data={"id": [str(read), str(other)]}).status_code == 403
+    with open_session(dd) as s:
+        assert not s.get(JournalEntry, read).reviewed
+    r = c.post("/sheet/ok", data={"csrf": token, "id": [str(unread), str(read), str(other)], "ret": "show=todo"},
+               headers={"X-Sheet": "1"})
+    body = r.json()
+    assert r.status_code == 200 and body["count"] == 2
+    assert set(body["confirmed"]) == {read, other} and set(body["gone"]) == {read, other}
+    with open_session(dd) as s:
+        assert not s.get(JournalEntry, unread).reviewed
+        assert s.get(JournalEntry, read).reviewed and s.get(JournalEntry, other).reviewed
+    stay = c.post("/sheet/ok", data={"csrf": token, "id": [str(read)], "ret": "show=all"}, headers={"X-Sheet": "1"})
+    kept = stay.json()
+    assert kept["count"] == 1 and kept["gone"] == [] and f'id="r{read}"' in kept["rows"][str(read)]
+
+
+def test_no_v2mom_filter_lists_read_records_with_no_method(nb):
+    dd, c, *_ = nb
+    with open_session(dd) as s:
+        gap = add(s, "Gap record alpha", v2mom_read=True)
+        linked = add(s, "Linked record beta", v2mom_read=True)
+        won = add(s, "Win linked record delta", v2mom_read=True)
+        add(s, "Unread record gamma")
+        m = load_v2mom(s)
+        link(s, m["M1"], entry_id=linked)
+        w = Win(day="2026-10-01", title="Shipped", entry_id=won, created_at=datetime.now())
+        s.add(w)
+        s.flush()
+        link(s, m["M1"], win_id=w.id)
+        s.commit()
+    page = c.get("/sheet?show=all&v2mom=none").text
+    assert "Gap record alpha" in page and "Linked record beta" not in page and "Unread record gamma" not in page
+    assert "Win linked record delta" not in page
+    assert 'scope="col"' in page and "Looks right for selected" in page
+    assert "Counts as: the activity this record adds to on the performance map" in page
+    assert "Part of: one piece of work, counted once" in page and "No V2MOM method" in page
+    assert f'id="pick{gap}"' in page
 
 
 def test_an_entry_added_while_claude_reads_gets_its_own_pass(nb, monkeypatch):
@@ -136,7 +184,7 @@ def test_review_failure_changes_nothing(nb):
     with open_session(dd) as s:
         add(s, "x")
 
-        def down(*a):
+        def down(*a, **k):
             raise ClaudeError("no")
         with pytest.raises(ClaudeError):
             ai_review.review(s, reader=down)
@@ -211,9 +259,9 @@ def test_sheet_script_updates_rows_in_place(nb):
     hdr = {"X-Sheet": "1"}
     ret = "show=todo&source=any&kind=any&page=1"
     r = c.post(f"/sheet/{a}/kind", data={"csrf": token, "kind": "document", "ret": ret}, headers=hdr)
-    assert r.status_code == 200 and r.text.lstrip().startswith(f'<tr id="r{a}"') and 'value="document" class="on"' in r.text
+    assert r.status_code == 200 and r.text.lstrip().startswith(f'<tr id="r{a}"') and 'value="document" selected' in r.text
     r = c.post(f"/sheet/{a}/win", data={"csrf": token, "size": "medium", "ret": ret}, headers=hdr)
-    assert "Wrote the refresh runbook" in r.text and 'value="medium" class="on"' in r.text
+    assert "Wrote the refresh runbook" in r.text and 'value="medium" selected' in r.text
     r = c.post(f"/sheet/{a}/ok", data={"csrf": token, "ret": ret}, headers=hdr)
     assert r.status_code == 200 and r.headers["x-row"] == "gone" and r.text == ""
     r = c.post(f"/sheet/{a}/undo", data={"csrf": token, "ret": "show=checked"}, headers=hdr)
@@ -466,7 +514,7 @@ def test_review_skips_records_removed_or_edited_while_claude_reads(nb):
     with open_session(dd) as s:
         gone, checked, retyped, plain = (add(s, t) for t in ("gone", "checked", "retyped", "plain"))
 
-        def reader(guide, themes, records):
+        def reader(guide, themes, records, **_extra):
             with open_session(dd) as other:  # what you do in the queue while Claude is thinking
                 remove_entry(other, gone)
                 other.get(JournalEntry, checked).reviewed = True

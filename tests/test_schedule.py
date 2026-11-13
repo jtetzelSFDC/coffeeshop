@@ -139,6 +139,28 @@ def test_a_signed_out_connector_gets_a_plain_message(monkeypatch):
         claude_cli.call_tool("x", "mcp__plugin_slack_slack__slack_read_canvas")
 
 
+def test_a_down_plugin_server_falls_back_to_a_connected_one(monkeypatch):
+    import json as _json
+    from types import SimpleNamespace
+    from coffeeshop import claude_cli
+    alt = "mcp__claude_ai_Slack__slack_read_canvas"
+    init = {"type": "system", "subtype": "init", "mcp_servers": [
+        {"name": "plugin:slack:slack", "status": "failed"}, {"name": "claude.ai Slack", "status": "connected"}]}
+    use = {"message": {"content": [{"type": "tool_use", "id": "t1", "name": alt, "input": {}}]}}
+    result = {"message": {"content": [{"type": "tool_result", "tool_use_id": "t1", "content": "canvas text"}]}}
+    allowed = []
+
+    def run(cmd, **k):
+        allowed.append(cmd[cmd.index("--allowedTools") + 1])
+        lines = [init] + ([use, result] if allowed[-1] == alt else [])
+        return SimpleNamespace(stdout="\n".join(map(_json.dumps, lines)), stderr="")
+
+    monkeypatch.setattr(claude_cli, "_claude", lambda: "claude")
+    monkeypatch.setattr(claude_cli.subprocess, "run", run)
+    assert claude_cli.call_tool("x", "mcp__plugin_slack_slack__slack_read_canvas") == "canvas text"
+    assert allowed == ["mcp__plugin_slack_slack__slack_read_canvas", alt]
+
+
 def test_reinstall_waits_for_the_old_copy_to_stop(dd, tmp_path, monkeypatch):
     agents_dir = tmp_path / "LaunchAgents"
     tries = []

@@ -69,6 +69,25 @@ def test_moving_a_method_makes_the_pick_yours(nb):
     assert seen and "M1" in seen[0]
 
 
+def test_performance_shows_last_year_only_when_that_year_is_stored(nb):
+    from coffeeshop.v2mom.report import prior_year
+    assert prior_year(["FY26", "FY27"], "FY27") == "FY26"
+    assert prior_year(["FY27"], "FY27") is None and prior_year(["FY26"], "") is None
+    dd, c, *_ = nb
+    with open_session(dd) as s:
+        load_v2mom(s, fy="FY26")
+        connect(s, "FY26")
+    one, _, _ = c.get("/performance").text.partition("<h2>Promotion (optional)</h2>")
+    assert "<p class=\"st\">V2MOM</p>" in one and "FY26" in one and "FY27" not in one and "69%" in one
+    assert 'class="grid2"' not in one
+    with open_session(dd) as s:
+        load_v2mom(s, fy="FY27")
+        connect(s, "FY27")
+    both, _, _ = c.get("/performance").text.partition("<h2>Promotion (optional)</h2>")
+    assert "FY26" in both and "FY27" in both and both.index("FY26") < both.index("FY27")
+    assert 'class="grid2"' in both and "<p class=\"st\">KSOs</p>" in both
+
+
 def test_older_years_get_a_picker(nb):
     dd, c, *_ = nb
     kso_setup(dd)

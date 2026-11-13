@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en" data-theme="{{ theme }}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-{% set main_pages = [("/", "Home"), ("/wins", "Wins"), ("/promo", "Promo map"), ("/v2mom", "V2MOM"), ("/kso", "KSOs"), ("/sheet", "Intake Review Queue"), ("/digest", "Weekly digest")] %}
+{% set main_pages = [("/", "Home"), ("/wins", "Wins"), ("/performance", "Performance map"), ("/v2mom", "V2MOM"), ("/kso", "KSOs"), ("/sheet", "Intake Review Queue"), ("/digest", "Weekly digest"), ("/ask", "Ask")] %}
 {% set ns = namespace(here='Search' if page == '/search' else 'Setup' if page == '/setup' else 'Settings' if page == '/settings' else '') %}
 {% for path, label in main_pages %}{% if path == page %}{% set ns.here = label %}{% endif %}{% endfor %}
 {% for path, tab in tabs.items() %}{% if path == page %}{% set ns.here = tab[1] %}{% endif %}{% endfor %}
@@ -59,7 +59,7 @@ button.icon{width:2rem;height:2rem;padding:0;border-radius:50%;font-size:1rem;li
   color:var(--text);text-decoration:none}.tile b{font-size:1.45rem;line-height:1.1}
 .tile .of{font-size:.95rem;color:var(--muted)}.tile>span{font-size:.78rem;color:var(--muted)}.tile:hover{border-color:var(--accent)}
 .tile.warn-tile{border-color:var(--st-started)}
-.momentum{display:flex;align-items:flex-end;gap:.8rem;margin:.9rem 0 0}.momentum svg{width:15rem;height:2.6rem;flex:none}
+.momentum{display:flex;align-items:flex-end;gap:.8rem;margin:.9rem 0 0}.momentum svg{width:15rem;height:2.6rem;flex:0 1 15rem;min-width:0}
 .momentum rect{fill:var(--st-shown)}.momentum rect.now{fill:var(--st-strong)}
 .v2{margin:.9rem 0 0;padding-top:.6rem;border-top:1px dashed var(--line)}.v2>a{color:var(--text);text-decoration:none;font-size:.92rem}
 .v2 .ready{margin-top:.35rem;gap:.2rem 1.6rem;grid-template-columns:1fr 1fr}@media (max-width:680px){.v2 .ready{grid-template-columns:1fr}}
@@ -187,11 +187,13 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:2px solid v
 .att-d[open]{display:block;flex-basis:100%}.att-body{margin:.3rem 0 .4rem;padding-left:.8rem;border-left:2px solid var(--line)}
 body.wide{max-width:1400px}
 table.sheet{width:100%;border-collapse:collapse;font-size:.86rem;table-layout:fixed}
-.sheet th{text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);padding:.35rem .4rem;position:sticky;top:0;background:var(--card)}
-.sheet td{border-bottom:1px dashed var(--line);padding:.35rem .4rem;vertical-align:top;overflow-wrap:anywhere}
+.sheet caption{caption-side:top;text-align:left;color:var(--muted);font-size:.75rem;font-weight:400;line-height:1.45;padding:0 0 .45rem}
+.sheet th,.sheet td{border:1px solid var(--line)}
+.sheet th{text-align:left;color:var(--muted);font-weight:600;padding:.35rem .4rem;position:sticky;top:0;background:var(--card)}
+.sheet td{padding:.35rem .4rem;vertical-align:top;overflow-wrap:anywhere}
 /* One copy of the text lives in the summary, so opening it drops the clamp. */
 details.clip>summary{list-style:none;cursor:pointer}details.clip>summary::-webkit-details-marker{display:none}
-details.clip .what{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+details.clip .what{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
 details.clip[open] .what{display:block;-webkit-line-clamp:unset;overflow:visible}
 details.clip .when-open,details.clip[open] .when-closed{display:none}details.clip[open] .when-open{display:inline}
 details.clip .when-closed,details.clip .when-open{color:var(--muted)}
@@ -207,6 +209,42 @@ form.mini{display:inline-flex;gap:.3rem;align-items:center}form.mini label{white
 .sheet .chip{margin:.1rem .2rem .1rem 0}.sheet .chip button{border:0;background:none;padding:0 0 0 .3rem;margin:0;color:var(--muted)}
 .sheet .v2chip{display:inline-flex;align-items:center;max-width:15rem;vertical-align:middle}.sheet .v2chip .clip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.sheet .v2chip form{flex:none;margin:0}
 .sheet button.remove{color:var(--muted);background:transparent}.sheet button.remove:hover{color:var(--bad);border-color:var(--bad)}
+/* The queue shares the page width by percent, so a column cannot paint into the next one. Record keeps the wide share. */
+table.sheet.queue{table-layout:fixed;width:100%;border-collapse:separate;border-spacing:0}
+table.sheet.queue th,table.sheet.queue td{border-width:0 1px 1px 0}
+table.sheet.queue tr>*:first-child{border-left-width:1px}
+table.sheet.queue thead th{border-top-width:1px;z-index:2;background:var(--card)}
+table.sheet.queue th .colhint{display:none;position:absolute;left:0;top:calc(100% + 2px);z-index:3;width:max-content;max-width:18rem;padding:.4rem .55rem;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);font-weight:400;font-size:.75rem;line-height:1.4;white-space:normal}
+table.sheet.queue th:last-child .colhint{left:auto;right:0}
+table.sheet.queue th:hover .colhint{display:block}
+table.sheet.queue col.c-do{width:9%}table.sheet.queue col.c-rec{width:35%}table.sheet.queue col.c-type{width:8%}
+table.sheet.queue col.c-count{width:11%}table.sheet.queue col.c-part{width:12%}table.sheet.queue col.c-guide{width:7%}
+table.sheet.queue col.c-v2{width:6%}table.sheet.queue col.c-val{width:5%}table.sheet.queue col.c-win{width:7%}
+table.sheet.queue td{overflow:hidden}
+table.sheet.queue .qlab{display:none}
+table.sheet.queue td.q-do form{display:block;margin:.25rem 0 0}
+table.sheet.queue td.q-do button{display:block;width:100%;margin:0;white-space:nowrap}
+table.sheet.queue select{width:100%;max-width:100%}
+table.sheet.queue form.mini{display:flex;flex-direction:column;align-items:stretch;gap:.2rem;max-width:100%}
+table.sheet.queue form.mini select,table.sheet.queue form.mini button{width:100%;max-width:100%;margin:0}
+table.sheet.queue .chip,table.sheet.queue .v2chip{max-width:100%;white-space:normal}
+table.sheet.queue .v2chip .clip{white-space:normal}
+table.sheet.queue .chip.ai{border:0;border-radius:0;padding:0;background:none}
+table.sheet.queue td.q-rec{overflow-wrap:break-word}
+table.sheet.queue td.q-win form{display:block;margin:0}
+table.sheet.queue td details select,table.sheet.queue td details input{width:100%;max-width:100%;box-sizing:border-box}
+@media (max-width:1040px){
+  table.sheet.queue,table.sheet.queue tbody{display:block}
+  table.sheet.queue thead{display:none}
+  table.sheet.queue col{width:auto}
+  table.sheet.queue tr{display:grid;grid-template-columns:1fr 1fr;gap:.4rem .75rem;border:1px solid var(--line);border-radius:8px;padding:.55rem .65rem;margin:0 0 .65rem}
+  table.sheet.queue td{display:block;width:auto;border:0;padding:0;overflow:visible}
+  table.sheet.queue td.q-do,table.sheet.queue td.q-rec{grid-column:1 / -1}
+  table.sheet.queue td.q-do{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:.35rem .5rem}
+  table.sheet.queue td.q-do form{margin:0}
+  table.sheet.queue td.q-do button{width:auto}
+  table.sheet.queue .qlab{display:block;font-size:.72rem;font-weight:600;color:var(--muted)}
+}
 .job{margin-top:.8rem;padding:.7rem .9rem;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
 .jbar{height:.55rem;border-radius:99px;background:var(--btn);overflow:hidden}.jbar span{display:block;height:100%;background:var(--accent);transition:width .6s ease}
 .job.done .jbar span{background:var(--st-strong)}.job.error .jbar span,.job.partial .jbar span{background:var(--bad)}

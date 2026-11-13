@@ -24,7 +24,7 @@ def test_markdown_sourced_and_clean(nb):
         secs[0].sentences = [dict(text="Jordan led it.", sources=[1], valid=True, reason=""),
                              dict(text="Jordan saved 9 hours.", sources=[1], valid=False, reason="9 isn't in the evidence")]
         sourced, clean = docs_export.markdown(v, secs, True), docs_export.markdown(v, secs, False)
-        assert sourced.startswith("# Promotion case: Jordan") and "## Summary" in sourced and "## Growth areas" in sourced
+        assert sourced.startswith("# Promotion case: Jordan") and "## Project Highlights" in sourced and "## Talent Readiness" in sourced
         assert "Jordan led it. [1]" in sourced and "**[Check this: 9 isn't in the evidence]**" in sourced
         assert "## Sources" in sourced and "\n1. " in sourced
         assert "[1]" not in clean and "Check this" not in clean and "## Sources" not in clean
@@ -68,8 +68,8 @@ def test_button_saves_both_links(nb, monkeypatch):
             return doc_reply(f"doc{len(sent)}")
         return sent[len(sent) - 1]
     monkeypatch.setattr(docs_export, "call_tool", fake)
-    assert "Send to Google Docs" in c.get(f"/promo/case/{vid}").text
-    assert c.post(f"/promo/case/{vid}/gdoc", data={"csrf": token}, headers={"X-Sync": "1"}).json() == {"started": True}
+    assert "Send to Google Docs" in c.get(f"/performance/case/{vid}").text
+    assert c.post(f"/performance/case/{vid}/gdoc", data={"csrf": token}, headers={"X-Sync": "1"}).json() == {"started": True}
     for _ in range(200):
         job = c.get("/sync/status").json().get("promo")
         if job and job["state"] != "running":
@@ -79,5 +79,5 @@ def test_button_saves_both_links(nb, monkeypatch):
     with open_session(dd) as s:
         v = s.get(PromoVersion, vid)
         assert v.google_doc_url.endswith("doc1/edit?usp=drivesdk") and "doc2" in v.google_doc_clean_url
-    page = c.get(f"/promo/case/{vid}").text
+    page = c.get(f"/performance/case/{vid}").text
     assert ">with sources</a>" in page and ">clean copy</a>" in page

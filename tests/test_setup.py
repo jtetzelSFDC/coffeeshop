@@ -51,6 +51,8 @@ def test_local_steps_fail_until_done_and_pass_after(tmp_path, workbook):
     assert [got[k] for k in ("database", "level", "guide", "v2mom")] == ["pass"] * 4
     pdf.unlink()
     assert states(setup.run_checks(dd))["v2mom"] == "fail"  # the PDF moved
+    connector.save_source(dd, "https://v2mom.example.com/my-v2mom")
+    assert states(setup.run_checks(dd))["v2mom"] == "fail"  # a page link counts once a V2MOM has been read
     assert states(setup.run_checks(DataDir(tmp_path / "nothing")))["database"] == "fail"
 
 
@@ -137,6 +139,19 @@ def test_setup_page_saves_role_and_level_through_the_shared_code(tmp_path, workb
     assert json.loads((dd.root / "profile.json").read_text())["grade"] == 5
 
 
+def test_settings_saves_the_note_and_keeps_the_level(tmp_path, workbook):
+    dd, _ = personal(tmp_path)
+    c, tok = client(dd)
+    form(c, "/setup/level", tok, role=ROLE, grade="5")
+    r = form(c, "/settings", tok, responsibilities="Release trains\r\nand on-call")
+    assert r.status_code == 303
+    saved = json.loads((dd.root / "profile.json").read_text())
+    assert saved["grade"] == 5 and saved["responsibilities"] == "Release trains\nand on-call"
+    form(c, "/settings", tok, responsibilities="  ")
+    cleared = json.loads((dd.root / "profile.json").read_text())
+    assert cleared["grade"] == 5 and not cleared.get("responsibilities")
+
+
 def test_setup_posts_need_the_csrf_token_and_a_personal_notebook(tmp_path, workbook):
     dd, _ = personal(tmp_path)
     c, tok = client(dd)
@@ -147,7 +162,8 @@ def test_setup_posts_need_the_csrf_token_and_a_personal_notebook(tmp_path, workb
     practice = DataDir(tmp_path / "practice")
     practice.init_demo()
     c, tok = client(practice)
-    for r in (form(c, "/setup/level", tok, role=ROLE, grade="5"), form(c, "/setup/check", tok), c.get("/setup", follow_redirects=False),
+    for r in (form(c, "/setup/level", tok, role=ROLE, grade="5"), form(c, "/setup/check", tok),
+              form(c, "/settings", tok, responsibilities="x"), c.get("/setup", follow_redirects=False),
               c.get("/settings", follow_redirects=False)):
         assert r.status_code == 303 and "personal%20notebook" in r.headers["location"]
     assert not (practice.root / "profile.json").exists() and "Setup" not in c.get("/").text.split("</nav>")[0]

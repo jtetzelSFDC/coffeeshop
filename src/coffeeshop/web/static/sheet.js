@@ -1,5 +1,6 @@
 // Intake Review Queue buttons save in the background: the row fades out when it leaves the current view, else redraws in place.
 // Without this script the same forms still work as normal page loads.
+// The bulk Looks right does the same for each row the server confirmed. Rows it skipped (Claude has not read them) stay put.
 // The redraw drops text typed in other boxes. Match the action attribute, not form.action: on the page that
 // property is an absolute URL, and for HTML still inside the template it is empty.
 const keep = (row, fresh, saved) => {
@@ -17,10 +18,101 @@ const keep = (row, fresh, saved) => {
   const prev = [...row.querySelectorAll("details")];
   const next = [...fresh.querySelectorAll("details")];
   for (let i = 0; i < prev.length; i++) if (prev[i].open && next[i]) next[i].open = true;
+  const ticks = (root) => [...root.querySelectorAll("input")].filter((el) => el.type === "checkbox" && el.name === "id");
+  const oldTicks = ticks(row);
+  const newTicks = ticks(fresh);
+  for (let i = 0; i < oldTicks.length; i++) if (newTicks[i]) newTicks[i].checked = !!oldTicks[i].checked;
 };
+
+const sheetBoxes = () => [...document.querySelectorAll("table.sheet input[name=id]")];
+
+const selectedCount = () => {
+  const list = sheetBoxes().filter((b) => {
+    const row = b.closest("tr");
+    return !row || !row.classList.contains("gone");
+  });
+  const n = list.filter((b) => b.checked).length;
+  const sel = document.getElementById("seln");
+  if (sel) sel.textContent = String(n);
+  const all = document.getElementById("sheet-all");
+  if (all) all.checked = list.length > 0 && n === list.length;
+};
+
+document.addEventListener("change", (ev) => {
+  const t = ev.target;
+  if (!t) return;
+  if (t.tagName === "SELECT" && t.form && t.closest("table.sheet.queue")) {
+    const action = t.form.getAttribute("action") || "";
+    if (action.endsWith("/kind")) t.form.requestSubmit();
+    else if (action.endsWith("/win")) {
+      if (!t.value) {
+        t.form.setAttribute("action", t.form.dataset.unwin);
+        t.disabled = true;
+      }
+      t.form.requestSubmit();
+    }
+  }
+  if (t.tagName !== "INPUT") return;
+  if (t.id === "sheet-all") for (const box of sheetBoxes()) box.checked = t.checked;
+  if (t.id === "sheet-all" || t.name === "id") selectedCount();
+});
 
 document.addEventListener("submit", async (ev) => {
   const form = ev.target;
+  if (form.getAttribute("action") === "/sheet/ok") {
+    ev.preventDefault();
+    for (const box of sheetBoxes()) if (box.checked) {
+      const row = box.closest("tr");
+      if (row) row.classList.add("busy");
+    }
+    let resp;
+    try {
+      resp = await fetch(form.action, { method: "POST", body: new FormData(form), headers: { "X-Sheet": "1" }, credentials: "same-origin" });
+    } catch (e) {
+      location.reload();
+      return;
+    }
+    if (!resp.ok) {
+      location.reload();
+      return;
+    }
+    let body;
+    try {
+      body = await resp.json();
+    } catch (e) {
+      location.reload();
+      return;
+    }
+    const gone = new Set((body.gone || []).map(String));
+    let n = 0;
+    for (const id of gone) {
+      const row = document.getElementById("r" + id);
+      if (!row) continue;
+      row.classList.add("gone");
+      const box = row.querySelector("input[name=id]");
+      if (box) box.checked = false;
+      n += 1;
+      setTimeout(() => row.remove(), 400);
+    }
+    const count = document.getElementById("rowcount");
+    if (count && n) count.textContent = String(Math.max(0, parseInt(count.textContent, 10) - n));
+    for (const [id, html] of Object.entries(body.rows || {})) {
+      const row = document.getElementById("r" + id);
+      if (!row) continue;
+      const tpl = document.createElement("template");
+      tpl.innerHTML = String(html).trim();
+      const fresh = tpl.content.querySelector("tr");
+      if (!fresh) continue;
+      keep(row, fresh, form);
+      row.replaceWith(fresh);
+    }
+    for (const box of sheetBoxes()) {
+      const row = box.closest("tr");
+      if (row) row.classList.remove("busy"); // a skipped row was never redrawn, so it would stay faded
+    }
+    selectedCount();
+    return;
+  }
   const row = form.closest("table.sheet tr[id^='r']");
   if (!row) return;
   ev.preventDefault();

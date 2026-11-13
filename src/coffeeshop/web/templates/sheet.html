@@ -7,11 +7,11 @@
     {% if not (sync.slack.ok and sync.calendar.ok) %}<a class="muted" href="/">Sync on Today</a>{% endif %}{% endif %}</div>
   <div class="stats"><span><b>{{ counts.total }}</b> records</span><span><b>{{ counts.read }}</b> read by Claude</span><span><b>{{ counts.checked }}</b> checked</span>{% if counts.links or counts.wins %}<span class="ai"><b>{{ counts.links }}</b> AI link{{ '' if counts.links == 1 else 's' }} &middot; <b>{{ counts.wins }}</b> AI win{{ '' if counts.wins == 1 else 's' }} to check</span>{% endif %}</div>
   <details class="howto"><summary>How this works</summary>
-  <p class="muted">Everything coming in from Slack, Google, and GitHub lands here to be sorted. Scan each row and fix what's off with one click: its type, the leveling guide items it shows, and whether it's a win. Purple <span class="chip ai">AI</span> marks are Claude's picks. They already count on the Promo map. <b>Looks right</b> makes a row's picks yours and moves it out of the "Not checked yet" list. <b>Remove</b> takes a record out for good, for example a meeting you didn't attend; syncs won't bring it back, and you can restore it from "Removed" in the first menu.</p></details>
+  <p class="muted">Everything coming in from Slack, Google, and GitHub lands here to be sorted. Scan each row and fix what's off with one click: its type, what it counts as, the piece of work it's part of, the leveling guide items it shows, the V2MOM methods it moves forward, the Values &amp; Behaviors it shows, and whether it's a win. On a grouped row, <b>Count this work as one win</b> makes one win for that whole piece of work. Purple <span class="chip ai">AI</span> marks are Claude's picks. They already count on the Performance map. <b>Looks right</b> makes a row's picks yours and moves it out of the "Not checked yet" list. Tick several rows and press <b>Looks right for selected</b> to check them together; a row Claude has not read yet is skipped. <b>No V2MOM method</b> lists records Claude has read that aren't linked to a method. <b>Remove</b> takes a record out for good, for example a meeting you didn't attend; syncs won't bring it back, and you can restore it from "Removed" in the first menu.</p></details>
   {% if personal and guided and counts.unread %}
   <form method="post" action="/sheet/ai" data-sync="review" class="row" style="margin-top:.6rem">{{ hidden() }}
     <button class="primary">Have Claude read the {{ counts.unread }} record{{ '' if counts.unread == 1 else 's' }} it hasn't read</button>
-    <span class="help">Claude reads each one against the key experiences of the next grades you're going for, and the skills, picks the guide items it shows, fixes obvious type mix-ups, and drafts wins for the stand-out ones. Everything it picks is marked AI. The record text, attached notes, and the leveling guide pass through the AI tool. This can take several minutes; you can keep using the app while it runs.</span>
+    <span class="help">Claude reads each one against the key experiences of the next grades you're going for, and the skills, picks the guide items it shows, up to two Values &amp; Behaviors, fixes obvious type mix-ups, and drafts wins for the stand-out ones. Everything it picks is marked AI. The record text, attached notes, the leveling guide, and the behavior definitions pass through the AI tool. This can take several minutes; you can keep using the app while it runs.</span>
   </form>
   <div class="job" data-job="review" hidden></div>
   <script src="/static/sync.js" defer></script>
@@ -20,6 +20,7 @@
     <select name="show" aria-label="Show">{% for k, label in show_opts.items() %}<option value="{{ k }}" {{ 'selected' if f.show == k }}>{{ label }}</option>{% endfor %}</select>
     <select name="source" aria-label="From"><option value="any">From anywhere</option>{% for k, label in source_opts.items() %}<option value="{{ k }}" {{ 'selected' if f.source == k }}>{{ label }}</option>{% endfor %}</select>
     <select name="kind" aria-label="Type"><option value="any">Any type</option>{% for k, label in kind_opts %}<option value="{{ k }}" {{ 'selected' if f.kind == k }}>{{ label }}</option>{% endfor %}</select>
+    <label><input type="checkbox" name="v2mom" value="none" {{ 'checked' if f.v2mom == 'none' }}> No V2MOM method</label>
     <button>Show</button>
     <span class="muted"><span id="rowcount">{{ total }}</span> row{{ '' if total == 1 else 's' }}{% if pages > 1 %}, page {{ f.page }} of {{ pages }}{% endif %}</span>
   </form>
@@ -30,7 +31,7 @@
 {% elif f.show == "removed" %}
 {% call howto() %}<p class="help" style="margin:.3rem .4rem .6rem">Records you removed. Syncs from Calendar, Tasks, and Slack skip them, so they don't come back. <b>Restore</b> puts one back as a plain record (pasted notes, guide links, and drafted wins from before aren't restored).</p>{% endcall %}
 <table class="sheet">
-  <thead><tr><th></th><th>Date</th><th>From</th><th>Type</th><th style="width:60%">What</th></tr></thead>
+  <thead><tr><th scope="col">Restore</th><th scope="col">Date</th><th scope="col">From</th><th scope="col">Type</th><th scope="col" style="width:60%">What</th></tr></thead>
   <tbody>
   {% for r in rows %}<tr id="r{{ r.id }}">
     <td><form method="post" action="/sheet/removed/{{ r.id }}/restore">{{ hidden() }}<button>Restore</button></form></td>
@@ -38,8 +39,22 @@
   </tbody>
 </table>
 {% else %}
-<table class="sheet">
-  <thead><tr><th></th><th>Date</th><th>From</th><th style="width:30%">What</th><th>Type</th><th style="width:24%">Leveling guide</th><th>Win</th></tr></thead>
+{% set hints = [
+  ("Select", "Select: tick rows on this page. Looks right checks this row. Remove takes it out for good.", "c-do"),
+  ("Record", "Record: the date, where it came from, and the text.", "c-rec"),
+  ("Type", "Type: meeting, conversation, document, task, kudos, certification, or other.", "c-type"),
+  ("Counts as", "Counts as: the activity this record adds to on the performance map.", "c-count"),
+  ("Part of", "Part of: one piece of work, counted once.", "c-part"),
+  ("Leveling guide", "Leveling guide: the guide items this record shows.", "c-guide"),
+  ("V2MOM", "V2MOM: the methods this record moves forward.", "c-v2"),
+  ("Values", "Values: the behaviors this record shows.", "c-val"),
+  ("Win", "Win: small, medium, or large.", "c-win")] %}
+<form id="sheet-bulk" method="post" action="/sheet/ok" class="row" style="margin:0 0 .6rem">{{ hidden() }}
+  <button class="primary">Looks right for selected (<span id="seln">0</span>)</button></form>
+<table class="sheet queue">
+  <caption class="sr">Intake review queue</caption>
+  <colgroup>{% for name, hint, col in hints %}<col class="{{ col }}">{% endfor %}</colgroup>
+  <thead><tr>{% for name, hint, col in hints %}<th scope="col">{% if name == "Select" %}<input type="checkbox" id="sheet-all"><label id="sheet-select" for="sheet-all">Select</label>{% else %}{{ name }}{% endif %}<span class="colhint">{{ hint }}</span></th>{% endfor %}</tr></thead>
   <tbody>
   {% for r in rows %}{% with nxt = loop.nextitem.id if loop.nextitem else '' %}{% include "_sheet_row.html" %}{% endwith %}{% endfor %}
   </tbody>
@@ -47,7 +62,7 @@
 {% endif %}
 <script src="/static/sheet.js" defer></script>
 {% if pages > 1 %}<p class="row" style="margin-top:.8rem">
-  {% if f.page > 1 %}<a href="/sheet?show={{ f.show }}&source={{ f.source }}&kind={{ f.kind }}&page={{ f.page - 1 }}">&larr; Newer</a>{% endif %}
-  {% if f.page < pages %}<a href="/sheet?show={{ f.show }}&source={{ f.source }}&kind={{ f.kind }}&page={{ f.page + 1 }}">Older &rarr;</a>{% endif %}</p>{% endif %}
+  {% if f.page > 1 %}<a href="/sheet?show={{ f.show }}&source={{ f.source }}&kind={{ f.kind }}&v2mom={{ f.v2mom }}&page={{ f.page - 1 }}">&larr; Newer</a>{% endif %}
+  {% if f.page < pages %}<a href="/sheet?show={{ f.show }}&source={{ f.source }}&kind={{ f.kind }}&v2mom={{ f.v2mom }}&page={{ f.page + 1 }}">Older &rarr;</a>{% endif %}</p>{% endif %}
 </section>
 {% endblock %}

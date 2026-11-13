@@ -289,7 +289,8 @@ def guide_review(redo: bool = typer.Option(False, "--redo", help="Also re-read r
         typer.echo(str(exc))
         raise typer.Exit(1)
     typer.echo(f"Read {r['read']} records: {r['links']} guide links, "
-               + (f"{r['v2mom']} V2MOM links, " if r["v2mom"] else "") + f"{r['wins']} drafted wins, "
+               + (f"{r['v2mom']} V2MOM links, " if r["v2mom"] else "")
+               + (f"{r['values']} Values links, " if r.get("values") else "") + f"{r['wins']} drafted wins, "
                f"{r['kinds']} type changes, all marked AI."
                + (f" {r['failed']} couldn't be read; run this again to retry them." if r["failed"] else ""))
 
@@ -300,7 +301,7 @@ def guide_group(dry_run: bool = typer.Option(False, "--dry-run", help="Show the 
                                                                 "(never ones you grouped or split yourself)"),
                 limit: Optional[int] = typer.Option(None, help="Only this many records (oldest first)"),
                 data_dir: Optional[str] = DataOpt) -> None:
-    """Group records that describe the same piece of work, so it counts once on the Promo map (marked AI)."""
+    """Group records that describe the same piece of work, so it counts once on the Performance map (marked AI)."""
     from .claude_cli import ClaudeError
     from .guide import work
     dd, s = _open_personal(data_dir, "Grouping")
@@ -365,16 +366,17 @@ def guide_activities(redo: bool = typer.Option(False, "--redo", help="Also re-ta
         typer.echo(f"  {c['all']:>4} {c['label']} ({c['year']} this year)")
 
 
-promo_app = typer.Typer(no_args_is_help=True, help="Your promotion case")
-app.add_typer(promo_app, name="promo")
+performance_app = typer.Typer(no_args_is_help=True, help="Your performance case")
+app.add_typer(performance_app, name="performance")
+app.add_typer(performance_app, name="promo", hidden=True)  # old name; `performance write` is the command
 
 
-@promo_app.command("write")
-def promo_write_cmd(start: Optional[str] = typer.Option(None, help="First day, YYYY-MM-DD (default: a year ago)"),
-                    end: Optional[str] = typer.Option(None, help="Last day, YYYY-MM-DD (default: today)"),
-                    name: Optional[str] = typer.Option(None, help="Who it's about (default: the saved name)"),
-                    data_dir: Optional[str] = DataOpt) -> None:
-    """Have Claude draft the promotion case from your notebook; open it at /promo/case."""
+@performance_app.command("write")
+def performance_write_cmd(start: Optional[str] = typer.Option(None, help="First day, YYYY-MM-DD (default: a year ago)"),
+                          end: Optional[str] = typer.Option(None, help="Last day, YYYY-MM-DD (default: today)"),
+                          name: Optional[str] = typer.Option(None, help="Who it's about (default: the saved name)"),
+                          data_dir: Optional[str] = DataOpt) -> None:
+    """Have Claude draft the performance case from your notebook; open it at /performance/case."""
     from .claude_cli import ClaudeError
     from .promo import write as pw
     dd, s = _open_personal(data_dir, "Writing the case")
@@ -394,7 +396,7 @@ def promo_write_cmd(start: Optional[str] = typer.Option(None, help="First day, Y
     secs = list(s.scalars(select(PromoSection).where(PromoSection.version_id == v.id)))
     flagged = sum(1 for sec in secs for x in sec.sentences if not x["valid"])
     typer.echo(f"Draft {v.id} saved" + (f", {flagged} sentences to check" if flagged else ", every sentence sourced")
-               + f". Open http://127.0.0.1:8765/promo/case/{v.id}")
+               + f". Open http://127.0.0.1:8765/performance/case/{v.id}")
 
 
 slack_app = typer.Typer(no_args_is_help=True, help="Bring Slack canvases into your notebook (read-only)")
@@ -446,20 +448,21 @@ def slack_pull(data_dir: Optional[str] = DataOpt) -> None:
     from .web import syncs
     _run_job(data_dir, "Slack sync", syncs.SLACK_STEPS, syncs.run_slack)
 
-v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from its PDF or a Google Doc (read-only)")
+v2mom_app = typer.Typer(no_args_is_help=True, help="Your V2MOM, read from its PDF, its page, or a Google Doc (read-only)")
 app.add_typer(v2mom_app, name="v2mom")
 
 
 @v2mom_app.command("connect")
-def v2mom_connect(doc: str = typer.Argument(..., help="The PDF downloaded from the V2MOM app, or a link to the "
-                                                      "Google Doc you pasted your V2MOM into"),
+def v2mom_connect(doc: str = typer.Argument(..., help="The PDF downloaded from the V2MOM app, your V2MOM page's "
+                                                      "https:// link, or a link to the Google Doc you pasted it into"),
                   data_dir: Optional[str] = DataOpt) -> None:
-    """Remember where your V2MOM is: its PDF (the newest V2MOM PDF in that folder is read each time) or a Doc."""
+    """Remember where your V2MOM is: its PDF (the newest V2MOM PDF in that folder is read each time), its page in the
+    V2MOM app (read through Claude Code's browser connector), or a Doc."""
     from .v2mom.connector import save_source
     dd, _ = _open_personal(data_dir, "V2MOM sync")
     try:
         src = save_source(dd, doc)
-        typer.echo(f"Saved {'PDF' if src['kind'] == 'pdf' else 'Doc'} {src['value']}. "
+        typer.echo(f"Saved {dict(pdf='PDF', url='page', doc='Doc')[src['kind']]} {src['value']}. "
                    "Now run: uv run coffeeshop v2mom sync")
     except ValueError as exc:
         typer.echo(str(exc))
@@ -492,6 +495,33 @@ def v2mom_tag(everything: bool = typer.Option(False, "--all", help="Every record
         typer.echo(str(exc))
         raise typer.Exit(1)
     typer.echo(f"Read {r['read']} records: {r['links']} V2MOM links, all marked AI."
+               + (f" {r['failed']} couldn't be read; run this again to retry them." if r["failed"] else ""))
+
+
+values_app = typer.Typer(no_args_is_help=True, help="Values & Behaviors from the Individual Contributor workbook")
+app.add_typer(values_app, name="values")
+
+
+@values_app.command("tag")
+def values_tag(everything: bool = typer.Option(False, "--all", help="Every record, not just the last 90 days"),
+               data_dir: Optional[str] = DataOpt) -> None:
+    """Have Claude link records it already read to the Values & Behaviors they show (marked AI). Records it has
+    read against them, and ones whose behaviors you set, are skipped, so running it again only does the rest."""
+    from datetime import date, timedelta
+    from .claude_cli import ClaudeError
+    from .values import links
+    dd, s = _open_personal(data_dir, "Values & Behaviors tagging")
+    todo = links.pending(s, "" if everything else (date.today() - timedelta(days=90)).isoformat())
+    if not todo:
+        typer.echo("Nothing to read: every record has been read against Values & Behaviors.")
+        return
+    typer.echo(f"Claude is reading {len(todo)} records against Values & Behaviors. This takes a few minutes.")
+    try:
+        r = links.tag(s, todo, progress=lambda i, t: typer.echo(f"  batch {i} of {t} done"))
+    except ClaudeError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    typer.echo(f"Read {r['read']} records: {r['links']} Values links, all marked AI."
                + (f" {r['failed']} couldn't be read; run this again to retry them." if r["failed"] else ""))
 
 
@@ -768,13 +798,36 @@ app.add_typer(digest_app, name="digest")
 
 @digest_app.command("notify")
 def digest_notify(data_dir: Optional[str] = DataOpt) -> None:
-    """Show this week's digest as a notification (what the Friday noon schedule runs)."""
+    """Show this week's digest as a notification (what the Friday noon schedule runs).
+
+    When Settings has the Friday case on, also write one performance-case draft for the last 12 months.
+    """
     from . import digest
+    from .claude_cli import ClaudeError
+    from .guide.service import read_profile
+    from .promo import write as pw
     from .sync_all import desktop_notify
     dd, s = _open_personal(data_dir, "The digest")
     line = digest.summary(digest.build(s))
     desktop_notify("Coffee Shop: your week", line)
     typer.echo(line)
+    if read_profile(dd.root).get("friday_case") is True:
+        from datetime import datetime, timedelta
+        from sqlalchemy import select
+        from .storage.models import PromoVersion
+        since = datetime.now() - timedelta(days=6)
+        if s.scalar(select(PromoVersion.id).where(PromoVersion.note == "Friday refresh",
+                                                  PromoVersion.created_at >= since).limit(1)):
+            typer.echo("A Friday performance case was already written this week.")
+        else:
+            start, end = pw.default_window()
+            try:
+                v = pw.write_case(s, start=start, end=end, name=pw.load_name(dd) or "the candidate",
+                                  note="Friday refresh")
+            except ClaudeError as exc:
+                typer.echo(f"No new performance case: {exc}")
+            else:
+                typer.echo(f"Performance case draft {v.id} saved, {start} to {end}.")
 
 
 daily_app = typer.Typer(no_args_is_help=True, help="Three small tasks a day toward your promotion and V2MOM")
@@ -807,6 +860,30 @@ def daily_show(data_dir: Optional[str] = DataOpt) -> None:
 
 def _task_line(t) -> str:
     return f"{'[x]' if t.done_at else '[ ]'} {t.text}  (~{t.minutes} min, {t.goal})"
+
+
+@app.command("ask")
+def ask_cmd(question: str = typer.Argument(..., help="What to ask"),
+            window: str = typer.Option("week", "--window", help="week, month, half, or year"),
+            data_dir: Optional[str] = DataOpt) -> None:
+    """Ask Claude about your notebook. Sends a short slice (not notes or transcripts) and saves nothing."""
+    from . import ask as askmod
+    from .claude_cli import ClaudeError
+    os.umask(0o077)
+    dd = resolve(data_dir)
+    try:
+        dd.require_known()
+    except NotDemoData as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1)
+    engine = make_engine(dd.db)
+    init_db(engine)
+    with make_session_factory(engine)() as s:
+        try:
+            typer.echo(askmod.answer(s, question, window))
+        except ClaudeError as exc:
+            typer.echo(str(exc))
+            raise typer.Exit(1)
 
 
 @app.command("serve")

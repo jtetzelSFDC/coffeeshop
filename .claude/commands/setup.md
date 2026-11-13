@@ -16,6 +16,9 @@ Rules that never bend:
 - Never read Slack DMs or group DMs. Never print or open the person's notebook files, V2MOM, or messages.
 - Never commit anything from their notebook (it lives outside this repo) or from their V2MOM PDF. Do not run `git add` or `git commit`.
 - You cannot sign in to Google or Slack for them. That happens in Claude Code's connector settings.
+- Prefer the AI Expert Suite plugins: `slack`, `google-workspace`, and `browser`. The app's tool names use them
+  first and fall back to another connected Slack or Google server only when the plugin's is down.
+- Their notebook lives outside this repo (`~/Library/Application Support/coffeeshop` on a Mac). Never move it.
 
 ## 1. Check uv
 
@@ -34,8 +37,8 @@ If "Local notebook" failed, run `uv run coffeeshop notebook init`. Never use `--
 
 ## 4. Role and level
 
-If "Role and level saved" passed, say what is saved and ask whether it is still right. Skip the rest of this step
-unless they want to change it (for example after a promotion).
+If "Role and level saved" passed, say what is saved and ask whether it is still right. Skip the role and level
+questions unless they want to change them (for example after a promotion).
 
 Otherwise ask for their role first. Run `uv run coffeeshop setup level < /dev/null` to list the roles. It then asks
 a question that cannot be answered here, so it ends with "Aborted"; that is fine, the list is what you wanted.
@@ -45,10 +48,17 @@ role's levels with their job titles (again it ends with "Aborted"). Ask which is
 job titles at one grade; read both out. Save it with `uv run coffeeshop setup level --role "<role>" --grade <number>`.
 This also loads the role's leveling guide. Tell them the next level it found.
 
+Then tell them about the optional Projects and responsibilities box on Settings. Today's three uses it when the usual
+goals are already on track, together with the leveling-guide gaps. They can skip it. An empty box clears it. Do not
+ask them to type the note in the chat, and do not open or edit their notebook.
+
 ## 5. V2MOM
 
-If "V2MOM connected" failed, ask where their V2MOM PDF is (downloaded from the V2MOM app), then run
-`uv run coffeeshop v2mom connect "<path>"`. If they have no PDF yet, skip this and say they can add it later on the
+If "V2MOM connected" failed, ask for the link to their V2MOM profile page in the V2MOM app, then run
+`uv run coffeeshop v2mom connect "<https link>"`. The sync reads that page through the AI Expert Suite browser
+plugin (`browser_navigate`, `browser_wait`, `browser_a11y_tree`), signed in as them. A PDF still works: if they
+would rather use one, or the page can't be read, ask where the PDF downloaded from the V2MOM app is, then run
+`uv run coffeeshop v2mom connect "<path>"`. If they have neither yet, skip this and say they can add it later on the
 V2MOM page of the app.
 
 ## 6. Connectors
@@ -86,6 +96,6 @@ End with one paragraph on what goes to Claude, before their first sync, in these
 reads your Google Calendar, Tasks, and the Docs you wrote, your Slack tracker canvas, and Slack messages that mention
 you in public and private channels (never DMs), and it sorts the notebook's records, your V2MOM, and the leveling
 guide to find the work that counts toward your next level. Each job sends only what it needs. Everything is stored
-on this laptop, in your notebook folder, outside this repo; nothing else leaves it, except a promo case you choose
+on this laptop, in your notebook folder, outside this repo; nothing else leaves it, except a performance case you choose
 to send to Google Docs. The full list is in
 docs/TECHNICAL.md under "What goes to Claude".

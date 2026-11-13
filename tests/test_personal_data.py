@@ -32,17 +32,24 @@ def test_personal_paths_are_refused_and_the_leveling_workbook_is_allowed():
         "kso.json",
         "budget.xlsx",
         "data/leveling.xlsx",
+        "data/competencies.xlsx",
         "data/leveling-other/salary.xlsx",
         "data/leveling/notes.csv",
         "data/leveling/notebook.db",
         "Data\\secret.xlsx",
+        "FY27 V2MOM.docx",
+        "docs/notes.DOCX",
+        "src/data/v2mom.docx",
     ]
     allowed = [
         "src/coffeeshop/cli.py",
         "docs/TECHNICAL.md",
         "data/leveling/leveling-guides.xlsx",
+        "data/competencies/values-behaviors.xlsx",
+        "Data/Competencies/Values.XLSX",
         "data/Leveling/older/Guide.XLSX",
         "data\\leveling\\guide.xlsx",
+        "data/templates/promo.docx",
         "README.md",
     ]
     for path in refused:

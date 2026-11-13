@@ -1,4 +1,4 @@
-"""The home dashboard: how close the promotion is, and whether the work keeps coming. Built from the notebook when the
+"""The home dashboard: V2MOM and KSO progress, then how close the next grade is. Built from the notebook when the
 page loads (no Claude, nothing stored)."""
 from __future__ import annotations
 
@@ -33,9 +33,10 @@ def momentum(s: Session, today: date) -> list[dict]:
 
 
 def build(s: Session, today: date | None = None) -> dict:
-    """Everything Home's progress card shows: grade readiness, skills, wins and kudos this half, records to check,
-    weekly momentum, the V2MOM's active methods, and the next guide item to aim for."""
+    """Everything Home's progress card shows: this year's V2MOM and KSOs, then grade readiness, skills, wins and
+    kudos this half, records to check, weekly momentum, and the next guide item to aim for."""
     from .guide.service import has_guide, level, promo_map
+    from .kso import progress as kso_progress
     from .v2mom import report
     today = today or date.today()
     half = activities.windows(today)["half"][0]
@@ -57,6 +58,7 @@ def build(s: Session, today: date | None = None) -> dict:
         grades=grades, skills=skills, next=nxt, current=lv["grade"] if lv else None, level=lv,
         weeks=momentum(s, today),
         v2mom=report.build(s, today),
+        kso=kso_progress.build(s, today=today),
         wins=s.scalar(select(func.count()).select_from(Win).where(Win.day >= half)) or 0,
         kudos=s.scalar(select(func.count()).select_from(JournalEntry).where(
             JournalEntry.kind == "recognition", JournalEntry.day >= half)) or 0,

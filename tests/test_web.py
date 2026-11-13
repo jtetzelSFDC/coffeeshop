@@ -63,17 +63,17 @@ def test_demo_seed_fills_every_page_with_made_up_data(tmp_path):
     c = TestClient(create_app(dd), base_url=BASE)
     home = c.get("/").text
     assert "practice notebook" in home and "Grade 5 to 6, aiming at 7" in home and "Sync Google" not in home
-    bar = home.index("<h2>Promotion Progress</h2>")
+    bar = home.index("<h2>Performance Progress</h2>")
     assert 'class="nextbar"' in home[bar:home.index("</summary>", bar)]
     assert "Today's Three" in home and 'action="/daily/suggest"' not in home  # the made-up three, no Suggest
     with make_session_factory(make_engine(dd.db))() as s:
         assert s.query(DailyTask).count() == 3  # seeding twice the same day adds no second three
     assert "Release readiness review" in c.get("/meetings").text
-    for path in ("/wins", "/promo", "/sheet?show=all", "/meetings", "/conversations", "/documents", "/tasks", "/other",
+    for path in ("/wins", "/performance", "/sheet?show=all", "/meetings", "/conversations", "/documents", "/tasks", "/other",
                  "/search?q=rollback"):
         assert c.get(path).status_code == 200, path
     assert "Planned and ran a full sandbox refresh" in c.get("/wins").text
-    assert "Sandbox and test data strategy" in c.get("/promo").text
+    assert "Sandbox and test data strategy" in c.get("/performance").text
 
 
 def test_data_files_are_owner_only(seeded):
@@ -339,7 +339,7 @@ def test_switching_the_theme_comes_back_to_the_same_page_and_never_leaves_the_ap
     app = create_app(dd)
     c = TestClient(app, base_url=BASE)
     assert 'name="next" value="/kso?fy=FY26"' in c.get("/kso?fy=FY26&msg=Saved").text
-    for nxt, to in (("/promo/case/12", "/promo/case/12"), ("//evil.example", "/"), ("/\\evil.example", "/")):
+    for nxt, to in (("/performance/case/12", "/performance/case/12"), ("//evil.example", "/"), ("/\\evil.example", "/")):
         r = c.post("/theme", data={"csrf": app.state.csrf_token, "theme": "light", "next": nxt}, follow_redirects=False)
         assert r.headers["location"] == to
     assert c.get("/static/sync.js").status_code == 200 and c.get("/static/nope.js").status_code == 404

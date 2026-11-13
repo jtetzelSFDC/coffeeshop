@@ -20,7 +20,7 @@ def reader(picks):
     """A guide reader that also answers V2MOM picks by record text."""
     seen = []
 
-    def read(guide, themes, records, v2mom=None):
+    def read(guide, themes, records, v2mom=None, **_extra):
         seen.append(v2mom)
         return {r["id"]: dict(guide=[], kind=r["kind"], win=None, v2mom=picks.get(r["text"], [])) for r in records}
     read.seen = seen

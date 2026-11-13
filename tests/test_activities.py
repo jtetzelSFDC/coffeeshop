@@ -80,10 +80,10 @@ def test_your_choice_sticks_and_pages_show_the_numbers(nb):
         activities.tag(s, everything=True, reader=tags({"Refreshed fulldata": "deployment"}))
         e = s.get(JournalEntry, eid)
         assert (e.activity, e.activity_fixed) == ("sandbox_refresh", True)
-    promo = c.get("/promo").text
+    promo = c.get("/performance").text
     assert "By the numbers" in promo and 'href="/impact/sandbox_refresh?window=year"' in promo
     page = c.get("/impact/sandbox_refresh?window=year").text
     assert "1 sandbox refreshes this year" in page and "Refreshed fulldata" in page
     assert c.get("/impact/nope").status_code == 404
-    md = c.get("/promo/export").text
+    md = c.get("/performance/export").text
     assert "## By the numbers" in md and "| Sandbox refreshes | 1 | 1 | 1 |" in md

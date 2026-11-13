@@ -1,6 +1,7 @@
 """The daily three: once each morning, Claude reads a short summary of where you stand (recent work, Promo map gaps,
 skills without evidence, your V2MOM) and suggests three small tasks, each doable in under ten minutes and each tied
-to one of those goals. Only titles go to Claude, never pasted notes or transcripts."""
+to one of those goals. Titles go to Claude, never pasted notes or transcripts. The Projects and
+responsibilities note from Settings is sent too, when it is set."""
 from __future__ import annotations
 
 import json
@@ -13,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .claude_cli import ClaudeError, ask, clip, reply_json
-from .guide.service import grades_text, level, person
+from .guide.service import RESPONSIBILITIES_MAX, grades_text, level, person, profile
 from .storage.models import DailyTask, JournalEntry, Win, WorkItem
 
 SOURCE = "daily"  # its runs show as the Daily chip
@@ -40,6 +41,7 @@ Suggest exactly 3 small tasks for today. Each must:
 Use only what is in the JSON. Never invent a doc, release, meeting, project, or person it does not name. When \
 "few_records" is true there is little recent work: lean on the goals themselves, keep the tasks general, and say in \
 "why" that the goal is the reason.
+When the goals are already on track, suggest work drawn from "responsibilities" and the leveling-guide gaps.
 Write "text" as one plain line, at most 90 characters, starting with a verb. "why" is at most 75 characters.
 
 Reply with only JSON: {"tasks": [{"text": "...", "minutes": 5, "goal": "one goal id from the list", \
@@ -138,6 +140,9 @@ def context(s: Session, today: date) -> dict:
     wk, meeting_ids = week(s, today)
     data = dict(today=today.isoformat(), goals=goals(s, today)[:MAX_GOALS], week=wk,
                 recent=recent(s, today, meeting_ids))
+    note = profile(s).get("responsibilities")
+    if isinstance(note, str) and (note := note.strip()):
+        data["responsibilities"] = note[:RESPONSIBILITIES_MAX]
     data["few_records"] = len(data["recent"]) + sum(map(len, wk.values())) < FEW_RECORDS
     while len(json.dumps(data)) > MAX_CONTEXT:
         if len(data["recent"]) > MIN_RECENT:

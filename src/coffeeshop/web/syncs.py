@@ -61,7 +61,7 @@ def _link_new(job: Job, i: int, s) -> int:
         job.done(i, "Nothing new to link.")
         return 0
     job.start(i)
-    r = dict(read=0, links=0, wins=0, v2mom=0, failed=0)
+    r = dict(read=0, links=0, wins=0, v2mom=0, values=0, failed=0)
     try:
         if pending(s):
             r = review(s, progress=job.sub)
@@ -71,6 +71,7 @@ def _link_new(job: Job, i: int, s) -> int:
         job.fail(i, str(exc))
         return 0
     job.done(i, f"{_plural(r['links'], 'guide link')}, " + (f"{r['v2mom']} V2MOM, " if r["v2mom"] else "")
+             + (f"{r['values']} Values, " if r["values"] else "")
              + f"{_plural(r['wins'], 'drafted win')}, "
              f"{_plural(g['joined'], 'record')} grouped with earlier work, {a['tagged']} counted toward impact"
              + (f"; {r['failed']} couldn't be read" if r["failed"] else ""))
@@ -316,10 +317,15 @@ def run_v2mom(job: Job, Session_, lock, dd: DataDir) -> None:
     try:
         parsed, origin = connector.read(src)
     except ClaudeError as exc:
+        was = src.get("was") if src.get("kind") == "url" else None
+        if isinstance(was, dict) and was.get("kind") in ("pdf", "doc") and was.get("value"):
+            connector.write_source(dd, dict(kind=was["kind"], value=was["value"]))
         job.fail(0, str(exc))
         job.skip(1)
         job.finish("V2MOM sync couldn't read your V2MOM, so nothing changed.")
         return
+    if src.get("was"):
+        connector.write_source(dd, dict(kind=src["kind"], value=src["value"]))
     job.done(0, f"{_plural(len(parsed['methods']), 'method')}, {_plural(len(parsed['obstacles']), 'obstacle')}"
              + (f", {_plural(len(parsed['check_ins']), 'check-in')}" if parsed["check_ins"] else ""))
     job.start(1)

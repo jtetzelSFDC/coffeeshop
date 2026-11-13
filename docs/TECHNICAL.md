@@ -23,10 +23,12 @@ Python 3.12, FastAPI, SQLAlchemy on SQLite, Jinja2, Typer, uv. No JavaScript fra
 | `google/` | Calendar, Tasks, Docs, and meeting-note summaries through Claude Code's Google Workspace connector |
 | `slack/` | Your own messages and the activity-tracker canvas, their sorting and import, and kudos. Public and private channels only; DMs are never read |
 | `github/` | Merged PRs and weekly review counts through the `gh` CLI |
-| `v2mom/` | Reading the V2MOM (PDF or Google Doc), stable method ids, links from work, per-method report |
-| `guide/` | The leveling guide, links to it, grouping records into work, the Promo map, Claude's read-through |
-| `promo/` | The promotion-case writer and its per-sentence checks |
+| `v2mom/` | Reading the V2MOM (PDF, its V2MOM app page, or a Google Doc), stable method ids, links from work, per-method report |
+| `values/` | The Individual Contributor Values & Behaviors, and links from work (on the guide review, plus a backfill) |
+| `guide/` | The leveling guide, links to it, grouping records into work, the Performance map, Claude's read-through |
+| `promo/` | The performance-case writer and its per-sentence checks |
 | `daily.py` | Today's three: context, one Claude ask, strict validation, check and uncheck |
+| `ask.py` | One read-only question: a clipped notebook slice, one Claude ask, nothing saved |
 | `kso/` | KSOs: the yearly framework read (`framework.py`), V2MOM method to part matching (`map.py`), the page's progress bars (`progress.py`), and the monthly estimate (`estimate.py`) |
 | `digest.py`, `dashboard.py` | The Friday digest and the Home numbers |
 | `export/` | Markdown and CSV downloads |
@@ -43,7 +45,7 @@ flowchart LR
     gw[Google Workspace connector]
     sl[Slack connector]
     gh[gh CLI]
-    vm[V2MOM PDF or Doc]
+    vm[V2MOM PDF, page, or Doc]
   end
   gw & sl -->|"read through Claude Code"| sync[sync all, 8 AM and 6 PM]
   gh & vm --> sync
@@ -56,11 +58,11 @@ flowchart LR
   daily --> db
 ```
 
-Every record lands as a `JournalEntry`. Claude's read-through sets its kind, guide links, V2MOM links, and whether it's a win, all marked AI until you check them. Pages read the database; their Sync buttons start the same jobs the schedule runs.
+Every record lands as a `JournalEntry`. Claude's read-through sets its kind, guide links, V2MOM links, Values & Behaviors, and whether it's a win, all marked AI until you check them. Pages read the database; their Sync buttons start the same jobs the schedule runs.
 
 ## Where data lives
 
-Outside the repo, in `~/Library/Application Support/coffeeshop/` on a Mac and `%LOCALAPPDATA%\coffeeshop` on Windows (the practice notebook uses `coffeeshop-demo/`). That folder holds the database, backups, logs, and connector settings, and `profile.json` (the promo case name, the optional pasted style example for it, and the role, grade, and job title from `setup level`). The leveling guide workbook is shared company-wide, so it lives in the repo at `data/leveling/leveling-guides.xlsx`; `setup level` imports one role of it into `guide_item`, keyed so links survive a re-import, and the next grades are derived from the grades that role has. The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Run `git config core.hooksPath .githooks` once per clone so the pre-commit check is on (a spreadsheet is allowed only under `data/leveling/`). Tests and docs use made-up names and data only.
+Outside the repo, in `~/Library/Application Support/coffeeshop/` on a Mac and `%LOCALAPPDATA%\coffeeshop` on Windows (the practice notebook uses `coffeeshop-demo/`). That folder holds the database, backups, logs, and connector settings, and `profile.json` (the performance case name, the optional pasted style example for it, the role, grade, and job title from `setup level`, the optional Projects and responsibilities note, and `friday_case`, which is off unless you turn on the Friday performance-case refresh). The blank Performance Advocacy Tool template the case is written from lives in the repo at `data/pat/pat-template.docx`. The leveling guide workbook is shared company-wide, so it lives in the repo at `data/leveling/leveling-guides.xlsx`; `setup level` imports one role of it into `guide_item`, keyed so links survive a re-import, and the next grades are derived from the grades that role has. The Values & Behaviors workbook is shared the same way, at `data/competencies/values-behaviors.xlsx`; the Individual Contributor tab's English value, behavior, and definition are loaded into `competency_item` on the guide review (and on `values tag`). The KSO material is internal, so its parsed rubric lives only in the database (`kso_framework`), with the links to it in `kso.json`. `.gitignore` also covers every notebook file type (`*.db`, `*.pdf`, `*.csv`, `backups/`, `logs/`, connector files, `guides/`) in case a data folder is ever pointed inside the repo. Run `git config core.hooksPath .githooks` once per clone so the pre-commit check is on (a spreadsheet is allowed only under `data/leveling/` or `data/competencies/`, a Word file only under `data/`). Tests and docs use made-up names and data only.
 
 ## Security
 
@@ -70,6 +72,8 @@ Outside the repo, in `~/Library/Application Support/coffeeshop/` on a Mac and `%
 - **Autoescaped templates.** No user or Claude text is rendered as HTML.
 - **Read-only connectors.** The sync reads from Google, Slack, and GitHub; nothing is ever posted, sent, or edited there. The one exception is **Send to Google Docs**, which you press yourself.
 - **Claude, boxed in.** `ask()` runs `claude -p --tools ""` with one turn; `call_tools()` allows only the named connector tools. Meeting summaries also allow `Read`, limited to Claude's own saved tool-result folders.
+- **AI Expert Suite connectors first.** Tool names use the AI Expert Suite plugins (`plugin_slack_slack`, `plugin_google-workspace_google-workspace`, `plugin_browser_browser`). When a run's init shows the Slack or Google plugin down and a second server for that service connected (`SERVERS` in `claude_cli.py`), `call_tools()` runs once more with the tool names moved to that server.
+- **No org-specific connections.** A grep of the repo for `ccs`, `.gov`, and org-specific URLs finds none; the only hosts are `127.0.0.1`, `docs.google.com`, `docs.astral.sh`, and the Windows Task Scheduler XML schema.
 
 ## What goes to Claude
 
@@ -80,18 +84,19 @@ Claude Code is both the reader and the sorter. Everything the Google and Slack c
 | Google sync | Calendar events and their Gemini notes, tasks, and the Docs, Sheets, and Slides you wrote |
 | Slack sync | Your own messages in public and private channels (never DMs), a thread's first message when you replied in it (up to 20 a sync), the activity-tracker canvas, then the new records for sorting |
 | Kudos | Messages that mention you in public and private channels (never DMs), up to 1,500 characters each, with sender and channel |
-| Sorting and grouping | Records' text and notes, the leveling guide, and the V2MOM methods. Runs at the end of each sync, right after you add an entry or check off a daily task, and from the queue's button |
-| V2MOM | The V2MOM text, including your manager's check-in comments |
-| Promo case | The numbered evidence list, and your pasted style example if you added one (tone only) |
+| Sorting and grouping | Records' text and notes, the leveling guide, the V2MOM methods, and the Values & Behaviors (value, behavior, and definition; at most two). Runs at the end of each sync, right after you add an entry or check off a daily task, from the queue's button, and from `values tag` for records already read |
+| V2MOM | The V2MOM text, including your manager's check-in comments. A connected V2MOM page is read through the browser connector (`browser_navigate`, `browser_wait`, `browser_a11y_tree`) |
+| Performance case | The numbered evidence list, that section's guidance from `data/pat/pat-template.docx` (including what is valued and what to avoid), and your pasted style example if you added one (tone only) |
 | Send to Google Docs | The whole case, written into a new Doc in your Drive |
-| Daily three | Goals (V2MOM methods with open measures, Promo map items, and KSO parts with their explanation and two examples) and recent record and win titles, plus this week's meeting, open task, and project titles, about 8k characters at most |
+| Daily three | Goals (V2MOM methods with open measures, Performance map items, and KSO parts with their explanation and two examples) and recent record and win titles, plus this week's meeting, open task, and project titles, and your Projects and responsibilities note if set, about 8k characters at most |
+| Ask | The question, plus record and win titles in the window you pick (not pasted notes or transcripts), V2MOM methods, Values & Behaviors, and leveling-guide topics. About 8,000 characters. Nothing is saved |
 | KSO connect (yearly, by hand) | The KSO deck and guide canvases, through the Google and Slack connectors |
 | KSO matching | KSO part names and explanations, and V2MOM method names, descriptions, and measures |
 | KSO estimate (monthly) | The rubric, the matched V2MOM methods with measures and comments, this year's linked work titles (8k total, split evenly across parts), and the kudos count |
 
 Setup (`/setup` in Claude Code, `.claude/commands/setup.md`, and the `/setup` page) adds only the connector checks: one `list_task_lists` call for Google and one `slack_read_user_profile` call for Slack, each with a 60-second limit. They read and save nothing. `setup.py` holds the checks and the role and level code that `setup level`, `setup check`, and the page all call.
 
-Prompts tell Claude the data is data, never instructions, and answers are checked before they're saved. A bad one saves nothing, except promo sentences that fail a check: those are kept and flagged **Check this**.
+Prompts tell Claude the data is data, never instructions, and answers are checked before they're saved. A bad one saves nothing, except performance-case sentences that fail a check: those are kept and flagged **Check this**.
 
 Every prompt, with its input, size caps, and checks, is listed in [prompts.md](prompts.md); what good output looks like for each AI feature is in [quality.md](quality.md).
 
@@ -103,7 +108,7 @@ Every prompt, with its input, size caps, and checks, is listed in [prompts.md](p
 |---|---|---|
 | `com.coffeeshop.app` | At login, kept alive | `coffeeshop serve` |
 | `com.coffeeshop.sync` | 8 AM, 6 PM, and at login | `coffeeshop sync all`: backup, then Slack, Google, GitHub, V2MOM (monthly, and new methods get matched to KSO parts), the KSO estimate (monthly, once KSOs are read and matched), then the daily three (once a day, after 8 AM) |
-| `com.coffeeshop.digest` | Friday at noon | `coffeeshop digest notify` |
+| `com.coffeeshop.digest` | Friday at noon | `coffeeshop digest notify`. When `friday_case` is on in `profile.json`, this also writes one performance-case draft for the last 12 months. Off by default, and then Friday only shows the digest. |
 
 Each one runs `uv run --project <this repo> coffeeshop …` with `COFFEESHOP_DATA_DIR` set to the notebook. A missed time runs on wake (`StartWhenAvailable` on Windows). A failed step doesn't stop the others; each source that fails sends one notification (a Windows toast, or one log line if that toast is blocked), and the chips on the pages show each source's last run. GitHub is optional: if `gh` is missing or not signed in, that step is skipped and does not notify. A Doc is summarized only if it was saved in the last 7 days; a failure is tried again on the next sync while it is still inside that window. The iCal calendar command only updates or removes meetings it saved (ids containing `@`). A meeting Sync Google already saved, with the same day and title, is left in place.
 

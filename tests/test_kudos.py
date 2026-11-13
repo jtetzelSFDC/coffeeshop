@@ -179,4 +179,4 @@ def test_recognition_goes_to_the_promo_writer_as_its_own_quoted_piece(session):
     pieces, slices = build(session, "2026-01-01", "2026-12-31")
     rec = next(p for p in pieces if p["kind"] == "recognition")
     assert rec["text"] == 'Recognition (2026-10-20), quoted exactly: Pat Lee: "Saved us!"'
-    assert rec["n"] in slices["behaviors"] and rec["n"] in slices["impact"]
+    assert [k for k, ns in slices.items() if rec["n"] in ns] == ["feedback"]

@@ -12,9 +12,11 @@ Every prompt runs through `claude_cli.ask()`: tools off, one turn, data on stdin
 | 2 | `guide/ai_review.py` `PROMPT` + `REPLY` | Read-through: guide links, kind, win | Change |
 | 3 | `v2mom/links.py` `PROMPT_PART` | Read-through: V2MOM links (appended to 2) | Keep |
 | 4 | `v2mom/links.py` `TAG_PROMPT` | V2MOM links for already-read records | Keep |
+| 17 | `values/links.py` `PROMPT_PART` | Read-through: Values & Behaviors (appended to 2) | Keep |
+| 18 | `values/links.py` `TAG_PROMPT` | Values & Behaviors for already-read records | Keep |
 | 5 | `guide/work.py` `PROMPT` | Group records into pieces of work | Change |
 | 6 | `guide/activities.py` `PROMPT` | One impact activity per record | Change |
-| 7 | `promo/write.py` `PROMPT` | One section of the promo case | Change |
+| 7 | `promo/write.py` `PROMPT` | One section of the performance case | Change |
 | 8 | `slack/classify.py` `PROMPT` | Kind of each tracker canvas item | Keep, then change |
 | 9 | `slack/kudos.py` `FILTER_PROMPT` | Keep real recognition, pick a quote | Keep |
 | 10 | `google/summaries.py` `PROMPT` | Summary of a meeting's notes | Keep |
@@ -24,22 +26,23 @@ Every prompt runs through `claude_cli.ask()`: tools off, one turn, data on stdin
 | 14 | `kso/framework.py` `PROMPT` | KSO framework from the deck and canvases | Keep |
 | 15 | `kso/map.py` `PROMPT` | Match V2MOM methods to KSO parts | Keep |
 | 16 | `kso/estimate.py` `PROMPT` | Monthly 1 to 5 guess per KSO | Keep |
+| 19 | `ask.py` `PROMPT` | One question about the notebook | Keep |
 
-That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't missed.
+`PROMPT_PART` (3 and 17) is a piece of 2, listed so its rule isn't missed.
 
 ## 1. Today's three
 
 `daily.py` `PROMPT`. Three tasks of ten minutes or less, each tied to one offered goal.
-- **Gets:** up to `MAX_GOALS` 15 goals (V2MOM methods, KSO parts, Promo map items, skills; each clipped to 50 to 160 characters, at most 3 open measures and 2 KSO ideas) and up to `MAX_RECENT` 40 titles from the last `RECENT_DAYS` 14 days, each clipped to 100. All of it fits `MAX_CONTEXT` 8,000 characters: old titles go first, then the least useful goals, but `MIN_RECENT` 10 titles stay.
+- **Gets:** up to `MAX_GOALS` 15 goals (V2MOM methods, KSO parts, Performance map items, skills; each clipped to 50 to 160 characters, at most 3 open measures and 2 KSO ideas) and up to `MAX_RECENT` 40 titles from the last `RECENT_DAYS` 14 days, each clipped to 100. All of it fits `MAX_CONTEXT` 8,000 characters: old titles go first, then the least useful goals, but `MIN_RECENT` 10 titles stay.
 - **Checked by:** `validate()`: exactly 3 tasks, text up to 110 characters (prompt asks 90), why up to 90 (prompt asks 75), minutes a whole number from 1 to 10, goal one of the ids offered. A bad answer saves nothing.
 - **New user:** no guide and no V2MOM means no goals, and it refuses with a plain message before asking. With a few records, `recent` is short and the prompt still asks for work-specific tasks, so Claude may invent detail.
 - **Decision: keep.** It uses this week's records and the saved level, and it says so when there are few records.
 
 ## 2. Read-through
 
-`guide/ai_review.py` `PROMPT` + `REPLY` (with 3 added when a V2MOM is loaded). For each record: guide items it shows, its kind, and whether it's a win.
-- **Gets:** `BATCH` 20 records (full text, plus attached Slack, AI summary, and task notes, 900 characters each and 1,500 in all), the whole guide (experiences with descriptions up to 400, skills up to 300), the win themes, and the V2MOM methods (description up to 300, 6 measures up to 150). 3 batches at a time.
-- **Checked by:** `_apply()`: only offered guide ids, at most `MAX_LINKS` 3; kind only from meeting, conversation, document, task, certification, or note, and never for calendar, tasks, GitHub, docs, or kudos records, or a certification you chose; a bad win size becomes small and an unknown theme is dropped. Links you made, checked rows, and a kind you changed meanwhile are never overwritten. Everything is marked AI. If no batch reads, nothing changes.
+`guide/ai_review.py` `PROMPT` + `REPLY` (with 3 added when a V2MOM is loaded, and 17 when Values & Behaviors are loaded). For each record: guide items it shows, its kind, and whether it's a win.
+- **Gets:** `BATCH` 20 records (full text, plus attached Slack, AI summary, and task notes, 900 characters each and 1,500 in all), the whole guide (experiences with descriptions up to 400, skills up to 300), the win themes, the V2MOM methods (description up to 300, 6 measures up to 150), and the behaviors (definition up to 1,500). 3 batches at a time.
+- **Checked by:** `_apply()`: only offered guide ids, at most `MAX_LINKS` 3; kind only from meeting, conversation, document, task, certification, or note, and never for calendar, tasks, GitHub, docs, or kudos records, or a certification you chose; a bad win size becomes small and an unknown theme is dropped. Links you made, checked rows, and a kind you changed meanwhile are never overwritten. Values picks are checked the same way as 17. Everything is marked AI. If no batch reads, nothing changes.
 - **New user:** refuses without a guide. A few records make one small batch, which is fine. Win impact "no invented numbers" is only asked, not checked.
 - **Decision: change.** Replace "DevOps release manager", `GRADES`, and "Grades 6 and 7" / "Grade 7 ... Grade 6" with the saved role and levels; the rules stay.
 
@@ -59,6 +62,22 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 - **New user:** refuses without a V2MOM. Usually not needed, since 3 covers new records.
 - **Decision: keep.** Clear and checked; shares its rule with 3.
 
+## 17. Read-through: Values & Behaviors
+
+`values/links.py` `PROMPT_PART`. Adds the next numbered rule to 2 (4 with no V2MOM, 5 with one): the behaviors each record shows.
+- **Gets:** the behaviors in 2's data (value, behavior, definition up to 1,500).
+- **Checked by:** `apply_ai()`: only offered ids, at most `MAX_PICKS` 2; behaviors you set are never changed.
+- **New user:** loaded from the workbook in the repo, so the rule is present once that file reads.
+- **Decision: keep.** Same shape as 3; edit it with 18.
+
+## 18. Values & Behaviors for records already read
+
+`values/links.py` `TAG_PROMPT`. The one-time backfill (`values tag`) for records read before Values & Behaviors were added.
+- **Gets:** the behaviors (as in 2) and `BATCH` 40 records (full text, no notes). 3 batches at a time.
+- **Checked by:** `apply_ai()`, as in 17. If no batch reads, nothing changes.
+- **New user:** usually not needed, since 17 covers new records.
+- **Decision: keep.** Clear and checked; shares its rule with 17.
+
 ## 5. Group into pieces of work
 
 `guide/work.py` `PROMPT`. Joins records of the same release, refresh, or doc into one piece of work, so it's counted once.
@@ -69,19 +88,19 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 
 ## 6. Impact activity
 
-`guide/activities.py` `PROMPT`. Tags each record with the one activity it shows, for the Promo map counts.
+`guide/activities.py` `PROMPT`. Tags each record with the one activity it shows, for the Performance map counts.
 - **Gets:** the 13 `ACTIVITIES` (key and meaning) and `BATCH` 40 records, text clipped to 500 and notes to 600. 3 batches at a time.
 - **Checked by:** `tag()`: an unknown key becomes no activity; one you set is never changed.
 - **New user:** fine with few records.
 - **Decision: keep.** The prompt uses the saved role. The activity list is still DevOps work (deployments, sandbox refreshes, branch audits). Other roles need their own list later.
 
-## 7. Promo case section
+## 7. Performance case section
 
-`promo/write.py` `PROMPT`. Writes one of five sections from that section's numbered evidence, in the third person, every sentence citing its sources.
-- **Gets:** the section's slice of `promo/evidence.py`'s pieces, capped by `CAPS` (40, or 50 for accomplishments), from a window of 365 days by default. Piece text is clipped: check-in comments 600, kudos 400, single records 200, 4 records per piece of work at 120, 3 V2MOM examples at 80; at most 15 wins in the summary, 20 kudos, 60 single records. 3 sections at a time.
+`promo/write.py` `PROMPT`. Writes one Performance Advocacy Tool section from that section's numbered evidence, in the third person, every sentence citing its sources. The section's guidance, and the template's what-is-valued and what-to-avoid lists, are read from `data/pat/pat-template.docx`.
+- **Gets:** the section's slice of `promo/evidence.py`'s pieces, capped by `CAPS` (40, or 50 for Project Highlights), from a window of 365 days by default. Piece text is clipped: check-in comments 600, kudos 400, single records 200, 4 records per piece of work at 120, 3 V2MOM examples at 80; at most 15 wins in Talent Readiness, 20 kudos, 60 single records. 3 sections at a time. Strategic Business Need is at least 25 words; Talent Readiness is at most 400 words; the other sections are a concise section.
 - **Checked by:** `check()`: sources must be in this section's evidence, and every number in a sentence must appear in it. A failing sentence is kept and flagged **Check this**. A section with no evidence says so; no linked work at all refuses before asking; if every section fails, nothing is saved.
-- **New user:** with little evidence the prompt still asks for 3 to 8 sentences per section, which invites padding.
-- **Decision: keep.** The prompt and the section descriptions use the saved role and level. Too little evidence refuses before asking Claude, and an activity count is used only in a section that also cites that kind of work.
+- **New user:** with little evidence, Strategic Business Need still asks for at least 25 words, which can invite padding. The citation check still flags an invented number.
+- **Decision: change.** The headings and the guidance are the template's, not the old five. The opening still names the saved role and level. Too little evidence refuses before asking Claude, and an activity count is used only in a section that also cites that kind of work. A draft saved under the old headings still opens and can be rewritten.
 
 ## 8. Slack tracker kinds
 
@@ -146,3 +165,11 @@ That's 15 prompts; `PROMPT_PART` (3) is a piece of 2, listed so its rule isn't m
 - **Checked by:** `validate()`: every KSO once, a whole number from 1 to 5, a reason for every part (cut to `MAX_WHY` 200; prompt asks 160), exactly `STEPS` 3 next steps up to `MAX_STEP` 110 (prompt asks 90). A bad answer changes nothing.
 - **New user:** runs only once KSOs are read and matched. With little work it rates low, which the prompt asks for ("honest, not kind").
 - **Decision: keep.** Evidence is capped per part, and the shape is checked.
+
+## 19. Ask
+
+`ask.py` `PROMPT`. One plain-language answer to a question about the notebook. Nothing is saved.
+- **Gets:** the question, record lines (160 characters) and win titles in the chosen window (last 7 days, last 30 days, this half, or this year; open tasks left out), V2MOM method names (a method linked only on that record's win counts), Values & Behaviors (key actions clipped to 220), and leveling-guide topics. Notes and transcripts are not loaded. It all fits `MAX_CONTEXT` 8,000 characters: the oldest record lines go first, then the oldest wins, then the behavior key actions.
+- **Checked by:** nothing is parsed. The prompt asks for `[n]` citations of record numbers that were sent. A bad answer is only shown, and the notebook is unchanged.
+- **New user:** an empty window still asks; Claude is told to say when the slice is not enough. A missing workbook leaves behaviors out of the slice.
+- **Decision: keep.** Read-only, and the slice is the same size cap as the daily three.

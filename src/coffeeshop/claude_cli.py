@@ -51,10 +51,39 @@ def _result_text(content: object) -> str:
     return _unwrap(path.read_text())
 
 
-def call_tools(prompt: str, tools: list[str], timeout: int = 240, max_turns: int = 5,
-               stdin: str | None = None) -> list[tuple[str, dict, str]]:
-    """(tool, input, raw answer) for every call Claude made to `tools`, the only tools it may use.
-    Claude's own words are discarded. Long text goes on `stdin`, so it never hits the command-line size limit."""
+# shortcut: `claude mcp list` showed no second Slack or Google server on 2026-11-12, so these are Claude Code's
+# names for the claude.ai connectors; used only when that server is connected and the plugin's is not.
+SLACK_FALLBACK = "claude_ai_Slack"
+GOOGLE_FALLBACK = "claude_ai_Google_Workspace"
+# Tool-name prefixes per service, AI Expert Suite plugin first.
+SERVERS = {"slack": ("plugin_slack_slack", SLACK_FALLBACK),
+           "google": ("plugin_google-workspace_google-workspace", GOOGLE_FALLBACK)}
+
+
+def _prefix(server: str) -> str:
+    """Claude Code names a server's tools mcp__<its name, other characters as '_'>__<tool>."""
+    return re.sub(r"[^\w-]", "_", server)
+
+
+def pick_tools(tools: list[str], servers: list[dict]) -> list[str]:
+    """`tools` with each one's server swapped for the first connected server of its service, when its own is not
+    connected and another is. Unchanged otherwise."""
+    up = [_prefix(s.get("name", "")) for s in servers if s.get("status") == "connected"]
+    out = []
+    for t in tools:
+        for prefs in SERVERS.values():
+            own = next((p for p in prefs if t.startswith(f"mcp__{p}__")), None)
+            alt = own and own not in up and next((p for p in prefs if p in up), None)
+            if alt:
+                t = f"mcp__{alt}__" + t[len(f"mcp__{own}__"):]
+                break
+        out.append(t)
+    return out
+
+
+def _run_tools(prompt: str, tools: list[str], timeout: int, max_turns: int,
+               stdin: str | None) -> tuple[list[tuple[str, dict, str]], list[dict], str]:
+    """(answers, the init's mcp_servers, stderr) of one headless run."""
     try:
         run = subprocess.run(
             [_claude(), "-p", prompt, "--tools", "", "--allowedTools", *tools, "--output-format", "stream-json", "--verbose",
@@ -64,15 +93,14 @@ def call_tools(prompt: str, tools: list[str], timeout: int = 240, max_turns: int
         raise ClaudeError("Claude took too long to answer. Try again.") from None
     calls: dict[str, tuple[str, dict]] = {}
     answers: list[tuple[str, dict, str]] = []
-    down: list[str] = []
+    servers: list[dict] = []
     for line in run.stdout.splitlines():
         try:
             msg = json.loads(line)
         except ValueError:
             continue
         if msg.get("type") == "system" and msg.get("subtype") == "init":
-            down = [s.get("name", "") for s in msg.get("mcp_servers") or []
-                    if s.get("status") != "connected" and any(_serves(s.get("name", ""), t) for t in tools)]
+            servers = [s for s in msg.get("mcp_servers") or [] if isinstance(s, dict)]
         for part in (msg.get("message") or {}).get("content") or []:
             if not isinstance(part, dict):
                 continue
@@ -81,22 +109,35 @@ def call_tools(prompt: str, tools: list[str], timeout: int = 240, max_turns: int
             elif part.get("type") == "tool_result" and part.get("tool_use_id") in calls:
                 name, args = calls[part["tool_use_id"]]
                 answers.append((name, args, _result_text(part.get("content", ""))))
+    return answers, servers, run.stderr or ""
+
+
+def call_tools(prompt: str, tools: list[str], timeout: int = 240, max_turns: int = 5,
+               stdin: str | None = None) -> list[tuple[str, dict, str]]:
+    """(tool, input, raw answer) for every call Claude made to `tools`, the only tools it may use.
+    Claude's own words are discarded. Long text goes on `stdin`, so it never hits the command-line size limit.
+    When the tools' server is down and another server for the same service is connected, it runs once more on that one."""
+    answers, servers, stderr = _run_tools(prompt, tools, timeout, max_turns, stdin)
+    if not answers and (swapped := pick_tools(tools, servers)) != tools:
+        tools = swapped
+        answers, servers, stderr = _run_tools(prompt, tools, timeout, max_turns, stdin)
+    down = [s.get("name", "") for s in servers
+            if s.get("status") != "connected" and any(_serves(s.get("name", ""), t) for t in tools)]
     if not answers and down:
         raise ClaudeError(f"Claude Code's {_service(down[0])} connector isn't signed in. Sign in to it again in "
                           "Claude Code's connector settings, then sync again.")
     if not answers:
         raise ClaudeError("Claude didn't get an answer from the connector. Is it signed in for Claude Code?"
-                          + (f" ({run.stderr.strip()[:150]})" if run.stderr.strip() else ""))
+                          + (f" ({stderr.strip()[:150]})" if stderr.strip() else ""))
     return answers
 
 
 def _serves(server: str, tool: str) -> bool:
-    """Claude Code names a connector's tools mcp__<server name with ':' as '_'>__<tool>."""
-    return bool(server) and tool.startswith("mcp__" + server.replace(":", "_") + "__")
+    return bool(server) and tool.startswith(f"mcp__{_prefix(server)}__")
 
 
 def _service(server: str) -> str:
-    name = server.split(":")[-1]
+    name = server.split(":")[-1].removeprefix("claude.ai ")
     return {"google-workspace": "Google Workspace", "slack": "Slack"}.get(name, name)
 
 

@@ -33,7 +33,7 @@ CONNECTORS = frozenset({
     "kso.json",
 })
 PRIVATE_DIRS = frozenset({"backups", "logs", "exports"})
-LEVELING = "data/leveling/"
+XLSX_OK = ("data/leveling/", "data/competencies/")
 
 
 def refuse(path: str) -> str | None:
@@ -57,8 +57,10 @@ def refuse(path: str) -> str | None:
     for suffix in SUFFIXES:
         if name.endswith(suffix):
             return f"*{suffix} file"
-    if name.endswith(".xlsx") and not "/".join(parts).startswith(LEVELING):
-        return "*.xlsx outside data/leveling/"
+    if name.endswith(".xlsx") and not any("/".join(parts).startswith(prefix) for prefix in XLSX_OK):
+        return "*.xlsx outside data/leveling/ or data/competencies/"
+    if name.endswith(".docx") and parts[0] != "data":
+        return "*.docx outside data/"
     return None
 
 
