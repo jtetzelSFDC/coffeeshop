@@ -4,10 +4,12 @@ from datetime import datetime
 from sqlalchemy import select
 
 from coffeeshop.guide import work
-from coffeeshop.guide.service import evidence, experiences
-from coffeeshop.storage.models import GuideLink, JournalEntry, Win, WorkItem
+from coffeeshop.guide.service import confirm, evidence, experiences
+from coffeeshop.promo import evidence as pe
+from coffeeshop.storage.models import GuideLink, JournalEntry, V2momLink, Win, WorkItem
+from coffeeshop.v2mom import links as v2links
 
-from helpers import add, form, open_session
+from helpers import add, form, link, load_v2mom, open_session
 
 
 
@@ -39,11 +41,11 @@ def test_three_records_of_one_deployment_count_once(nb):
         assert r == dict(read=4, joined=2, new=1, alone=1, failed=0)
         w = s.scalar(select(WorkItem))
         assert (w.title, w.day, w.by_ai) == ("Pine release", "2026-10-22", True)  # dated by its last record
-        assert evidence(s)[item]["points"] == 1
-        s.add(Win(day="2026-10-22", title="Shipped Pine", size="large", entry_id=c, created_at=datetime.now()))
+        assert evidence(s)[item]["points"] == 2  # one small group win, not three records
+        big = Win(day="2026-10-22", title="Shipped Pine", size="large", entry_id=c, created_at=datetime.now())
+        s.add(big)
         s.commit()
-        w_id = s.scalar(select(Win.id))
-        s.add(GuideLink(item_id=item, win_id=w_id, created_at=datetime.now()))
+        s.add(GuideLink(item_id=item, win_id=big.id, created_at=datetime.now()))
         s.commit()
         assert evidence(s)[item]["points"] == 4  # the group scores once, at its strongest evidence
         assert s.get(JournalEntry, d).work_item_id is None
@@ -177,3 +179,82 @@ def test_dry_run_from_the_cli_never_locks_the_real_notebook(nb, monkeypatch):
     assert r.exit_code == 0 and "nothing was saved" in r.output, r.output
     with open_session(dd) as s:
         assert s.scalar(select(WorkItem)) is None
+
+
+def test_a_group_win_is_drafted_once_and_not_counted_twice(nb):
+    dd, c, *_ = nb
+    calls = []
+
+    def reader(open_work, records):
+        calls.append(1)
+        out = {}
+        for r in records:
+            text = r["text"]
+            if text.startswith("Pine"):
+                choice = ({"new": "Pine release", "key": "pine", "win": "Shipped Pine"} if text.endswith("1")
+                          else {"join": "pine"})
+            elif text.startswith("Lab"):
+                choice = {"new": "Lab refresh", "key": "lab"} if text.endswith("1") else {"join": "lab"}
+            elif text.startswith("Note"):
+                choice = {"new": "Note batch", "key": "note"} if text.endswith("1") else {"join": "note"}
+            else:
+                choice = None
+            out[r["id"]] = choice
+        return out
+
+    with open_session(dd) as s:
+        m = load_v2mom(s)
+        item = experiences(s)[0].id
+        pine = [add(s, f"Pine {i}", f"2026-10-{19 + i}") for i in (1, 2, 3)]
+        lab = [add(s, f"Lab {i}", f"2026-10-{19 + i}") for i in (1, 2)]
+        notes = [add(s, f"Note {i}", f"2026-10-{19 + i}") for i in (1, 2, 3)]
+        lunch = add(s, "Lunch", "2026-10-22")
+        for eid in pine:
+            s.add(GuideLink(item_id=item, entry_id=eid, created_at=datetime.now()))
+            link(s, m["M1"], entry_id=eid)
+            s.add(Win(day="2026-10-22", title=f"Member only win {eid}", size="large", entry_id=eid,
+                      created_at=datetime.now()))
+        for eid in lab:
+            s.get(JournalEntry, eid).activity = "document"
+        s.commit()
+        work.group(s, reader=reader)
+        assert calls == [1]
+        pine_item = s.scalar(select(WorkItem).where(WorkItem.title == "Pine release"))
+        lab_item = s.scalar(select(WorkItem).where(WorkItem.title == "Lab refresh"))
+        note_item = s.scalar(select(WorkItem).where(WorkItem.title == "Note batch"))
+        pine_win = s.scalar(select(Win).where(Win.work_item_id == pine_item.id))
+        note_win = s.scalar(select(Win).where(Win.work_item_id == note_item.id))
+        assert (pine_win.title, pine_win.by_ai, pine_win.entry_id, pine_win.size) == (
+            "Shipped Pine", True, None, "large")
+        assert s.scalar(select(Win.id).where(Win.work_item_id == lab_item.id)) is None
+        assert (note_win.title, note_win.by_ai) == ("Note batch", True)
+        assert s.scalar(select(GuideLink.id).where(GuideLink.win_id == pine_win.id))
+        assert s.scalar(select(V2momLink.id).where(V2momLink.win_id == pine_win.id))
+        assert [w.title for w in v2links.evidence(s)[m["M1"]]["wins"]] == ["Shipped Pine"]
+        pieces, _ = pe.build(s, "2026-10-01", "2026-10-31")
+        win_texts = [p["text"] for p in pieces if p["kind"] == "win"]
+        assert sum("Shipped Pine" in t for t in win_texts) == 1
+        assert not any("Member only" in t for t in win_texts)
+        assert not any(p["kind"] == "work" and "Pine" in p["text"] for p in pieces)
+        assert any(p["kind"] == "work" and "Lab refresh" in p["text"] for p in pieces)
+        assert "1 win and 3 records" in next(p["text"] for p in pieces if p["kind"] == "v2mom" and "M1" in p["text"])
+        page = c.get("/sheet?show=all").text
+        assert f"/sheet/{pine[0]}/one-win" in page and f"/sheet/{lab[0]}/one-win" in page
+        assert f"/sheet/{lunch}/one-win" not in page and f"/sheet/{notes[0]}/one-win" in page
+        confirm(s, pine[0])
+        assert s.scalar(select(Win).where(Win.title == "Shipped Pine")).by_ai is False
+        note_id, note_win_id = note_item.id, note_win.id
+        for e in s.scalars(select(JournalEntry).where(JournalEntry.work_item_id == note_id)):
+            e.work_item_id = None
+        work.drop_empty(s)
+        s.commit()
+        assert s.get(WorkItem, note_id) is None and s.get(Win, note_win_id) is None
+        kept = s.scalar(select(Win).where(Win.title == "Shipped Pine"))
+        pine_id = kept.work_item_id
+        for e in s.scalars(select(JournalEntry).where(JournalEntry.work_item_id == pine_id)):
+            e.work_item_id = None
+        work.drop_empty(s)
+        s.commit()
+        kept = s.get(Win, kept.id)
+        assert kept is not None and kept.work_item_id is None and kept.by_ai is False
+        assert s.get(WorkItem, pine_id) is None

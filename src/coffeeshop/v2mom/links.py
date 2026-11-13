@@ -11,6 +11,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..claude_cli import ClaudeError, ask, reply_results
+from ..guide.service import counting_wins
 from ..storage.models import JournalEntry, V2momLink, V2momMethod, Win
 from . import store
 
@@ -128,6 +129,13 @@ def evidence(s: Session) -> dict[int, dict]:
             ev["wins"].update((w.id, w) for w in by_entry.get(l.entry_id, []))
         if l.win_id in wins:
             ev["wins"][l.win_id] = wins[l.win_id]
+    entry_work = {e.id: e.work_item_id for e in entries.values()}
+    missing = {w.entry_id for w in wins.values() if w.entry_id and w.entry_id not in entry_work}
+    if missing:
+        entry_work.update(s.execute(select(JournalEntry.id, JournalEntry.work_item_id).where(
+            JournalEntry.id.in_(missing))).all())
+    for ev in out.values():
+        ev["wins"] = {w.id: w for w in counting_wins(list(ev["wins"].values()), entry_work)}
     return {mid: dict(entries=sorted(ev["entries"].values(), key=lambda e: e.day, reverse=True),
                       wins=sorted(ev["wins"].values(), key=lambda w: w.day, reverse=True)) for mid, ev in out.items()}
 

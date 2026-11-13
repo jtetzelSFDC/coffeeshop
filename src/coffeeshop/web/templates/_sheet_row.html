@@ -13,6 +13,8 @@
         <select id="act{{ r.id }}" name="activity"><option value="">Nothing</option>{% for k, label in activity_opts %}<option value="{{ k }}" {{ 'selected' if r.activity == k }}>{{ label }}</option>{% endfor %}</select>
         <button>Set</button></form></td>
     <td>{% if r.work %}<span class="chip {{ 'ai' if r.work.ai else 'guide' }}" title="Records in the same piece of work count once on the Performance map">{% if r.work.ai %}AI: {% endif %}Part of: {{ r.work.title }}{% if r.work.size > 1 %} &middot; {{ r.work.size }} records{% endif %}</span>
+        {% if r.work.win_ai %}<span class="chip ai">AI win</span>{% endif %}
+        <form method="post" action="/sheet/{{ r.id }}/one-win">{{ hidden() }}<button>Count this work as one win</button></form>
         <form method="post" action="/sheet/{{ r.id }}/split">{{ hidden() }}<button aria-label="Not the same work as {{ r.work.title }}">Not the same work</button></form>{% endif %}
       <details><summary>Group with&hellip;</summary>
         <form method="post" action="/sheet/{{ r.id }}/group" class="row">{{ hidden() }}

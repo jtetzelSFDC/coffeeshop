@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..guide.activities import LABEL, counts_between
-from ..guide.service import level, promo_map
+from ..guide.service import counting_wins, level, promo_map
 from ..guide.topics import grouped, short_name
 from ..storage.models import GuideItem, GuideLink, JournalEntry, Win, WorkItem
 from ..v2mom import links as v2mom_links, store as v2mom_store
@@ -232,18 +232,29 @@ def build(s: Session, start: str, end: str) -> tuple[list[dict], dict[str, list[
             add("checkin", f"V2MOM check-in ({name}), manager comments: {' '.join(c['manager_comments'].split())[:600]}",
                 end, [], ["feedback"])
 
-    # then wins: the strongest evidence
+    # then wins: the strongest evidence. A group win covers its member records, so their wins are not a second piece.
     won_entries = set()
-    for i, w in enumerate(wins):
+    entry_work = {e.id: e.work_item_id for e in entries.values()}
+    missing = {w.entry_id for w in wins if w.entry_id and w.entry_id not in entry_work}
+    if missing:
+        entry_work.update(s.execute(select(JournalEntry.id, JournalEntry.work_item_id).where(
+            JournalEntry.id.in_(missing))).all())
+    for i, w in enumerate(counting_wins(wins, entry_work)):
         g = shows.get(("win", w.id), [])
         text = f"Win ({w.size}, {w.day}): {w.title}." + (f" Why it mattered: {w.impact}" if w.impact else "") \
             + (f" Shows: {', '.join(_label(x, devops) for x in g)}." if g else "") + _advances(advances.get(("win", w.id)))
         into = ["highlights"] + (["contributions"] if w.impact else []) \
             + (["talent"] if w.size != "small" and i < SUMMARY_WINS else []) \
             + (["development"] if any(x.kind == "skill" for x in g) else [])
-        add("win", text, w.day, [dict(win=w.id), *([dict(entry=w.entry_id)] if w.entry_id else [])], into)
-        if w.entry_id:
+        refs = [dict(win=w.id)]
+        if w.work_item_id:
+            ids = [e.id for e in entries.values() if e.work_item_id == w.work_item_id]
+            refs.extend(dict(entry=n) for n in ids)
+            won_entries.update(ids)
+        elif w.entry_id:
+            refs.append(dict(entry=w.entry_id))
             won_entries.add(w.entry_id)
+        add("win", text, w.day, refs, into)
 
     # pieces of work with guide links or an activity, unless a win already covers them
     members: dict[int, list[JournalEntry]] = {}

@@ -710,6 +710,8 @@ def create_app(dd: DataDir) -> FastAPI:
         by_id = {w.id: w for w in nearby}
         by_id.update({w.id: w for w in s.scalars(select(WorkItem).where(
             WorkItem.id.in_({e.work_item_id for e in rows if e.work_item_id} - set(by_id))))})
+        group_wins = {w.work_item_id: w for w in s.scalars(select(Win).where(
+            Win.work_item_id.in_(list(by_id))))} if by_id else {}
 
         def near(e) -> list[dict]:
             d = date.fromisoformat(e.day)
@@ -721,7 +723,8 @@ def create_app(dd: DataDir) -> FastAPI:
                      text=e.text, reviewed=e.reviewed, ai_read=e.ai_read, links=links.get(e.id, []),
                      v2mom=v2mom.get(e.id, []),
                      win=wins.get(e.id), notes=notes.get(e.id, ""),
-                     work=(dict(id=w.id, title=w.title, ai=w.by_ai and not e.work_fixed, size=members.get(w.id, 1))
+                     work=(dict(id=w.id, title=w.title, ai=w.by_ai and not e.work_fixed, size=members.get(w.id, 1),
+                                win_ai=bool((gw := group_wins.get(w.id)) and gw.by_ai))
                            if (w := by_id.get(e.work_item_id)) else None),
                      near=near(e), activity=e.activity, activity_label=activities.LABEL.get(e.activity, ""),
                      activity_ai=e.activity_read and not e.activity_fixed) for e in rows]
@@ -755,6 +758,16 @@ def create_app(dd: DataDir) -> FastAPI:
                 target.started = min(target.started or target.day, e.day)
                 s.flush()
                 work.drop_empty(s)
+                s.commit()
+        return sheet_back(request, s, ret, eid)
+
+    @app.post("/sheet/{eid}/one-win", dependencies=[Depends(check_csrf)])
+    def sheet_one_win(request: Request, eid: int, ret: str = Form(""), s: Session = Depends(db)):
+        """One win for the whole piece of work this record belongs to."""
+        with _write_lock:
+            e = s.get(JournalEntry, eid)
+            if e and e.work_item_id:
+                work.ensure_group_win(s, e.work_item_id, by_ai=False)
                 s.commit()
         return sheet_back(request, s, ret, eid)
 

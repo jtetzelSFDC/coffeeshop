@@ -36,7 +36,7 @@ def test_old_notebooks_get_the_new_columns(tmp_path):
                   " theme VARCHAR, entry_id INTEGER, created_at DATETIME)")
     init_db(make_engine(db))
     with sqlite3.connect(db) as c:
-        assert "by_ai" in {r[1] for r in c.execute("PRAGMA table_info(win)")}
+        assert {"by_ai", "work_item_id"} <= {r[1] for r in c.execute("PRAGMA table_info(win)")}
         assert {"kind_was", "ai_read", "reviewed"} <= {r[1] for r in c.execute("PRAGMA table_info(journal_entry)")}
 
 

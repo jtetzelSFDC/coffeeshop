@@ -7,7 +7,7 @@
     {% if not (sync.slack.ok and sync.calendar.ok) %}<a class="muted" href="/">Sync on Today</a>{% endif %}{% endif %}</div>
   <div class="stats"><span><b>{{ counts.total }}</b> records</span><span><b>{{ counts.read }}</b> read by Claude</span><span><b>{{ counts.checked }}</b> checked</span>{% if counts.links or counts.wins %}<span class="ai"><b>{{ counts.links }}</b> AI link{{ '' if counts.links == 1 else 's' }} &middot; <b>{{ counts.wins }}</b> AI win{{ '' if counts.wins == 1 else 's' }} to check</span>{% endif %}</div>
   <details class="howto"><summary>How this works</summary>
-  <p class="muted">Everything coming in from Slack, Google, and GitHub lands here to be sorted. Scan each row and fix what's off with one click: its type, what it counts as, the piece of work it's part of, the leveling guide items it shows, the V2MOM methods it moves forward, and whether it's a win. Purple <span class="chip ai">AI</span> marks are Claude's picks. They already count on the Performance map. <b>Looks right</b> makes a row's picks yours and moves it out of the "Not checked yet" list. Tick several rows and press <b>Looks right for selected</b> to check them together; a row Claude has not read yet is skipped. <b>No V2MOM method</b> lists records Claude has read that aren't linked to a method. <b>Remove</b> takes a record out for good, for example a meeting you didn't attend; syncs won't bring it back, and you can restore it from "Removed" in the first menu.</p></details>
+  <p class="muted">Everything coming in from Slack, Google, and GitHub lands here to be sorted. Scan each row and fix what's off with one click: its type, what it counts as, the piece of work it's part of, the leveling guide items it shows, the V2MOM methods it moves forward, and whether it's a win. On a grouped row, <b>Count this work as one win</b> makes one win for that whole piece of work. Purple <span class="chip ai">AI</span> marks are Claude's picks. They already count on the Performance map. <b>Looks right</b> makes a row's picks yours and moves it out of the "Not checked yet" list. Tick several rows and press <b>Looks right for selected</b> to check them together; a row Claude has not read yet is skipped. <b>No V2MOM method</b> lists records Claude has read that aren't linked to a method. <b>Remove</b> takes a record out for good, for example a meeting you didn't attend; syncs won't bring it back, and you can restore it from "Removed" in the first menu.</p></details>
   {% if personal and guided and counts.unread %}
   <form method="post" action="/sheet/ai" data-sync="review" class="row" style="margin-top:.6rem">{{ hidden() }}
     <button class="primary">Have Claude read the {{ counts.unread }} record{{ '' if counts.unread == 1 else 's' }} it hasn't read</button>
@@ -44,7 +44,7 @@
   ("Record", "Record: the date, where it came from, and the text.", ""),
   ("Type", "Type: meeting, conversation, document, task, kudos, certification, or other.", "9rem"),
   ("Counts as", "Counts as: the activity this record adds to on the performance map.", "10rem"),
-  ("Part of", "Part of: one piece of work, counted once.", "9.5rem"),
+  ("Part of", "Part of: one piece of work, counted once.", "14rem"),
   ("Leveling guide", "Leveling guide: the guide items this record shows.", "9rem"),
   ("V2MOM", "V2MOM: the methods this record moves forward.", "8.5rem"),
   ("Win", "Win: small, medium, or large.", "5.5rem"),

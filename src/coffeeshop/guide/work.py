@@ -10,12 +10,14 @@ from datetime import date, datetime, timedelta
 from functools import partial
 from typing import Callable
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from ..claude_cli import ClaudeError, ask, reply_results
-from ..storage.models import JournalEntry, WorkItem
+from ..storage.models import GuideLink, JournalEntry, V2momLink, Win, WorkItem
 from .service import level, person
+
+_SIZE_RANK = {"large": 3, "medium": 2, "small": 1}
 
 WINDOW_DAYS = 14  # a record can join work whose latest record is at most this many days away
 MAX_SPAN_DAYS = 30  # and no piece of work runs longer than this from its first record, so groups can't chain on
@@ -75,9 +77,76 @@ def _fits(item: WorkItem, day: str) -> bool:
 def drop_empty(s: Session) -> int:
     used = select(JournalEntry.work_item_id).where(JournalEntry.work_item_id.is_not(None))
     gone = list(s.scalars(select(WorkItem).where(WorkItem.id.not_in(used))))
+    if gone:
+        ids = [w.id for w in gone]
+        # An AI draft only existed for this group. A win you confirmed stays, unlinked, so it is not deleted.
+        for win in list(s.scalars(select(Win).where(Win.work_item_id.in_(ids)))):
+            if win.by_ai:
+                s.execute(delete(GuideLink).where(GuideLink.win_id == win.id))
+                s.execute(delete(V2momLink).where(V2momLink.win_id == win.id))
+                s.delete(win)
+            else:
+                win.work_item_id = None
+        s.flush()
     for w in gone:
         s.delete(w)
     return len(gone)
+
+
+def _strongest_size(s: Session, member_ids: list[int], current: str = "") -> str:
+    sizes = [current] if current in _SIZE_RANK else []
+    if member_ids:
+        sizes += [z for z in s.scalars(select(Win.size).where(Win.entry_id.in_(member_ids))) if z in _SIZE_RANK]
+    return max(sizes, key=_SIZE_RANK.get) if sizes else "small"
+
+
+def _copy_member_links(s: Session, win: Win, member_ids: list[int]) -> None:
+    """Guide and V2MOM links from the member records (and wins made from them) so the group win still counts."""
+    if not member_ids:
+        return
+    member_wins = [i for i in s.scalars(select(Win.id).where(Win.entry_id.in_(member_ids))) if i != win.id]
+    have_g = set(s.scalars(select(GuideLink.item_id).where(GuideLink.win_id == win.id)))
+    guides = list(s.scalars(select(GuideLink).where(GuideLink.entry_id.in_(member_ids))))
+    if member_wins:
+        guides += list(s.scalars(select(GuideLink).where(GuideLink.win_id.in_(member_wins))))
+    by_item: dict[int, list[GuideLink]] = {}
+    for link in guides:
+        by_item.setdefault(link.item_id, []).append(link)
+    for item_id, links in by_item.items():
+        if item_id not in have_g:
+            s.add(GuideLink(item_id=item_id, win_id=win.id, created_at=datetime.now(),
+                            by_ai=all(l.by_ai for l in links)))
+    have_v = set(s.scalars(select(V2momLink.method_id).where(V2momLink.win_id == win.id)))
+    methods = list(s.scalars(select(V2momLink).where(V2momLink.entry_id.in_(member_ids))))
+    if member_wins:
+        methods += list(s.scalars(select(V2momLink).where(V2momLink.win_id.in_(member_wins))))
+    by_method: dict[int, list[V2momLink]] = {}
+    for link in methods:
+        by_method.setdefault(link.method_id, []).append(link)
+    for method_id, links in by_method.items():
+        if method_id not in have_v:
+            s.add(V2momLink(method_id=method_id, win_id=win.id, created_at=datetime.now(),
+                            by_ai=all(l.by_ai for l in links)))
+
+
+def ensure_group_win(s: Session, work_item_id: int, *, by_ai: bool, title: str = "") -> Win | None:
+    """One win for the whole piece of work. An existing AI draft becomes yours when `by_ai` is false."""
+    item = s.get(WorkItem, work_item_id)
+    if item is None:
+        return None
+    members = list(s.scalars(select(JournalEntry.id).where(JournalEntry.work_item_id == work_item_id)))
+    win = s.scalar(select(Win).where(Win.work_item_id == work_item_id).limit(1))
+    if win is None:
+        win = Win(day=item.day, title=(title or item.title)[:500], size=_strongest_size(s, members),
+                  work_item_id=work_item_id, created_at=datetime.now(), by_ai=by_ai)
+        s.add(win)
+        s.flush()
+    elif not by_ai:
+        if win.by_ai:
+            win.size = _strongest_size(s, members, win.size)
+        win.by_ai = False
+    _copy_member_links(s, win, members)
+    return win
 
 
 def group(s: Session, *, everything: bool = False, limit: int | None = None, dry_run: bool = False,
@@ -99,6 +168,8 @@ def group(s: Session, *, everything: bool = False, limit: int | None = None, dry
             tot["failed"] += len(b)
             continue
         made: dict[str, WorkItem] = {}
+        touched: set[int] = set()
+        win_text: dict[int, str] = {}
         for i, e in enumerate(b):
             if f"r{i}" not in got:
                 tot["failed"] += 1
@@ -127,8 +198,19 @@ def group(s: Session, *, everything: bool = False, limit: int | None = None, dry
             if item:
                 item.day = max(item.day, e.day)
                 proposed.setdefault(item.id, []).append(e.text)
+                touched.add(item.id)
+                extra = w.get("win") if isinstance(w, dict) else None
+                if isinstance(extra, str) and extra.strip():
+                    win_text.setdefault(item.id, extra.strip()[:500])
             e.grouped = True
             tot["read"] += 1
+        if touched:  # same grouping reply: no second Claude call. A missing win line uses the work title.
+            counts = dict(s.execute(select(JournalEntry.work_item_id, func.count()).where(
+                JournalEntry.work_item_id.in_(touched)).group_by(JournalEntry.work_item_id)).all())
+            have = set(s.scalars(select(Win.work_item_id).where(Win.work_item_id.in_(touched))))
+            for iid, count in counts.items():
+                if count >= 3 and iid not in have:
+                    ensure_group_win(s, iid, by_ai=True, title=win_text.get(iid, ""))
         drop_empty(s)
         if dry_run:
             s.flush()

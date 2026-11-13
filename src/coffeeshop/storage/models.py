@@ -103,6 +103,7 @@ class Win(Base):
     size: Mapped[str] = mapped_column(String, default="small")  # small | medium | large
     theme: Mapped[str] = mapped_column(String, default="")
     entry_id: Mapped[int | None] = mapped_column(ForeignKey("journal_entry.id"), nullable=True, default=None)
+    work_item_id: Mapped[int | None] = mapped_column(ForeignKey("work_item.id"), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime)
     by_ai: Mapped[bool] = mapped_column(Boolean, default=False)  # drafted by Claude, not yet edited or confirmed
 
