@@ -259,9 +259,9 @@ def test_sheet_script_updates_rows_in_place(nb):
     hdr = {"X-Sheet": "1"}
     ret = "show=todo&source=any&kind=any&page=1"
     r = c.post(f"/sheet/{a}/kind", data={"csrf": token, "kind": "document", "ret": ret}, headers=hdr)
-    assert r.status_code == 200 and r.text.lstrip().startswith(f'<tr id="r{a}"') and 'value="document" class="on"' in r.text
+    assert r.status_code == 200 and r.text.lstrip().startswith(f'<tr id="r{a}"') and 'value="document" selected' in r.text
     r = c.post(f"/sheet/{a}/win", data={"csrf": token, "size": "medium", "ret": ret}, headers=hdr)
-    assert "Wrote the refresh runbook" in r.text and 'value="medium" class="on"' in r.text
+    assert "Wrote the refresh runbook" in r.text and 'value="medium" selected' in r.text
     r = c.post(f"/sheet/{a}/ok", data={"csrf": token, "ret": ret}, headers=hdr)
     assert r.status_code == 200 and r.headers["x-row"] == "gone" and r.text == ""
     r = c.post(f"/sheet/{a}/undo", data={"csrf": token, "ret": "show=checked"}, headers=hdr)

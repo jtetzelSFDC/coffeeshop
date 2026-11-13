@@ -40,7 +40,19 @@ const selectedCount = () => {
 
 document.addEventListener("change", (ev) => {
   const t = ev.target;
-  if (!t || t.tagName !== "INPUT") return;
+  if (!t) return;
+  if (t.tagName === "SELECT" && t.form && t.closest("table.sheet.queue")) {
+    const action = t.form.getAttribute("action") || "";
+    if (action.endsWith("/kind")) t.form.requestSubmit();
+    else if (action.endsWith("/win")) {
+      if (!t.value) {
+        t.form.setAttribute("action", t.form.dataset.unwin);
+        t.disabled = true;
+      }
+      t.form.requestSubmit();
+    }
+  }
+  if (t.tagName !== "INPUT") return;
   if (t.id === "sheet-all") for (const box of sheetBoxes()) box.checked = t.checked;
   if (t.id === "sheet-all" || t.name === "id") selectedCount();
 });

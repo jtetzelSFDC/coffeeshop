@@ -40,21 +40,21 @@
 </table>
 {% else %}
 {% set hints = [
-  ("Select", "Select: tick rows on this page, then Looks right for the ones you chose.", "5.6rem"),
-  ("Record", "Record: the date, where it came from, and the text.", ""),
-  ("Type", "Type: meeting, conversation, document, task, kudos, certification, or other.", "9rem"),
-  ("Counts as", "Counts as: the activity this record adds to on the performance map.", "10rem"),
-  ("Part of", "Part of: one piece of work, counted once.", "14rem"),
-  ("Leveling guide", "Leveling guide: the guide items this record shows.", "9rem"),
-  ("V2MOM", "V2MOM: the methods this record moves forward.", "8.5rem"),
-  ("Values", "Values: the behaviors this record shows.", "9rem"),
-  ("Win", "Win: small, medium, or large.", "5.5rem"),
-  ("Actions", "Actions: Looks right checks the row; Remove takes it out for good.", "7rem")] %}
+  ("Select", "Select: tick rows on this page. Looks right checks this row. Remove takes it out for good.", "c-do"),
+  ("Record", "Record: the date, where it came from, and the text.", "c-rec"),
+  ("Type", "Type: meeting, conversation, document, task, kudos, certification, or other.", "c-type"),
+  ("Counts as", "Counts as: the activity this record adds to on the performance map.", "c-count"),
+  ("Part of", "Part of: one piece of work, counted once.", "c-part"),
+  ("Leveling guide", "Leveling guide: the guide items this record shows.", "c-guide"),
+  ("V2MOM", "V2MOM: the methods this record moves forward.", "c-v2"),
+  ("Values", "Values: the behaviors this record shows.", "c-val"),
+  ("Win", "Win: small, medium, or large.", "c-win")] %}
 <form id="sheet-bulk" method="post" action="/sheet/ok" class="row" style="margin:0 0 .6rem">{{ hidden() }}
   <button class="primary">Looks right for selected (<span id="seln">0</span>)</button></form>
-<table class="sheet">
-  <caption>{% for name, hint, width in hints %}{{ hint }} {% endfor %}</caption>
-  <thead><tr>{% for name, hint, width in hints %}<th scope="col" title="{{ hint }}"{% if width %} style="width:{{ width }}{% if name == 'Select' %};white-space:nowrap{% endif %}"{% endif %}>{% if name == "Select" %}<input type="checkbox" id="sheet-all"><label id="sheet-select" for="sheet-all">Select</label>{% else %}{{ name }}{% endif %}</th>{% endfor %}</tr></thead>
+<table class="sheet queue">
+  <caption class="sr">Intake review queue</caption>
+  <colgroup>{% for name, hint, col in hints %}<col class="{{ col }}">{% endfor %}</colgroup>
+  <thead><tr>{% for name, hint, col in hints %}<th scope="col">{% if name == "Select" %}<input type="checkbox" id="sheet-all"><label id="sheet-select" for="sheet-all">Select</label>{% else %}{{ name }}{% endif %}<span class="colhint">{{ hint }}</span></th>{% endfor %}</tr></thead>
   <tbody>
   {% for r in rows %}{% with nxt = loop.nextitem.id if loop.nextitem else '' %}{% include "_sheet_row.html" %}{% endwith %}{% endfor %}
   </tbody>
